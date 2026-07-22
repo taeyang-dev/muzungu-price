@@ -1,5 +1,5 @@
 import { AuthPanel } from "@/components/AuthPanel";
 
-export default function AuthPage(): JSX.Element {
+export default function AuthPage() {
   return <AuthPanel />;
 }

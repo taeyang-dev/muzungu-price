@@ -51,7 +51,7 @@ interface ApiResult {
   error?: { message: string };
 }
 
-export function RequestsPanel({ role, categories, requests }: RequestsPanelProps): JSX.Element {
+export function RequestsPanel({ role, categories, requests }: RequestsPanelProps) {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -64,7 +64,7 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
   ): Promise<void> {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const payload = Object.fromEntries(formData.entries());
+    const payload: Record<string, unknown> = Object.fromEntries(formData.entries());
 
     if ("needsQuotation" in payload) {
       payload.needsQuotation = payload.needsQuotation === "on";
@@ -133,7 +133,7 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
   async function submitReview(event: FormEvent<HTMLFormElement>, bookingId: string): Promise<void> {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const payload = Object.fromEntries(formData.entries());
+    const payload: Record<string, unknown> = Object.fromEntries(formData.entries());
 
     setLoading(true);
     setError("");

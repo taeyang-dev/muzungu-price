@@ -33,7 +33,7 @@ interface ApiResult {
   error?: { message: string };
 }
 
-export function AdminVerificationPanel({ cases }: AdminVerificationPanelProps): JSX.Element {
+export function AdminVerificationPanel({ cases }: AdminVerificationPanelProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");

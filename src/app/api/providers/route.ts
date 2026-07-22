@@ -13,7 +13,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const where: Prisma.ProviderProfileWhereInput = {
     isActive: true,
-    ...(city ? { city: { contains: city, mode: "insensitive" } } : {}),
+    ...(city ? { city: { contains: city } } : {}),
     ...(category
       ? {
           categories: {

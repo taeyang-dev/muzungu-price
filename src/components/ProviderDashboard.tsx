@@ -48,7 +48,7 @@ export function ProviderDashboard({
   services,
   verificationCaseId,
   billing
-}: ProviderDashboardProps): JSX.Element {
+}: ProviderDashboardProps) {
   const [feedback, setFeedback] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -61,7 +61,7 @@ export function ProviderDashboard({
   ): Promise<void> {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const payload = Object.fromEntries(formData.entries());
+    const payload: Record<string, unknown> = Object.fromEntries(formData.entries());
 
     if ("quotationAvailable" in payload) {
       payload.quotationAvailable = payload.quotationAvailable === "on";

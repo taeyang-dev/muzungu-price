@@ -9,7 +9,7 @@ interface ProviderDetailPageProps {
 
 export default async function ProviderDetailPage({
   params
-}: ProviderDetailPageProps): Promise<JSX.Element> {
+}: ProviderDetailPageProps) {
   const { id } = await params;
   const provider = await prisma.providerProfile.findUnique({
     where: { id },

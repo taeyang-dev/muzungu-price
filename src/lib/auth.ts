@@ -1,10 +1,10 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify, SignJWT } from "jose";
+import { jwtVerify, SignJWT, JWTPayload } from "jose";
 
 export type AppRole = "customer" | "provider" | "org_buyer" | "admin";
 
-export interface SessionPayload {
+export interface SessionPayload extends JWTPayload {
   userId: string;
   role: AppRole;
   email: string;
@@ -27,7 +27,7 @@ export async function signSession(session: SessionPayload): Promise<string> {
 export async function verifySession(token: string): Promise<SessionPayload | null> {
   try {
     const verified = await jwtVerify(token, secretKey);
-    const payload = verified.payload as SessionPayload;
+    const payload = verified.payload as unknown as SessionPayload;
     return payload;
   } catch {
     return null;

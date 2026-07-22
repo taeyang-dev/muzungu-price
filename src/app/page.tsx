@@ -7,7 +7,7 @@ interface HomePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function HomePage({ searchParams }: HomePageProps): Promise<JSX.Element> {
+export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
 
   const verifiedOnly = params.verified === "1";
@@ -18,7 +18,7 @@ export default async function HomePage({ searchParams }: HomePageProps): Promise
 
   const where: Prisma.ProviderProfileWhereInput = {
     isActive: true,
-    ...(city ? { city: { contains: city, mode: "insensitive" } } : {}),
+    ...(city ? { city: { contains: city } } : {}),
     ...(category
       ? {
           categories: {

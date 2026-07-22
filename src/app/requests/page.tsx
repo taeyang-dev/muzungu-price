@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 import { decimalToNumber } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RequestsPanel } from "@/components/RequestsPanel";
 
-export default async function RequestsPage(): Promise<JSX.Element> {
+export default async function RequestsPage() {
   const session = await getSession();
   if (!session) {
     return (
@@ -23,9 +24,9 @@ export default async function RequestsPage(): Promise<JSX.Element> {
     orderBy: { name: "asc" }
   });
 
-  const where =
+  const where: Prisma.ServiceRequestWhereInput =
     session.role === "provider"
-      ? { status: { in: ["open", "negotiating"] as const } }
+      ? { status: { in: ["open", "negotiating"] } }
       : { requesterUserId: session.userId };
 
   const requests = await prisma.serviceRequest.findMany({

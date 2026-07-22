@@ -7,7 +7,7 @@ interface AuthResult {
   error?: { message: string };
 }
 
-export function AuthPanel(): JSX.Element {
+export function AuthPanel() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);

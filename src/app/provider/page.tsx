@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ProviderDashboard } from "@/components/ProviderDashboard";
 
-export default async function ProviderPage(): Promise<JSX.Element> {
+export default async function ProviderPage() {
   const session = await getSession();
   if (!session) {
     return (
