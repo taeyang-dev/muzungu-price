@@ -1,1 +1,92 @@
-# muzungu-price
+# Muzungu Price Web App (MVP)
+
+`Muzungu Price` is a verified local-services marketplace focused on:
+
+- Provider verification and trust scoring
+- Transparent fixed public pricing ("This not Muzungu Price")
+- Quotation / EBM capability visibility for NGOs, embassies, and institutions
+- Request → offer → booking workflow
+- Transaction-based ratings and reviews
+
+## Tech stack
+
+- Next.js (App Router, TypeScript)
+- Prisma ORM
+- SQLite (local MVP database)
+- JWT cookie sessions
+
+## Features included
+
+- Auth (register/login/logout)
+- Marketplace listing with filters:
+  - Verified providers only
+  - Quotation-ready providers
+  - EBM-ready providers
+  - Category/city filters
+- Provider detail page with:
+  - Verification status
+  - Public price cards
+  - Reviews
+- Provider Hub:
+  - Create/update provider profile
+  - Add service and tiered price cards
+  - Enable Quotation / EBM flags
+  - Open verification case and upload document metadata
+- Requests and matching:
+  - Customer/institution request creation
+  - Provider offer submission
+  - Offer acceptance to create booking
+  - Booking status updates
+  - Completed-booking review submission
+- Admin verification center:
+  - Review submitted verification cases
+  - Assign decision, score, level, and notes
+
+## Quick start
+
+1. Copy environment file:
+
+```bash
+cp .env.example .env
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Create schema and seed demo data:
+
+```bash
+npm run db:push
+npm run db:seed
+```
+
+4. Run the app:
+
+```bash
+npm run dev
+```
+
+5. Open http://localhost:3000
+
+## Demo users after seeding
+
+- Admin: `admin@muzunguprice.com` / `admin1234`
+- Provider: `electric.pro@example.com` / `provider1234`
+
+Create a new customer account from `/auth` for request/review flow testing.
+
+## API overview
+
+Main endpoints are under `/api`:
+
+- `/api/auth/*`
+- `/api/providers`, `/api/providers/:id`
+- `/api/provider/*`
+- `/api/requests/*`
+- `/api/offers/:offerId/accept`
+- `/api/bookings/:bookingId/status`
+- `/api/bookings/:bookingId/review`
+- `/api/admin/verification-cases*`
