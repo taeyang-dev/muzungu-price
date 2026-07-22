@@ -44,32 +44,21 @@
 
 ## Quick start
 
-1. Copy environment file:
-
-```bash
-cp .env.example .env
-```
-
-2. Install dependencies:
+1. Install dependencies:
 
 ```bash
 npm install
 ```
 
-3. Create schema and seed demo data:
-
-```bash
-npm run db:push
-npm run db:seed
-```
-
-4. Run the app:
+2. Run the app:
 
 ```bash
 npm run dev
 ```
 
-5. Open http://localhost:3000
+`npm run dev` automatically runs Prisma generate, database sync, and seed before starting Next.js.
+
+3. Open http://localhost:3000
 
 ## Demo users after seeding
 
