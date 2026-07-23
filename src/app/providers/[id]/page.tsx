@@ -225,6 +225,13 @@ function getBillingStatusText(
 
 function unitLabel(locale: Locale, unit: string): string {
   const normalized = unit.replace("per_", "per ");
+  if (locale === "fr") {
+    return normalized
+      .replace("per hour", "par heure")
+      .replace("per day", "par jour")
+      .replace("per project", "par projet")
+      .replace("per person", "par personne");
+  }
   if (locale !== "ko") {
     return normalized;
   }

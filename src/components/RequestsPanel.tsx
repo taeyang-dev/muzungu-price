@@ -101,45 +101,63 @@ interface ApiResult {
 type VendorRequestType = "quotation" | "purchase" | "ebm";
 
 function toTermLabel(locale: Locale, value: string): string {
-  const map: Record<string, { en: string; ko: string }> = {
-    prepaid: { en: "Prepaid", ko: "선불" },
-    postpaid: { en: "Postpaid", ko: "후불" },
-    deposit: { en: "Deposit / partial prepay", ko: "부분 선지급" }
+  const map: Record<string, { en: string; ko: string; fr: string }> = {
+    prepaid: { en: "Prepaid", ko: "선불", fr: "Prépayé" },
+    postpaid: { en: "Postpaid", ko: "후불", fr: "Postpayé" },
+    deposit: { en: "Deposit / partial prepay", ko: "부분 선지급", fr: "Acompte / prépaiement partiel" }
   };
   const found = map[value];
   if (!found) {
     return value;
   }
-  return locale === "ko" ? found.ko : found.en;
+  if (locale === "ko") {
+    return found.ko;
+  }
+  if (locale === "fr") {
+    return found.fr;
+  }
+  return found.en;
 }
 
 function toMethodLabel(locale: Locale, value: string): string {
-  const map: Record<string, { en: string; ko: string }> = {
-    bank_transfer: { en: "Bank transfer", ko: "은행 이체" },
-    momo: { en: "MoMo transfer", ko: "모모 이체" },
-    cash: { en: "Cash", ko: "현금" },
-    card: { en: "Card", ko: "카드" },
-    other: { en: "Other", ko: "기타" }
+  const map: Record<string, { en: string; ko: string; fr: string }> = {
+    bank_transfer: { en: "Bank transfer", ko: "은행 이체", fr: "Virement bancaire" },
+    momo: { en: "MoMo transfer", ko: "모모 이체", fr: "Transfert MoMo" },
+    cash: { en: "Cash", ko: "현금", fr: "Espèces" },
+    card: { en: "Card", ko: "카드", fr: "Carte" },
+    other: { en: "Other", ko: "기타", fr: "Autre" }
   };
   const found = map[value];
   if (!found) {
     return value;
   }
-  return locale === "ko" ? found.ko : found.en;
+  if (locale === "ko") {
+    return found.ko;
+  }
+  if (locale === "fr") {
+    return found.fr;
+  }
+  return found.en;
 }
 
 function toRequestTypeLabel(locale: Locale, value: string): string {
-  const map: Record<string, { en: string; ko: string }> = {
-    general: { en: "General", ko: "일반 요청" },
-    quotation: { en: "Quotation", ko: "견적서 요청" },
-    purchase: { en: "Purchase", ko: "구매/진행 요청" },
-    ebm: { en: "EBM", ko: "EBM 요청" }
+  const map: Record<string, { en: string; ko: string; fr: string }> = {
+    general: { en: "General", ko: "일반 요청", fr: "Général" },
+    quotation: { en: "Quotation", ko: "견적서 요청", fr: "Devis" },
+    purchase: { en: "Purchase", ko: "구매/진행 요청", fr: "Achat" },
+    ebm: { en: "EBM", ko: "EBM 요청", fr: "EBM" }
   };
   const found = map[value];
   if (!found) {
     return value;
   }
-  return locale === "ko" ? found.ko : found.en;
+  if (locale === "ko") {
+    return found.ko;
+  }
+  if (locale === "fr") {
+    return found.fr;
+  }
+  return found.en;
 }
 
 export function RequestsPanel({

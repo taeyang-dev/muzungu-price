@@ -44,11 +44,11 @@ interface TranslateResult {
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
 const MAX_ATTACHMENT_COUNT = 3;
 
-const languageLabels: Record<DisplayLang, { en: string; ko: string }> = {
-  original: { en: "Original", ko: "원문" },
-  en: { en: "English", ko: "영어" },
-  ko: { en: "Korean", ko: "한국어" },
-  rw: { en: "Kinyarwanda", ko: "키냐르완다어" }
+const languageLabels: Record<DisplayLang, { en: string; ko: string; fr: string }> = {
+  original: { en: "Original", ko: "원문", fr: "Original" },
+  en: { en: "English", ko: "영어", fr: "Anglais" },
+  ko: { en: "Korean", ko: "한국어", fr: "Coréen" },
+  rw: { en: "Kinyarwanda", ko: "키냐르완다어", fr: "Kinyarwanda" }
 };
 
 function getStorageKey(vendorId: string): string {
@@ -150,6 +150,8 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
         text:
           locale === "ko"
             ? `안녕하세요, ${vendorName}입니다. 요청 내용을 남겨주시면 가격 정보를 포함해 빠르게 답변드릴게요.`
+            : locale === "fr"
+              ? `Bonjour, ici ${vendorName}. Partagez votre demande et nous répondrons rapidement avec les informations de prix.`
             : `Hi, this is ${vendorName}. Share your request and we will respond quickly with pricing details.`,
         timestamp: "welcome"
       }
@@ -481,7 +483,11 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
                   onClick={() => void changeDisplayLanguage(lang)}
                   type="button"
                 >
-                  {locale === "ko" ? languageLabels[lang].ko : languageLabels[lang].en}
+                  {locale === "ko"
+                    ? languageLabels[lang].ko
+                    : locale === "fr"
+                      ? languageLabels[lang].fr
+                      : languageLabels[lang].en}
                 </button>
               ))}
             </div>
@@ -521,7 +527,11 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
                         onClick={() => void ensureTranslation(message.id, lang)}
                         type="button"
                       >
-                        {locale === "ko" ? languageLabels[lang].ko : languageLabels[lang].en}
+                        {locale === "ko"
+                          ? languageLabels[lang].ko
+                          : locale === "fr"
+                            ? languageLabels[lang].fr
+                            : languageLabels[lang].en}
                       </button>
                     ))}
                   </div>
