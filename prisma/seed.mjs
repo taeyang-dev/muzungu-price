@@ -59,12 +59,14 @@ async function main() {
     }
   });
 
-  const [electricalCategory, eventsCategory, artCategory, furnitureCategory, electronicsCategory] = await Promise.all([
+  const [electricalCategory, eventsCategory, artCategory, furnitureCategory, electronicsCategory, safariCategory] =
+    await Promise.all([
     prisma.serviceCategory.findUnique({ where: { slug: "electrical" } }),
     prisma.serviceCategory.findUnique({ where: { slug: "events" } }),
     prisma.serviceCategory.findUnique({ where: { slug: "art-experience" } }),
     prisma.serviceCategory.findUnique({ where: { slug: "furniture" } }),
-    prisma.serviceCategory.findUnique({ where: { slug: "electronics" } })
+    prisma.serviceCategory.findUnique({ where: { slug: "electronics" } }),
+    prisma.serviceCategory.findUnique({ where: { slug: "safari" } })
   ]);
 
   const providerProfile = await prisma.providerProfile.upsert({
@@ -1912,6 +1914,331 @@ async function main() {
         comment: bilingual(
           "The quotation and EBM documents were perfect for procurement and all devices matched specs.",
           "견적서/EBM 문서가 예산 집행에 정확했고 납품 장비도 사양과 완벽히 일치했습니다."
+        )
+      }
+    });
+  }
+
+  if (safariCategory) {
+    const safariPasswordHash = await bcrypt.hash("safari1234", 10);
+    const safariUser = await prisma.user.upsert({
+      where: { email: "virunga.safari@muzunguprice.rw" },
+      update: { name: "Virunga & Kivu Travel", role: "provider", passwordHash: safariPasswordHash },
+      create: {
+        email: "virunga.safari@muzunguprice.rw",
+        name: "Virunga & Kivu Travel",
+        role: "provider",
+        passwordHash: safariPasswordHash
+      }
+    });
+
+    const safariProfile = await prisma.providerProfile.upsert({
+      where: { userId: safariUser.id },
+      update: {
+        businessName: "Virunga & Kivu Travel",
+        providerType: "company",
+        tagline: bilingual("Trusted local travel operator for safari and lake tours.", "사파리와 호수 투어를 전문으로 하는 신뢰도 높은 현지 여행사."),
+        city: "Rubavu",
+        country: "Rwanda",
+        bio: bilingual(
+          "We run curated Rwanda experiences including Akagera safari, Kivu lake routes, and cross-district cultural trips for individuals and organizations.",
+          "아카게라 사파리, 키부 호수 코스, 지역 연계 문화 투어까지 개인/기관 맞춤형 르완다 현지 여행 서비스를 제공합니다."
+        ),
+        logoUrl:
+          "https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=320&q=80",
+        coverImageUrl:
+          "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=80",
+        contactEmail: "bookings@virungakivu.rw",
+        contactPhone: "+250 788 700 321",
+        websiteUrl: "https://virungakivu.example.com",
+        yearsInBusiness: 10
+      },
+      create: {
+        userId: safariUser.id,
+        businessName: "Virunga & Kivu Travel",
+        providerType: "company",
+        tagline: bilingual("Trusted local travel operator for safari and lake tours.", "사파리와 호수 투어를 전문으로 하는 신뢰도 높은 현지 여행사."),
+        city: "Rubavu",
+        country: "Rwanda",
+        bio: bilingual(
+          "We run curated Rwanda experiences including Akagera safari, Kivu lake routes, and cross-district cultural trips for individuals and organizations.",
+          "아카게라 사파리, 키부 호수 코스, 지역 연계 문화 투어까지 개인/기관 맞춤형 르완다 현지 여행 서비스를 제공합니다."
+        ),
+        logoUrl:
+          "https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=320&q=80",
+        coverImageUrl:
+          "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=80",
+        contactEmail: "bookings@virungakivu.rw",
+        contactPhone: "+250 788 700 321",
+        websiteUrl: "https://virungakivu.example.com",
+        yearsInBusiness: 10
+      }
+    });
+
+    await prisma.providerCategory.upsert({
+      where: {
+        providerProfileId_categoryId: {
+          providerProfileId: safariProfile.id,
+          categoryId: safariCategory.id
+        }
+      },
+      update: {},
+      create: {
+        providerProfileId: safariProfile.id,
+        categoryId: safariCategory.id
+      }
+    });
+
+    await prisma.servicePriceCard.deleteMany({
+      where: {
+        service: {
+          providerProfileId: safariProfile.id
+        }
+      }
+    });
+    await prisma.service.deleteMany({
+      where: {
+        providerProfileId: safariProfile.id
+      }
+    });
+
+    const safariServices = [
+      {
+        id: "seed-safari-akagera-service",
+        title: bilingual("Akagera Full-day Safari Tour", "아카게라 국립공원 1일 사파리 투어"),
+        description: bilingual(
+          "One-day game drive with professional guide, 4x4 vehicle, and park logistics support.",
+          "전문 가이드, 4x4 차량, 입장 동선 지원이 포함된 1일 게임드라이브 코스입니다."
+        ),
+        imageUrl:
+          "https://images.unsplash.com/photo-1549366021-9f761d040a94?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "seed-safari-kivu-lake-service",
+        title: bilingual("Lake Kivu Scenic Boat Tour", "키부 호수 경관 보트 투어"),
+        description: bilingual(
+          "Half-day lake cruise with safety crew, local guide, and optional coffee-island stop.",
+          "안전 요원, 현지 가이드, 커피 아일랜드 선택 방문이 포함된 반나절 보트 코스입니다."
+        ),
+        imageUrl:
+          "https://images.unsplash.com/photo-1473116763249-2faaef81ccda?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "seed-safari-gorilla-logistics-service",
+        title: bilingual("Volcanoes Gorilla Trek Logistics", "비룽가 고릴라 트레킹 로지스틱스"),
+        description: bilingual(
+          "Transport, permit support coordination, and bilingual guide support for trekking days.",
+          "트레킹 일정의 이동, 퍼밋 준비 지원, 이중언어 가이드 동행을 제공합니다."
+        ),
+        imageUrl:
+          "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1200&q=80"
+      }
+    ];
+
+    for (const service of safariServices) {
+      await prisma.service.upsert({
+        where: { id: service.id },
+        update: {
+          providerProfileId: safariProfile.id,
+          categoryId: safariCategory.id,
+          title: service.title,
+          description: service.description,
+          imageUrl: service.imageUrl
+        },
+        create: {
+          id: service.id,
+          providerProfileId: safariProfile.id,
+          categoryId: safariCategory.id,
+          title: service.title,
+          description: service.description,
+          imageUrl: service.imageUrl
+        }
+      });
+    }
+
+    const safariPriceCards = [
+      {
+        id: "seed-safari-akagera-standard",
+        serviceId: "seed-safari-akagera-service",
+        tier: "standard",
+        currency: "RWF",
+        basePrice: 380000,
+        unit: "per_day",
+        inclusions: bilingual(
+          "Minimum order: 2 guests; guide + transport + park routing support",
+          "최소 주문: 2인; 가이드 + 이동차량 + 공원 동선 지원 포함"
+        ),
+        exclusions: bilingual("Park entrance permits", "공원 입장 퍼밋")
+      },
+      {
+        id: "seed-safari-kivu-standard",
+        serviceId: "seed-safari-kivu-lake-service",
+        tier: "standard",
+        currency: "RWF",
+        basePrice: 240000,
+        unit: "per_day",
+        inclusions: bilingual(
+          "Minimum order: 3 guests; boat rental + life jackets + local guide",
+          "최소 주문: 3인; 보트 대여 + 구명조끼 + 현지 가이드 포함"
+        ),
+        exclusions: bilingual("Private island meals", "섬 내 식사")
+      },
+      {
+        id: "seed-safari-gorilla-premium",
+        serviceId: "seed-safari-gorilla-logistics-service",
+        tier: "premium",
+        currency: "RWF",
+        basePrice: 720000,
+        unit: "per_project",
+        inclusions: bilingual(
+          "MOQ: 1 trip package; permit prep assistance + transport + bilingual guide",
+          "최소 주문: 1회 패키지; 퍼밋 준비 지원 + 이동 + 이중언어 가이드 포함"
+        ),
+        exclusions: bilingual("Gorilla permit fee", "고릴라 퍼밋 비용")
+      }
+    ];
+
+    for (const card of safariPriceCards) {
+      await prisma.servicePriceCard.upsert({
+        where: { id: card.id },
+        update: card,
+        create: card
+      });
+    }
+
+    await prisma.providerBillingCapability.upsert({
+      where: { providerProfileId: safariProfile.id },
+      update: {
+        quotationAvailable: true,
+        ebmAvailable: true,
+        quotationLeadTimeHours: 10,
+        vendorTinNumber: "TIN-SAFARI-34311",
+        paymentTermsCsv: "prepaid,deposit,postpaid",
+        paymentMethodsCsv: "bank_transfer,momo,card",
+        momoAccountName: "Virunga & Kivu Travel",
+        momoNumber: "+250788700321",
+        bankName: "BK",
+        bankAccountName: "Virunga & Kivu Travel",
+        bankAccountNumber: "3300-6788-9922",
+        bankSwiftCode: "BKRWRWRW"
+      },
+      create: {
+        providerProfileId: safariProfile.id,
+        quotationAvailable: true,
+        ebmAvailable: true,
+        quotationLeadTimeHours: 10,
+        vendorTinNumber: "TIN-SAFARI-34311",
+        paymentTermsCsv: "prepaid,deposit,postpaid",
+        paymentMethodsCsv: "bank_transfer,momo,card",
+        momoAccountName: "Virunga & Kivu Travel",
+        momoNumber: "+250788700321",
+        bankName: "BK",
+        bankAccountName: "Virunga & Kivu Travel",
+        bankAccountNumber: "3300-6788-9922",
+        bankSwiftCode: "BKRWRWRW"
+      }
+    });
+
+    await prisma.verificationCase.upsert({
+      where: { id: "seed-safari-verification-approved" },
+      update: {
+        providerProfileId: safariProfile.id,
+        status: "approved",
+        score: 89,
+        level: "pro_verified",
+        reviewedAt: new Date(),
+        notes: "Tour licenses, insurance, and guide compliance verified."
+      },
+      create: {
+        id: "seed-safari-verification-approved",
+        providerProfileId: safariProfile.id,
+        status: "approved",
+        score: 89,
+        level: "pro_verified",
+        reviewedAt: new Date(),
+        notes: "Tour licenses, insurance, and guide compliance verified."
+      }
+    });
+
+    await prisma.serviceRequest.upsert({
+      where: { id: "seed-request-safari-kivu" },
+      update: {
+        requesterUserId: sampleReviewers[1].id,
+        categoryId: safariCategory.id,
+        title: "Kivu lake and safari combo for visiting team",
+        requirementText: "Need 2-day itinerary with Kivu boat tour and one safari day.",
+        locationText: "Rubavu / Akagera",
+        budgetMin: 650000,
+        budgetMax: 1200000,
+        currency: "RWF",
+        needsQuotation: true,
+        needsEbm: true,
+        status: "completed"
+      },
+      create: {
+        id: "seed-request-safari-kivu",
+        requesterUserId: sampleReviewers[1].id,
+        categoryId: safariCategory.id,
+        title: "Kivu lake and safari combo for visiting team",
+        requirementText: "Need 2-day itinerary with Kivu boat tour and one safari day.",
+        locationText: "Rubavu / Akagera",
+        budgetMin: 650000,
+        budgetMax: 1200000,
+        currency: "RWF",
+        needsQuotation: true,
+        needsEbm: true,
+        status: "completed"
+      }
+    });
+
+    await prisma.booking.upsert({
+      where: { id: "seed-booking-safari-1" },
+      update: {
+        requestId: "seed-request-safari-kivu",
+        providerProfileId: safariProfile.id,
+        customerUserId: sampleReviewers[1].id,
+        finalPrice: 980000,
+        currency: "RWF",
+        status: "completed",
+        completedAt: new Date("2026-07-09T08:00:00.000Z")
+      },
+      create: {
+        id: "seed-booking-safari-1",
+        requestId: "seed-request-safari-kivu",
+        providerProfileId: safariProfile.id,
+        customerUserId: sampleReviewers[1].id,
+        finalPrice: 980000,
+        currency: "RWF",
+        status: "completed",
+        completedAt: new Date("2026-07-09T08:00:00.000Z")
+      }
+    });
+
+    await prisma.review.upsert({
+      where: { bookingId: "seed-booking-safari-1" },
+      update: {
+        reviewerUserId: sampleReviewers[1].id,
+        providerProfileId: safariProfile.id,
+        ratingOverall: 5,
+        ratingPriceTransparency: 5,
+        ratingTimeliness: 5,
+        ratingQuality: 5,
+        comment: bilingual(
+          "Great safari planning and smooth Lake Kivu route. Quotation and EBM were issued exactly as requested.",
+          "사파리 일정 기획이 훌륭했고 키부 호수 코스도 매우 매끄러웠습니다. 견적서와 EBM도 요청대로 정확히 발행됐습니다."
+        )
+      },
+      create: {
+        bookingId: "seed-booking-safari-1",
+        reviewerUserId: sampleReviewers[1].id,
+        providerProfileId: safariProfile.id,
+        ratingOverall: 5,
+        ratingPriceTransparency: 5,
+        ratingTimeliness: 5,
+        ratingQuality: 5,
+        comment: bilingual(
+          "Great safari planning and smooth Lake Kivu route. Quotation and EBM were issued exactly as requested.",
+          "사파리 일정 기획이 훌륭했고 키부 호수 코스도 매우 매끄러웠습니다. 견적서와 EBM도 요청대로 정확히 발행됐습니다."
         )
       }
     });
