@@ -147,19 +147,14 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
           locale === "ko"
             ? `안녕하세요, ${vendorName}입니다. 요청 내용을 남겨주시면 가격 정보를 포함해 빠르게 답변드릴게요.`
             : `Hi, this is ${vendorName}. Share your request and we will respond quickly with pricing details.`,
-        timestamp: new Date().toISOString()
+        timestamp: "welcome"
       }
     ],
     [vendorName, locale]
   );
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    if (typeof window === "undefined") {
-      return initialMessage;
-    }
-    const stored = readChat(vendorId);
-    return stored.length > 0 ? stored : initialMessage;
-  });
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessage);
+  const [loadedVendorId, setLoadedVendorId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [displayLanguage, setDisplayLanguage] = useState<DisplayLang>(() =>
     defaultDisplayLanguage(locale)
@@ -172,8 +167,20 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
   const [saveNotice, setSaveNotice] = useState("");
 
   useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      const stored = readChat(vendorId);
+      setMessages(stored.length > 0 ? stored : initialMessage);
+      setLoadedVendorId(vendorId);
+    }, 0);
+    return () => window.clearTimeout(timerId);
+  }, [vendorId, initialMessage]);
+
+  useEffect(() => {
+    if (loadedVendorId !== vendorId) {
+      return;
+    }
     writeChat(vendorId, messages);
-  }, [vendorId, messages]);
+  }, [vendorId, messages, loadedVendorId]);
 
   useEffect(() => {
     recordChatVendor({ id: vendorId, name: vendorName });
@@ -184,6 +191,14 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
       return message.text;
     }
     return message.translations?.[displayLanguage] ?? message.text;
+  }
+
+  function formatTimestamp(timestamp: string): string {
+    const parsed = new Date(timestamp);
+    if (Number.isNaN(parsed.getTime())) {
+      return "";
+    }
+    return parsed.toLocaleTimeString();
   }
 
   async function ensureTranslation(messageId: string, targetLanguage: DisplayLang): Promise<void> {
@@ -493,7 +508,7 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
                     ))}
                   </div>
                   <span>
-                    {new Date(message.timestamp).toLocaleTimeString()}{" "}
+                    {formatTimestamp(message.timestamp)}{" "}
                     {translatingMessageId === message.id
                       ? tr(locale, "· translating...", "· 번역 중...")
                       : ""}
