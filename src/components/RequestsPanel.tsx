@@ -104,7 +104,7 @@ function toTermLabel(locale: Locale, value: string): string {
   const map: Record<string, { en: string; ko: string }> = {
     prepaid: { en: "Prepaid", ko: "선불" },
     postpaid: { en: "Postpaid", ko: "후불" },
-    deposit: { en: "Deposit / partial prepay", ko: "계약금 선지급" }
+    deposit: { en: "Deposit / partial prepay", ko: "부분 선지급" }
   };
   const found = map[value];
   if (!found) {
@@ -715,7 +715,7 @@ export function RequestsPanel({
                   {tr(
                     locale,
                     "For prepaid or deposit terms, payment should be completed within 2 hours.",
-                    "선불/계약금 선지급의 경우 결제는 2시간 내 완료되어야 합니다."
+                    "선불/부분 선지급의 경우 결제는 2시간 내 완료되어야 합니다."
                   )}
                 </p>
               )}
@@ -791,14 +791,14 @@ export function RequestsPanel({
                 <input className="input" name="organizationTinNumber" required />
               </div>
               <div>
-                <label className="tiny">{tr(locale, "Purchase code timing", "Purchase code 입력 시점")}</label>
+                <label className="tiny">{tr(locale, "Purchase code", "Purchase code")}</label>
                 <select
                   className="select"
                   onChange={(event) => setEbmPurchaseCodeTiming(event.target.value as "now" | "later")}
                   value={ebmPurchaseCodeTiming}
                 >
-                  <option value="later">{tr(locale, "Provide later after internal approval", "기관 승인 후 나중에 입력")}</option>
-                  <option value="now">{tr(locale, "Provide now", "지금 입력")}</option>
+                  <option value="later">{tr(locale, "Enter later", "나중에 입력")}</option>
+                  <option value="now">{tr(locale, "Enter now", "지금 입력")}</option>
                 </select>
               </div>
               {ebmPurchaseCodeTiming === "now" && (

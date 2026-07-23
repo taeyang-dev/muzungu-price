@@ -331,7 +331,7 @@ export function ProviderDashboard({
                   type="checkbox"
                   value="deposit"
                 />{" "}
-                {tr(locale, "Deposit / partial prepay", "계약금 선지급")}
+                {tr(locale, "Deposit / partial prepay", "부분 선지급")}
               </label>
               <label className="category-check">
                 <input
