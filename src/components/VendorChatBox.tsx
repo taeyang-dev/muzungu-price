@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { Locale, tr } from "@/lib/i18n";
 import { recordChatVendor } from "@/lib/vendor-storage";
+import { saveVendorDocument, SavedDocumentType, UploadAttachment } from "@/lib/document-storage";
 
 type DisplayLang = "original" | "en" | "ko" | "rw";
 type StoredLang = "en" | "ko" | "rw";
@@ -13,12 +14,8 @@ interface VendorChatBoxProps {
   locale: Locale;
 }
 
-interface ChatAttachment {
+interface ChatAttachment extends UploadAttachment {
   id: string;
-  name: string;
-  mimeType: string;
-  sizeBytes: number;
-  dataUrl: string;
 }
 
 interface ChatMessage {
@@ -121,6 +118,17 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
+function createTextAttachment(id: string, name: string, content: string): ChatAttachment {
+  const dataUrl = `data:text/plain;charset=utf-8,${encodeURIComponent(content)}`;
+  return {
+    id,
+    name,
+    mimeType: "text/plain",
+    sizeBytes: content.length,
+    dataUrl
+  };
+}
+
 export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxProps) {
   const initialMessage = useMemo<ChatMessage[]>(
     () => [
@@ -153,6 +161,7 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
   const [isOpen, setIsOpen] = useState(true);
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const [attachmentNotice, setAttachmentNotice] = useState("");
+  const [saveNotice, setSaveNotice] = useState("");
 
   useEffect(() => {
     writeChat(vendorId, messages);
@@ -302,6 +311,23 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
     setPendingAttachments((current) => current.filter((item) => item.id !== id));
   }
 
+  function saveAttachmentAs(attachment: ChatAttachment, type: SavedDocumentType): void {
+    const saved = saveVendorDocument({
+      vendorId,
+      vendorName,
+      docType: type,
+      attachment
+    });
+
+    setSaveNotice(
+      tr(
+        locale,
+        `Saved to ${type.toUpperCase()}: ${saved.fileName}`,
+        `${type === "quotation" ? "견적서" : "EBM"}로 저장됨: ${saved.fileName}`
+      )
+    );
+  }
+
   async function sendMessage(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const trimmed = input.trim();
@@ -330,6 +356,30 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
       text: vendorText,
       timestamp: new Date(Date.now() + 30000).toISOString()
     };
+
+    const lower = trimmed.toLowerCase();
+    const vendorAttachments: ChatAttachment[] = [];
+    if (lower.includes("quote") || lower.includes("quotation") || lower.includes("견적")) {
+      vendorAttachments.push(
+        createTextAttachment(
+          `vendor-quotation-${now}`,
+          "vendor-quotation.txt",
+          `Quotation draft from ${vendorName}\nRequested at: ${new Date().toISOString()}\nPlease review and save as Quotation if needed.`
+        )
+      );
+    }
+    if (lower.includes("ebm")) {
+      vendorAttachments.push(
+        createTextAttachment(
+          `vendor-ebm-${now}`,
+          "vendor-ebm.txt",
+          `EBM sample from ${vendorName}\nIssued at: ${new Date().toISOString()}\nPlease review and save as EBM if needed.`
+        )
+      );
+    }
+    if (vendorAttachments.length > 0) {
+      vendorMessage.attachments = vendorAttachments;
+    }
 
     const targetLanguages: StoredLang[] = ["en", "ko", "rw"];
     const [userTranslations, vendorTranslations] = await Promise.all([
@@ -401,10 +451,22 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
                     <ul className="chat-attachment-list">
                       {message.attachments.map((attachment) => (
                         <li key={attachment.id}>
-                          <a download={attachment.name} href={attachment.dataUrl}>
-                            {attachment.name}
-                          </a>
-                          <span>{formatFileSize(attachment.sizeBytes)}</span>
+                          <div>
+                            <a download={attachment.name} href={attachment.dataUrl}>
+                              {attachment.name}
+                            </a>
+                            <span>{formatFileSize(attachment.sizeBytes)}</span>
+                          </div>
+                          {message.sender === "vendor" && (
+                            <div className="chat-doc-actions">
+                              <button onClick={() => saveAttachmentAs(attachment, "quotation")} type="button">
+                                {tr(locale, "Save as Quotation", "견적서로 저장")}
+                              </button>
+                              <button onClick={() => saveAttachmentAs(attachment, "ebm")} type="button">
+                                {tr(locale, "Save as EBM", "EBM으로 저장")}
+                              </button>
+                            </div>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -461,6 +523,7 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
                 </ul>
               )}
               {attachmentNotice && <p className="tiny muted">{attachmentNotice}</p>}
+              {saveNotice && <p className="tiny muted">{saveNotice}</p>}
             </form>
           </div>
         </article>

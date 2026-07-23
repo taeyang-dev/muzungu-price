@@ -1532,61 +1532,168 @@ async function main() {
       }
     });
 
-    await prisma.service.upsert({
-      where: { id: "seed-electronics-office-bundle-service" },
-      update: {
-        providerProfileId: electronicsProfile.id,
-        categoryId: electronicsCategory.id,
-        title: bilingual("Office Electronics Starter Bundle", "사무실 전자제품 스타터 번들"),
-        description: bilingual(
-          "10 laptops, 10 monitors, and networking starter kit with setup guidance.",
-          "노트북 10대, 모니터 10대, 네트워크 스타터 키트와 설치 가이드를 제공합니다."
-        ),
-        imageUrl:
-          "https://images.unsplash.com/photo-1517336714739-489689fd1ca8?auto=format&fit=crop&w=1200&q=80"
-      },
-      create: {
-        id: "seed-electronics-office-bundle-service",
-        providerProfileId: electronicsProfile.id,
-        categoryId: electronicsCategory.id,
-        title: bilingual("Office Electronics Starter Bundle", "사무실 전자제품 스타터 번들"),
-        description: bilingual(
-          "10 laptops, 10 monitors, and networking starter kit with setup guidance.",
-          "노트북 10대, 모니터 10대, 네트워크 스타터 키트와 설치 가이드를 제공합니다."
-        ),
-        imageUrl:
-          "https://images.unsplash.com/photo-1517336714739-489689fd1ca8?auto=format&fit=crop&w=1200&q=80"
+    await prisma.servicePriceCard.deleteMany({
+      where: {
+        service: {
+          providerProfileId: electronicsProfile.id
+        }
+      }
+    });
+    await prisma.service.deleteMany({
+      where: {
+        providerProfileId: electronicsProfile.id
       }
     });
 
-    await prisma.servicePriceCard.upsert({
-      where: { id: "seed-electronics-office-bundle-price" },
-      update: {
-        serviceId: "seed-electronics-office-bundle-service",
-        tier: "premium",
-        currency: "RWF",
-        basePrice: 6900000,
-        unit: "per_project",
-        inclusions: bilingual(
-          "10 laptops, 10 monitors, keyboard/mouse sets, delivery",
-          "노트북 10대, 모니터 10대, 키보드/마우스 세트, 배송 포함"
+    const electronicsServices = [
+      {
+        id: "seed-electronics-laptop-service",
+        title: bilingual("Business Laptop 14-inch", "비즈니스 노트북 14인치"),
+        description: bilingual(
+          "Intel i5 class laptops for office productivity teams with warranty options.",
+          "사무 생산성 업무용 인텔 i5급 노트북 제품입니다. 보증 옵션 선택 가능."
         ),
-        exclusions: bilingual("Extended warranty contracts", "추가 연장보증 계약")
+        imageUrl:
+          "https://images.unsplash.com/photo-1517336714739-489689fd1ca8?auto=format&fit=crop&w=1200&q=80"
       },
-      create: {
-        id: "seed-electronics-office-bundle-price",
-        serviceId: "seed-electronics-office-bundle-service",
-        tier: "premium",
+      {
+        id: "seed-electronics-monitor-service",
+        title: bilingual("27-inch IPS Monitor", "27인치 IPS 모니터"),
+        description: bilingual(
+          "FHD monitors for desk setups, training rooms, and operations centers.",
+          "사무 데스크/교육장/운영센터용 FHD 모니터 제품입니다."
+        ),
+        imageUrl:
+          "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "seed-electronics-printer-service",
+        title: bilingual("Office Printer & Scanner Combo", "사무용 프린터·스캐너 콤보"),
+        description: bilingual(
+          "Reliable print/scan unit for administrative and procurement documents.",
+          "행정/조달 문서 작업에 적합한 프린트·스캔 복합기 제품입니다."
+        ),
+        imageUrl:
+          "https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "seed-electronics-projector-service",
+        title: bilingual("Wireless Meeting Projector", "무선 회의용 프로젝터"),
+        description: bilingual(
+          "Projector package with wireless casting support for boardrooms and trainings.",
+          "회의실/교육용 무선 캐스팅 지원 프로젝터 패키지입니다."
+        ),
+        imageUrl:
+          "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "seed-electronics-custom-sourcing-service",
+        title: bilingual("Custom Device Sourcing", "맞춤형 전자기기 소싱"),
+        description: bilingual(
+          "Need a specific brand/spec? We source and quote custom electronics requests.",
+          "특정 브랜드/사양이 필요하면 맞춤 소싱으로 별도 견적을 제공합니다."
+        ),
+        imageUrl:
+          "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1200&q=80"
+      }
+    ];
+
+    for (const service of electronicsServices) {
+      await prisma.service.upsert({
+        where: { id: service.id },
+        update: {
+          providerProfileId: electronicsProfile.id,
+          categoryId: electronicsCategory.id,
+          title: service.title,
+          description: service.description,
+          imageUrl: service.imageUrl
+        },
+        create: {
+          id: service.id,
+          providerProfileId: electronicsProfile.id,
+          categoryId: electronicsCategory.id,
+          title: service.title,
+          description: service.description,
+          imageUrl: service.imageUrl
+        }
+      });
+    }
+
+    const electronicsPriceCards = [
+      {
+        id: "seed-electronics-laptop-standard",
+        serviceId: "seed-electronics-laptop-service",
+        tier: "standard",
         currency: "RWF",
-        basePrice: 6900000,
+        basePrice: 5400000,
         unit: "per_project",
         inclusions: bilingual(
-          "10 laptops, 10 monitors, keyboard/mouse sets, delivery",
-          "노트북 10대, 모니터 10대, 키보드/마우스 세트, 배송 포함"
+          "MOQ: 10 laptops; setup check and Kigali delivery included",
+          "최소 주문: 노트북 10대; 초기 세팅 점검 및 키갈리 배송 포함"
         ),
-        exclusions: bilingual("Extended warranty contracts", "추가 연장보증 계약")
+        exclusions: bilingual("Extended accidental damage warranty", "파손보증 연장")
+      },
+      {
+        id: "seed-electronics-monitor-standard",
+        serviceId: "seed-electronics-monitor-service",
+        tier: "standard",
+        currency: "RWF",
+        basePrice: 1680000,
+        unit: "per_project",
+        inclusions: bilingual(
+          "Minimum order: 10 monitors; HDMI cables included",
+          "최소 주문: 모니터 10대; HDMI 케이블 포함"
+        ),
+        exclusions: bilingual("Adjustable arm mounts", "모니터 암 마운트")
+      },
+      {
+        id: "seed-electronics-printer-basic",
+        serviceId: "seed-electronics-printer-service",
+        tier: "basic",
+        currency: "RWF",
+        basePrice: 860000,
+        unit: "per_project",
+        inclusions: bilingual(
+          "MOQ: 2 units; basic toner starter pack included",
+          "최소 주문: 2대; 기본 토너 스타터팩 포함"
+        ),
+        exclusions: bilingual("Additional toner packs", "추가 토너")
+      },
+      {
+        id: "seed-electronics-projector-standard",
+        serviceId: "seed-electronics-projector-service",
+        tier: "standard",
+        currency: "RWF",
+        basePrice: 1220000,
+        unit: "per_project",
+        inclusions: bilingual(
+          "Minimum order: 2 units; HDMI + wireless dongle included",
+          "최소 주문: 2대; HDMI + 무선 동글 포함"
+        ),
+        exclusions: bilingual("Ceiling mount installation", "천장 설치 공사")
+      },
+      {
+        id: "seed-electronics-custom-basic",
+        serviceId: "seed-electronics-custom-sourcing-service",
+        tier: "basic",
+        currency: "RWF",
+        basePrice: 350000,
+        unit: "per_project",
+        inclusions: bilingual(
+          "Minimum order: 1 request; custom sourcing starts from this amount",
+          "최소 주문: 요청 1건; 맞춤 소싱 시작 견적"
+        ),
+        exclusions: bilingual("Urgent import logistics", "긴급 수입 물류비")
       }
-    });
+    ];
+
+    for (const card of electronicsPriceCards) {
+      await prisma.servicePriceCard.upsert({
+        where: { id: card.id },
+        update: card,
+        create: card
+      });
+    }
 
     await prisma.providerBillingCapability.upsert({
       where: { providerProfileId: electronicsProfile.id },
@@ -1625,11 +1732,11 @@ async function main() {
       update: {
         requesterUserId: sampleReviewers[3].id,
         categoryId: electronicsCategory.id,
-        title: "Embassy office laptop refresh",
-        requirementText: "Need 10 reliable laptops and 10 monitors with clear invoice.",
+        title: "Embassy electronics purchase by product",
+        requirementText: "Need laptops, monitors, and printers priced separately with clear MOQ.",
         locationText: "Kiyovu",
         budgetMin: 5500000,
-        budgetMax: 7500000,
+        budgetMax: 9000000,
         currency: "RWF",
         needsQuotation: true,
         needsEbm: true,
@@ -1639,11 +1746,11 @@ async function main() {
         id: "seed-request-electronics-office",
         requesterUserId: sampleReviewers[3].id,
         categoryId: electronicsCategory.id,
-        title: "Embassy office laptop refresh",
-        requirementText: "Need 10 reliable laptops and 10 monitors with clear invoice.",
+        title: "Embassy electronics purchase by product",
+        requirementText: "Need laptops, monitors, and printers priced separately with clear MOQ.",
         locationText: "Kiyovu",
         budgetMin: 5500000,
-        budgetMax: 7500000,
+        budgetMax: 9000000,
         currency: "RWF",
         needsQuotation: true,
         needsEbm: true,
@@ -1657,7 +1764,7 @@ async function main() {
         requestId: "seed-request-electronics-office",
         providerProfileId: electronicsProfile.id,
         customerUserId: sampleReviewers[3].id,
-        finalPrice: 7020000,
+        finalPrice: 7680000,
         currency: "RWF",
         status: "completed",
         completedAt: new Date("2026-07-10T09:30:00.000Z")
@@ -1667,7 +1774,7 @@ async function main() {
         requestId: "seed-request-electronics-office",
         providerProfileId: electronicsProfile.id,
         customerUserId: sampleReviewers[3].id,
-        finalPrice: 7020000,
+        finalPrice: 7680000,
         currency: "RWF",
         status: "completed",
         completedAt: new Date("2026-07-10T09:30:00.000Z")

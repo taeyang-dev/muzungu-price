@@ -191,6 +191,12 @@ function isCustomOrderService(locale: "en" | "ko", title: string): boolean {
   return normalized.includes("custom") || normalized.includes("맞춤");
 }
 
+function reviewerAvatarUrl(name: string): string {
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    name
+  )}&background=1f2937&color=f8fafc&size=64&bold=true`;
+}
+
 export default async function ProviderDetailPage({
   params
 }: ProviderDetailPageProps) {
@@ -391,7 +397,7 @@ export default async function ProviderDetailPage({
               )}
               {service.priceCards.map((price) => (
                 <div className="price-row" key={price.id}>
-                  <details className="price-breakdown" open>
+                  <details className="price-breakdown">
                     <summary className="row tiny">
                       <strong>{price.tier.toUpperCase()}</strong>
                       <span>{formatRwf(toRwf(decimalToNumber(price.basePrice), price.currency))}</span>
@@ -400,8 +406,8 @@ export default async function ProviderDetailPage({
                     <p className="price-breakdown-hint">
                       {tr(
                         locale,
-                        "Detailed quote breakdown (click again to collapse)",
-                        "상세 견적 내역 (다시 클릭하면 접힘)"
+                        "Detailed quote breakdown (click to expand)",
+                        "상세 견적 내역 (클릭해서 펼치기)"
                       )}
                     </p>
                     <ul>
@@ -441,11 +447,18 @@ export default async function ProviderDetailPage({
           <p className="muted">{tr(locale, "No reviews yet.", "아직 리뷰가 없습니다.")}</p>
         )}
         {provider.reviews.map((review) => (
-          <div key={review.id} style={{ marginBottom: "12px" }}>
+          <div className="review-item" key={review.id} style={{ marginBottom: "12px" }}>
             <strong>{review.ratingOverall}/5</strong>
-            <p className="tiny" style={{ margin: "4px 0" }}>
-              {tr(locale, "Reviewed by", "작성자")}: {review.reviewer.name}
-            </p>
+            <div className="reviewer-line">
+              <img
+                alt={`${review.reviewer.name} avatar`}
+                className="reviewer-avatar"
+                src={reviewerAvatarUrl(review.reviewer.name)}
+              />
+              <p className="tiny" style={{ margin: 0 }}>
+                {tr(locale, "Reviewed by", "작성자")}: {review.reviewer.name}
+              </p>
+            </div>
             <p className="tiny muted" style={{ margin: "4px 0" }}>
               {tr(locale, "Price transparency", "가격 투명성")} {review.ratingPriceTransparency ?? "-"} ·{" "}
               {tr(locale, "Timeliness", "시간 준수")} {review.ratingTimeliness ?? "-"} ·{" "}
