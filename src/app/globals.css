@@ -15,7 +15,7 @@
 
 body {
   margin: 0;
-  font-family: Inter, "Segoe UI", sans-serif;
+  font-family: "Avenir Next", Inter, "Noto Sans", "Segoe UI", Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
   line-height: 1.5;
@@ -67,6 +67,15 @@ a {
   font-weight: 700;
   letter-spacing: 0.05em;
   margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  width: 148px;
+  height: 36px;
+  object-fit: contain;
 }
 
 .topbar-actions {
@@ -114,7 +123,7 @@ a {
   top: 0;
   left: 0;
   height: 100%;
-  width: min(360px, 88vw);
+  width: min(340px, 88vw);
   background: var(--surface);
   border-right: 1px solid var(--line);
   transform: translateX(-100%);
@@ -177,6 +186,7 @@ a {
   border-radius: 10px;
   padding: 8px 10px;
   background: #f8fafc;
+  font-weight: 550;
 }
 
 .drawer-vendor-list {
@@ -273,6 +283,10 @@ a {
   text-align: center;
 }
 
+.btn:hover {
+  filter: brightness(0.95);
+}
+
 .btn.secondary {
   background: #334155;
 }
@@ -305,6 +319,25 @@ a {
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
   display: grid;
   gap: 8px;
+}
+
+.vendor-card {
+  position: relative;
+}
+
+.vendor-badge-stack {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+}
+
+.badge.compact {
+  margin-right: 0;
+  padding: 3px 8px;
+  font-size: 0.7rem;
 }
 
 .vendor-head {
@@ -470,6 +503,10 @@ a {
   font-size: 0.95rem;
 }
 
+.provider-action-btn {
+  min-width: 180px;
+}
+
 .provider-hero > p {
   margin: 14px 18px 8px 18px;
 }
@@ -517,6 +554,31 @@ a {
   background: #f8fafc;
 }
 
+.price-breakdown summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.price-breakdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.price-breakdown ul {
+  list-style: none;
+  padding: 8px 0 0 0;
+  margin: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 0.83rem;
+}
+
+.price-breakdown li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .category-checkbox-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -531,10 +593,58 @@ a {
   font-size: 0.9rem;
 }
 
+.chat-box {
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  background: #f8fafc;
+  display: grid;
+  gap: 8px;
+}
+
+.chat-message {
+  max-width: 88%;
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: white;
+  border: 1px solid var(--line);
+}
+
+.chat-message p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.chat-message span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.chat-message.user {
+  margin-left: auto;
+  background: #dbeafe;
+}
+
+.chat-form {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
 @media (max-width: 900px) {
   .headline {
     font-size: 0.95rem;
     letter-spacing: 0.03em;
+  }
+
+  .brand-mark {
+    width: 120px;
   }
 
   .topbar-actions {
@@ -553,8 +663,12 @@ a {
   }
 
   .headline {
-    max-width: 48%;
+    max-width: 54%;
     line-height: 1.2;
+  }
+
+  .brand-mark {
+    display: none;
   }
 
   .topbar-actions a:not(.btn) {

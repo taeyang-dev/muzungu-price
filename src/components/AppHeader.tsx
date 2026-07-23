@@ -91,7 +91,8 @@ export function AppHeader({ session }: AppHeaderProps) {
             ☰
           </button>
           <Link className="headline" href="/">
-            THIS NOT MUZUNGU PRICE
+            <img alt="Muzungu Price mark" className="brand-mark" src="/brand-mark.svg" />
+            <span>THIS NOT MUZUNGU PRICE</span>
           </Link>
           <div className="topbar-actions">
             <Link className="btn browse-btn" href="/?verified=1">
@@ -125,14 +126,14 @@ export function AppHeader({ session }: AppHeaderProps) {
             <p className="drawer-meta">Sign in to save vendors and view history.</p>
           )}
           <nav className="drawer-nav">
+            <Link href="/" onClick={() => setMenuOpen(false)}>
+              Home
+            </Link>
             <Link href="/requests" onClick={() => setMenuOpen(false)}>
               Requests
             </Link>
-            <Link href="/provider" onClick={() => setMenuOpen(false)}>
-              Provider hub
-            </Link>
-            <Link href="/admin" onClick={() => setMenuOpen(false)}>
-              Admin
+            <Link href="/?verified=1" onClick={() => setMenuOpen(false)}>
+              Browse verified vendors
             </Link>
             {!session && (
               <Link href="/auth" onClick={() => setMenuOpen(false)}>

@@ -3,23 +3,50 @@ import Link from "next/link";
 import { decimalToNumber } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { VendorQuickActions } from "@/components/VendorQuickActions";
+import { VendorChatBox } from "@/components/VendorChatBox";
+import { getDefaultServiceImage } from "@/lib/default-images";
 
 interface ProviderDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-function formatPrice(amount: number | null, currency: string): string {
+function toRwf(amount: number | null, currency: string): number | null {
+  if (amount === null || amount === undefined) {
+    return null;
+  }
+  const conversionToRwf: Record<string, number> = {
+    RWF: 1,
+    USD: 1400,
+    EUR: 1500,
+    UGX: 0.37
+  };
+  return amount * (conversionToRwf[currency] ?? 1);
+}
+
+function formatRwf(amount: number | null): string {
   if (amount === null || amount === undefined) {
     return "Price not available";
   }
-  if (currency === "RWF") {
-    return new Intl.NumberFormat("en-RW", {
-      style: "currency",
-      currency: "RWF",
-      maximumFractionDigits: 0
-    }).format(amount);
+  return new Intl.NumberFormat("en-RW", {
+    style: "currency",
+    currency: "RWF",
+    maximumFractionDigits: 0
+  }).format(amount);
+}
+
+function getBreakdown(baseRwf: number | null): Array<{ label: string; value: string }> {
+  if (!baseRwf) {
+    return [];
   }
-  return `${currency} ${amount.toFixed(2)}`;
+  const delivery = 5000;
+  const vat = Math.round(baseRwf * 0.18);
+  const total = baseRwf + delivery + vat;
+  return [
+    { label: "Service fee", value: formatRwf(baseRwf) },
+    { label: "Delivery fee", value: formatRwf(delivery) },
+    { label: "VAT (18%)", value: formatRwf(vat) },
+    { label: "Estimated total", value: formatRwf(total) }
+  ];
 }
 
 export default async function ProviderDetailPage({
@@ -30,7 +57,12 @@ export default async function ProviderDetailPage({
     where: { id },
     include: {
       categories: { include: { category: true } },
-      services: { include: { priceCards: { orderBy: { basePrice: "asc" } } } },
+      services: {
+        include: {
+          category: true,
+          priceCards: { orderBy: { basePrice: "asc" } }
+        }
+      },
       billingCapability: true,
       verificationCases: { where: { status: "approved" }, orderBy: { reviewedAt: "desc" }, take: 1 },
       reviews: { orderBy: { createdAt: "desc" }, take: 20 }
@@ -157,11 +189,13 @@ export default async function ProviderDetailPage({
               )}
             </li>
           </ul>
-          <Link className="btn" href="/requests">
+          <Link className="btn provider-action-btn" href="/requests">
             Request this vendor
           </Link>
         </article>
       </section>
+
+      <VendorChatBox vendorId={provider.id} vendorName={provider.businessName} />
 
       <article className="panel">
         <h2 style={{ marginTop: 0 }}>Services and pricing</h2>
@@ -169,21 +203,31 @@ export default async function ProviderDetailPage({
         <div className="cards">
           {provider.services.map((service) => (
             <div className="card service-detail-card" key={service.id}>
-              {service.imageUrl && (
-                <img alt={`${service.title} visual`} className="service-image" src={service.imageUrl} />
-              )}
+              <img
+                alt={`${service.title} visual`}
+                className="service-image"
+                src={service.imageUrl ?? getDefaultServiceImage(service.category.slug)}
+              />
               <h3 style={{ marginTop: 0 }}>{service.title}</h3>
               <p className="tiny muted">{service.description ?? "No service description"}</p>
               {service.priceCards.length === 0 && <p className="tiny muted">No price cards yet.</p>}
               {service.priceCards.map((price) => (
                 <div className="price-row" key={price.id}>
-                  <div className="row tiny">
-                    <strong>{price.tier.toUpperCase()}</strong>
-                    <span>
-                      {formatPrice(decimalToNumber(price.basePrice), price.currency)}
-                    </span>
-                    <span>({price.unit.replace("per_", "per ")})</span>
-                  </div>
+                  <details className="price-breakdown">
+                    <summary className="row tiny">
+                      <strong>{price.tier.toUpperCase()}</strong>
+                      <span>{formatRwf(toRwf(decimalToNumber(price.basePrice), price.currency))}</span>
+                      <span>({price.unit.replace("per_", "per ")})</span>
+                    </summary>
+                    <ul>
+                      {getBreakdown(toRwf(decimalToNumber(price.basePrice), price.currency)).map((item) => (
+                        <li key={`${price.id}-${item.label}`}>
+                          <span>{item.label}:</span>
+                          <span>{item.value}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                   <div className="tiny muted">
                     Includes: {price.inclusions ?? "Not specified"} | Excludes:{" "}
                     {price.exclusions ?? "Not specified"}

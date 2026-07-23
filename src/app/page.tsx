@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { decimalToNumber } from "@/lib/api";
+import { getDefaultServiceImage } from "@/lib/default-images";
 
 interface HomePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -36,14 +37,21 @@ function formatPrice(amount: number | null, currency: string | null): string {
   if (amount === null || amount === undefined) {
     return "Price not available";
   }
-  if (currency === "RWF" || !currency) {
-    return new Intl.NumberFormat("en-RW", {
-      style: "currency",
-      currency: "RWF",
-      maximumFractionDigits: 0
-    }).format(amount);
-  }
-  return `${currency} ${amount.toFixed(2)}`;
+
+  const conversionToRwf: Record<string, number> = {
+    RWF: 1,
+    USD: 1400,
+    EUR: 1500,
+    UGX: 0.37
+  };
+  const multiplier = conversionToRwf[currency ?? "RWF"] ?? 1;
+  const rwfValue = amount * multiplier;
+
+  return new Intl.NumberFormat("en-RW", {
+    style: "currency",
+    currency: "RWF",
+    maximumFractionDigits: 0
+  }).format(rwfValue);
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
@@ -130,7 +138,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         },
         services: {
           include: {
-            priceCards: true
+            priceCards: true,
+            category: true
           }
         },
         billingCapability: true,
@@ -222,7 +231,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           const representative = provider.services
             .flatMap((service) => service.priceCards)
             .sort((a, b) => a.basePrice.comparedTo(b.basePrice))[0];
-          const serviceImage = provider.services.find((service) => service.imageUrl)?.imageUrl;
+          const serviceWithImage = provider.services.find((service) => service.imageUrl);
+          const serviceImage = serviceWithImage?.imageUrl
+            ? serviceWithImage.imageUrl
+            : getDefaultServiceImage(provider.services[0]?.category.slug);
           const averageRating =
             provider.reviews.length > 0
               ? provider.reviews.reduce((sum, review) => sum + review.ratingOverall, 0) /
@@ -230,14 +242,18 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               : null;
 
           return (
-            <article className="card" key={provider.id}>
-              {serviceImage && (
-                <img
-                  alt={`${provider.businessName} service`}
-                  className="vendor-service-thumb"
-                  src={serviceImage}
-                />
-              )}
+            <article className="card vendor-card" key={provider.id}>
+              <img
+                alt={`${provider.businessName} service`}
+                className="vendor-service-thumb"
+                src={serviceImage}
+              />
+              <div className="vendor-badge-stack">
+                {approved && <span className="badge good compact">{approved.level?.replaceAll("_", " ") ?? "verified"}</span>}
+                {!approved && <span className="badge compact">Verification pending</span>}
+                {provider.billingCapability?.quotationAvailable && <span className="badge compact">Quotation</span>}
+                {provider.billingCapability?.ebmAvailable && <span className="badge compact">EBM</span>}
+              </div>
               <div className="vendor-head">
                 <div className="vendor-visual" style={{ background: visual.background }}>
                   {provider.logoUrl ? (
@@ -267,11 +283,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 </span>
                 <span className="muted">({provider.reviews.length} reviews)</span>
               </div>
-              {approved && <span className="badge good">{approved.level?.replaceAll("_", " ") ?? "verified"}</span>}
-              {!approved && <span className="badge">Verification pending</span>}
-              {provider.billingCapability?.quotationAvailable && <span className="badge">Quotation</span>}
-              {provider.billingCapability?.ebmAvailable && <span className="badge">EBM</span>}
-
               <div className="hr" />
               <p className="tiny vendor-price-line">
                 {representative

@@ -1,0 +1,14 @@
+<svg width="160" height="40" viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B5CFF"/>
+      <stop offset="100%" stop-color="#22C55E"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="158" height="38" rx="10" fill="white" stroke="#DBE3EF"/>
+  <circle cx="22" cy="20" r="11" fill="url(#g1)"/>
+  <path d="M18 20L21 23L27 17" stroke="white" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="40" y="24" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700">
+    VERIFIED LOCAL PRICING
+  </text>
+</svg>

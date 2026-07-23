@@ -30,6 +30,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     const payload = createSchema.parse(await request.json());
+    const categoryIds = payload.categoryIds?.filter((item) => item.length > 0) ?? [];
     const existing = await prisma.providerProfile.findUnique({
       where: { userId: auth.session.userId }
     });
@@ -52,10 +53,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         yearsInBusiness: payload.yearsInBusiness,
         country: payload.country,
         city: payload.city,
-        categories: payload.categoryIds
+        categories: categoryIds.length > 0
           ? {
               createMany: {
-                data: payload.categoryIds.map((categoryId) => ({ categoryId }))
+                data: categoryIds.map((categoryId) => ({ categoryId }))
               }
             }
           : undefined
@@ -82,6 +83,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
   try {
     const payload = updateSchema.parse(await request.json());
+    const categoryIds = payload.categoryIds?.filter((item) => item.length > 0);
     const profile = await prisma.providerProfile.findUnique({
       where: { userId: auth.session.userId }
     });
@@ -110,14 +112,16 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       }
     });
 
-    if (payload.categoryIds) {
+    if (categoryIds !== undefined) {
       await prisma.providerCategory.deleteMany({ where: { providerProfileId: profile.id } });
-      await prisma.providerCategory.createMany({
-        data: payload.categoryIds.map((categoryId) => ({
-          providerProfileId: profile.id,
-          categoryId
-        }))
-      });
+      if (categoryIds.length > 0) {
+        await prisma.providerCategory.createMany({
+          data: categoryIds.map((categoryId) => ({
+            providerProfileId: profile.id,
+            categoryId
+          }))
+        });
+      }
     }
 
     return ok(updated);
