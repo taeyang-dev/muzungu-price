@@ -706,6 +706,16 @@ a {
   width: min(360px, calc(100vw - 20px));
 }
 
+.chat-widget.closed {
+  width: auto;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.chat-widget.open {
+  width: min(360px, calc(100vw - 20px));
+}
+
 .chat-widget-panel {
   border: 1px solid var(--line);
   border-radius: 14px;
