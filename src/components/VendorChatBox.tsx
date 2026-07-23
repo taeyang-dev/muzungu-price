@@ -3,10 +3,18 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { Locale, tr } from "@/lib/i18n";
 import { recordChatVendor } from "@/lib/vendor-storage";
-import { saveVendorDocument, SavedDocumentType, UploadAttachment } from "@/lib/document-storage";
+import { RequestDocumentType, saveRequestedDocument } from "@/lib/request-documents-storage";
 
 type DisplayLang = "original" | "en" | "ko" | "rw";
 type StoredLang = "en" | "ko" | "rw";
+
+interface UploadAttachment {
+  id?: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  dataUrl: string;
+}
 
 interface VendorChatBoxProps {
   vendorId: string;
@@ -311,19 +319,20 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
     setPendingAttachments((current) => current.filter((item) => item.id !== id));
   }
 
-  function saveAttachmentAs(attachment: ChatAttachment, type: SavedDocumentType): void {
-    const saved = saveVendorDocument({
+  function saveAttachmentAs(attachment: ChatAttachment, type: RequestDocumentType): void {
+    const saved = saveRequestedDocument({
+      requestId: `chat-${vendorId}-${attachment.id}`,
       vendorId,
       vendorName,
-      docType: type,
-      attachment
+      type,
+      dataUrl: attachment.dataUrl
     });
 
     setSaveNotice(
       tr(
         locale,
-        `Saved to ${type.toUpperCase()}: ${saved.fileName}`,
-        `${type === "quotation" ? "견적서" : "EBM"}로 저장됨: ${saved.fileName}`
+        `Saved to Requests: ${saved.fileName}`,
+        `요청서 문서로 저장됨: ${saved.fileName}`
       )
     );
   }

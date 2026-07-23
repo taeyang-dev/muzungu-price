@@ -971,6 +971,39 @@ a {
   flex-wrap: wrap;
 }
 
+.request-type-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.request-type-card {
+  border: 1px solid var(--line);
+  background: #171c26;
+  color: #f8fafc;
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+}
+
+.request-type-card strong {
+  font-size: 0.9rem;
+}
+
+.request-type-card span {
+  font-size: 0.76rem;
+  color: #cbd5e1;
+}
+
+.request-type-card.active {
+  border-color: #eab308;
+  background: #2a2306;
+}
+
 .doc-filter-tab {
   border: 1px solid var(--line);
   background: #191d26;

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LogoutButton } from "@/components/LogoutButton";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
-import { getSavedDocumentCounts } from "@/lib/document-storage";
 import { getRequestedDocumentCounts } from "@/lib/request-documents-storage";
 import {
   getVendorStorageEventName,
@@ -52,7 +51,6 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
   const [favorites, setFavorites] = useState<VendorReference[]>([]);
   const [recent, setRecent] = useState<VendorReference[]>([]);
   const [chatVendors, setChatVendors] = useState<VendorReference[]>([]);
-  const [docCounts, setDocCounts] = useState({ quotation: 0, ebm: 0 });
   const [requestDocCounts, setRequestDocCounts] = useState({ quotation: 0, ebm: 0 });
 
   useEffect(() => {
@@ -60,7 +58,6 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
       setFavorites(readFavoriteVendors());
       setRecent(readRecentVendors());
       setChatVendors(readChatVendors());
-      setDocCounts(getSavedDocumentCounts());
       setRequestDocCounts(getRequestedDocumentCounts());
     }
 
@@ -152,9 +149,6 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
             <Link href="/requests" onClick={() => setMenuOpen(false)}>
               {tr(locale, "Requests", "요청서")} ({requestDocCounts.quotation + requestDocCounts.ebm})
             </Link>
-            <Link href="/documents" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "Documents", "문서함")}
-            </Link>
             <Link href="/" onClick={() => setMenuOpen(false)}>
               {tr(locale, "Browse vendors", "업체 둘러보기")}
             </Link>
@@ -183,18 +177,6 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
             </Link>
             <Link href="/requests#requested-documents" onClick={() => setMenuOpen(false)}>
               {tr(locale, "Requested EBM", "요청한 EBM")} ({requestDocCounts.ebm})
-            </Link>
-          </nav>
-        </section>
-
-        <section className="drawer-section">
-          <h3>{tr(locale, "Documents", "문서함")}</h3>
-          <nav className="drawer-nav">
-            <Link href="/documents?type=quotation" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "Quotation", "견적서")} ({docCounts.quotation})
-            </Link>
-            <Link href="/documents?type=ebm" onClick={() => setMenuOpen(false)}>
-              EBM ({docCounts.ebm})
             </Link>
           </nav>
         </section>

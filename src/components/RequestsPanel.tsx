@@ -443,15 +443,30 @@ export function RequestsPanel({
           <h2 style={{ marginTop: 0 }}>
             {tr(locale, "Request this vendor", "이 업체에 요청 보내기")}: {vendorContext.businessName}
           </h2>
-          <div className="doc-filter-tabs">
+          <p className="tiny muted" style={{ marginTop: 0 }}>
+            {tr(
+              locale,
+              "Choose one of the three request types below.",
+              "아래 3가지 요청 유형 중 하나를 선택하세요."
+            )}
+          </p>
+          <div className="request-type-grid">
             {(["quotation", "purchase", "ebm"] as VendorRequestType[]).map((type) => (
               <button
-                className={`doc-filter-tab ${vendorRequestType === type ? "active" : ""}`}
+                className={`request-type-card ${vendorRequestType === type ? "active" : ""}`}
                 key={type}
                 onClick={() => setVendorRequestType(type)}
                 type="button"
               >
-                {toRequestTypeLabel(locale, type)}
+                <strong>{toRequestTypeLabel(locale, type)}</strong>
+                <span>
+                  {type === "quotation" &&
+                    tr(locale, "Service + organization name", "서비스 선택 + 기관명 입력")}
+                  {type === "purchase" &&
+                    tr(locale, "Payment term/method + amount", "결제조건/수단 + 금액 입력")}
+                  {type === "ebm" &&
+                    tr(locale, "Organization TIN + purchase code", "기관 TIN + Purchase code 입력")}
+                </span>
               </button>
             ))}
           </div>
@@ -713,9 +728,9 @@ export function RequestsPanel({
 
       {(role === "customer" || role === "org_buyer") && (
         <article className="panel" id="requested-documents">
-          <h2 style={{ marginTop: 0 }}>{tr(locale, "Requested documents", "요청한 문서")}</h2>
+          <h2 style={{ marginTop: 0 }}>{tr(locale, "Requested / received documents", "요청/수신 문서")}</h2>
           {requestedDocs.length === 0 ? (
-            <p className="muted">{tr(locale, "No requested documents yet.", "요청한 문서가 없습니다.")}</p>
+            <p className="muted">{tr(locale, "No documents yet.", "문서가 없습니다.")}</p>
           ) : (
             <ul className="doc-list">
               {requestedDocs.map((doc) => (

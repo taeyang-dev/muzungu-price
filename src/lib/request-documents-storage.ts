@@ -90,12 +90,15 @@ export function saveRequestedDocument(input: {
   vendorName: string;
   type: RequestDocumentType;
   fileName?: string;
-  content: string;
+  content?: string;
+  dataUrl?: string;
 }): RequestedDocument {
   const now = new Date();
   const fileName =
     input.fileName?.trim() || buildDefaultRequestedDocumentName(input.vendorName, input.type, now);
-  const dataUrl = `data:text/plain;charset=utf-8,${encodeURIComponent(input.content)}`;
+  const dataUrl =
+    input.dataUrl ??
+    `data:text/plain;charset=utf-8,${encodeURIComponent(input.content ?? "Document body is empty.")}`;
 
   const entry: RequestedDocument = {
     id: `${input.requestId}-${input.type}-${now.getTime()}`,
