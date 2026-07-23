@@ -18,6 +18,11 @@ interface BreakdownLine {
   tone?: "normal" | "section" | "subtotal" | "total";
 }
 
+interface BillingStatusText {
+  quotation: string;
+  ebm: string;
+}
+
 function toRwf(amount: number | null, currency: string): number | null {
   if (amount === null || amount === undefined) {
     return null;
@@ -197,6 +202,26 @@ function reviewerAvatarUrl(name: string): string {
   )}&background=1f2937&color=f8fafc&size=64&bold=true`;
 }
 
+function getBillingStatusText(
+  locale: "en" | "ko",
+  billingCapability:
+    | {
+        quotationAvailable: boolean;
+        ebmAvailable: boolean;
+      }
+    | null
+    | undefined
+): BillingStatusText {
+  return {
+    quotation: billingCapability?.quotationAvailable
+      ? tr(locale, "Quotation available", "견적서 가능")
+      : tr(locale, "Quotation unavailable", "견적서 불가"),
+    ebm: billingCapability?.ebmAvailable
+      ? tr(locale, "EBM available", "EBM 가능")
+      : tr(locale, "EBM unavailable", "EBM 불가")
+  };
+}
+
 export default async function ProviderDetailPage({
   params
 }: ProviderDetailPageProps) {
@@ -228,6 +253,7 @@ export default async function ProviderDetailPage({
 
   const verification = provider.verificationCases[0];
   const topServices = provider.services.slice(0, 3).map((service) => localizeCopy(locale, service.title));
+  const billingStatus = getBillingStatusText(locale, provider.billingCapability);
 
   return (
     <section className="grid provider-detail-page">
@@ -271,10 +297,12 @@ export default async function ProviderDetailPage({
               ) : (
                 <span className="badge">{tr(locale, "Verification pending", "검증 대기중")}</span>
               )}
-              {provider.billingCapability?.quotationAvailable && (
-                <span className="badge">{tr(locale, "Quotation Ready", "견적서 가능")}</span>
-              )}
-              {provider.billingCapability?.ebmAvailable && <span className="badge">EBM Ready</span>}
+              <span className={`badge ${provider.billingCapability?.quotationAvailable ? "good" : ""}`}>
+                {billingStatus.quotation}
+              </span>
+              <span className={`badge ${provider.billingCapability?.ebmAvailable ? "good" : ""}`}>
+                {billingStatus.ebm}
+              </span>
             </div>
           </div>
         </div>
@@ -309,14 +337,10 @@ export default async function ProviderDetailPage({
             </li>
             <li>
               <strong>{tr(locale, "Documentation", "증빙 문서")}:</strong>{" "}
-              {provider.billingCapability?.quotationAvailable
-                ? tr(locale, "Quotation", "견적서")
-                : tr(locale, "No quotation", "견적서 불가")}{" "}
-              /{" "}
-              {provider.billingCapability?.ebmAvailable ? "EBM" : tr(locale, "No EBM", "EBM 불가")}
+              {billingStatus.quotation} / {billingStatus.ebm}
             </li>
           </ul>
-          <VendorQuickActions vendorId={provider.id} vendorName={provider.businessName} />
+          <VendorQuickActions locale={locale} vendorId={provider.id} vendorName={provider.businessName} />
         </article>
 
         <article className="panel">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Locale, tr } from "@/lib/i18n";
 import {
   getVendorStorageEventName,
   isFavoriteVendor,
@@ -11,9 +12,10 @@ import {
 interface VendorQuickActionsProps {
   vendorId: string;
   vendorName: string;
+  locale: Locale;
 }
 
-export function VendorQuickActions({ vendorId, vendorName }: VendorQuickActionsProps) {
+export function VendorQuickActions({ vendorId, vendorName, locale }: VendorQuickActionsProps) {
   const [favorite, setFavorite] = useState(() =>
     typeof window === "undefined" ? false : isFavoriteVendor(vendorId)
   );
@@ -37,7 +39,9 @@ export function VendorQuickActions({ vendorId, vendorName }: VendorQuickActionsP
   return (
     <div className="row">
       <button className={`btn ${favorite ? "secondary" : ""}`} onClick={toggle} type="button">
-        {favorite ? "Saved in favorites" : "Add to favorites"}
+        {favorite
+          ? tr(locale, "Saved in favorites", "즐겨찾기에 저장됨")
+          : tr(locale, "Add to favorites", "즐겨찾기에 추가")}
       </button>
     </div>
   );
