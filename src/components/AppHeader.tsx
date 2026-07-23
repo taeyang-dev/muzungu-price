@@ -146,6 +146,13 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
             <Link href="/" onClick={() => setMenuOpen(false)}>
               {tr(locale, "Home", "홈")}
             </Link>
+            {session && (
+              <Link href="/provider" onClick={() => setMenuOpen(false)}>
+                {session.role === "provider"
+                  ? tr(locale, "Vendor hub", "벤더 허브")
+                  : tr(locale, "Register as vendor", "벤더 등록")}
+              </Link>
+            )}
             <Link href="/requests" onClick={() => setMenuOpen(false)}>
               {tr(locale, "Requests", "요청서")} ({requestDocCounts.quotation + requestDocCounts.ebm})
             </Link>

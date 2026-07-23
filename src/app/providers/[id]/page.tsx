@@ -4,6 +4,7 @@ import { decimalToNumber } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { VendorQuickActions } from "@/components/VendorQuickActions";
 import { VendorChatBox } from "@/components/VendorChatBox";
+import { FallbackImage } from "@/components/FallbackImage";
 import { getDefaultServiceImage } from "@/lib/default-images";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { localizeCopy, tr } from "@/lib/i18n";
@@ -260,9 +261,10 @@ export default async function ProviderDetailPage({
       <article className="panel provider-hero">
         <div className="provider-cover-wrap">
           {provider.coverImageUrl ? (
-            <img
+            <FallbackImage
               alt={`${provider.businessName} cover`}
               className="provider-cover"
+              fallbackSrc="/image-fallback.svg"
               src={provider.coverImageUrl}
             />
           ) : (
@@ -271,7 +273,12 @@ export default async function ProviderDetailPage({
         </div>
         <div className="provider-identity">
           {provider.logoUrl ? (
-            <img alt={`${provider.businessName} logo`} className="provider-logo" src={provider.logoUrl} />
+            <FallbackImage
+              alt={`${provider.businessName} logo`}
+              className="provider-logo"
+              fallbackSrc="/image-fallback.svg"
+              src={provider.logoUrl}
+            />
           ) : (
             <div className="provider-logo provider-logo-placeholder">
               {provider.businessName
@@ -399,9 +406,10 @@ export default async function ProviderDetailPage({
         <div className="cards">
           {provider.services.map((service) => (
             <div className="card service-detail-card" key={service.id}>
-              <img
-                alt={`${service.title} visual`}
+              <FallbackImage
+                alt={`${localizeCopy(locale, service.title)} visual`}
                 className="service-image"
+                fallbackSrc={getDefaultServiceImage(service.category.slug)}
                 src={service.imageUrl ?? getDefaultServiceImage(service.category.slug)}
               />
               <h3 style={{ marginTop: 0 }}>{localizeCopy(locale, service.title)}</h3>
@@ -474,9 +482,10 @@ export default async function ProviderDetailPage({
           <div className="review-item" key={review.id} style={{ marginBottom: "12px" }}>
             <strong>{review.ratingOverall}/5</strong>
             <div className="reviewer-line">
-              <img
+              <FallbackImage
                 alt={`${review.reviewer.name} avatar`}
                 className="reviewer-avatar"
+                fallbackSrc="/image-fallback.svg"
                 src={reviewerAvatarUrl(review.reviewer.name)}
               />
               <p className="tiny" style={{ margin: 0 }}>

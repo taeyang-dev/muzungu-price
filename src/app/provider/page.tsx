@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ProviderDashboard } from "@/components/ProviderDashboard";
+import { BecomeProviderButton } from "@/components/BecomeProviderButton";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { tr } from "@/lib/i18n";
 
@@ -25,8 +26,13 @@ export default async function ProviderPage() {
       <section className="panel">
         <h1>{tr(locale, "Provider Hub", "업체 허브")}</h1>
         <p className="muted">
-          {tr(locale, "This section is only available to provider accounts.", "이 영역은 업체 계정에서만 이용할 수 있습니다.")}
+          {tr(
+            locale,
+            "Use your existing account and switch to vendor mode to register your business.",
+            "현재 계정 그대로 벤더 모드로 전환한 뒤 업체 정보를 등록할 수 있습니다."
+          )}
         </p>
+        <BecomeProviderButton locale={locale} />
       </section>
     );
   }

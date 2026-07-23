@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { decimalToNumber } from "@/lib/api";
 import { getDefaultServiceImage } from "@/lib/default-images";
+import { FallbackImage } from "@/components/FallbackImage";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { localizeCopy, tr } from "@/lib/i18n";
 
@@ -287,17 +288,19 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
           return (
             <Link className="card vendor-card vendor-card-link" href={`/providers/${provider.id}`} key={provider.id}>
-              <img
+              <FallbackImage
                 alt={`${provider.businessName} service`}
                 className="vendor-service-thumb"
+                fallbackSrc="/image-fallback.svg"
                 src={serviceImage}
               />
               <div className="vendor-head">
                 <div className="vendor-visual" style={{ background: visual.background }}>
                   {provider.logoUrl ? (
-                    <img
+                    <FallbackImage
                       alt={`${provider.businessName} logo`}
                       className="vendor-logo-image"
+                      fallbackSrc="/image-fallback.svg"
                       src={provider.logoUrl}
                     />
                   ) : (
