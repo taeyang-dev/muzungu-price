@@ -20,30 +20,14 @@ export default async function RootLayout({
       <body>
         <header className="topbar">
           <div className="container topbar-inner">
-            <div>
-              <Link className="brand" href="/">
-                Muzungu Price
+            <Link className="headline" href="/">
+              THIS NOT MUZUNGU PRICE
+            </Link>
+            <div className="topbar-actions">
+              <Link className="btn browse-btn" href="/?verified=1">
+                Browse verified vendors
               </Link>
-              <div className="motto">This not Muzungu Price</div>
-            </div>
-            <nav className="nav">
-              <Link href="/">Marketplace</Link>
-              <Link href="/requests">Requests</Link>
-              <Link href="/provider">Provider Hub</Link>
-              <Link href="/admin">Admin</Link>
-              {!session && <Link href="/auth">Sign in / Register</Link>}
-            </nav>
-            <div className="row tiny">
-              {session ? (
-                <>
-                  <span>
-                    {session.name} ({session.role})
-                  </span>
-                  <LogoutButton />
-                </>
-              ) : (
-                <span className="muted">Guest mode</span>
-              )}
+              {session ? <LogoutButton /> : <Link href="/auth">Sign in</Link>}
             </div>
           </div>
         </header>

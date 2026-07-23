@@ -27,10 +27,6 @@ export default async function ProviderDetailPage({
   }
 
   const verification = provider.verificationCases[0];
-  const average =
-    provider.reviews.length > 0
-      ? provider.reviews.reduce((sum, review) => sum + review.ratingOverall, 0) / provider.reviews.length
-      : null;
 
   return (
     <section className="grid">
@@ -43,7 +39,7 @@ export default async function ProviderDetailPage({
         <div className="row">
           {verification ? (
             <span className="badge good">
-              {verification.level?.replaceAll("_", " ") ?? "verified"} (score {verification.score})
+              {verification.level?.replaceAll("_", " ") ?? "verified"}
             </span>
           ) : (
             <span className="badge">Verification pending</span>
@@ -54,7 +50,6 @@ export default async function ProviderDetailPage({
         <p className="tiny muted">
           Categories: {provider.categories.map((entry) => entry.category.name).join(", ")}
         </p>
-        <p className="tiny">Average rating: {average ? average.toFixed(1) : "No reviews yet"}</p>
         <Link className="btn" href="/requests">
           Create request to contact this provider
         </Link>
