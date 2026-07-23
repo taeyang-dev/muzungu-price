@@ -27,6 +27,7 @@ function getInitials(name: string): string {
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
 
+  const q = typeof params.q === "string" ? params.q.trim() : "";
   const verifiedOnly = params.verified === "1";
   const quotationOnly = params.quotation === "1";
   const ebmOnly = params.ebm === "1";
@@ -35,6 +36,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const where: Prisma.ProviderProfileWhereInput = {
     isActive: true,
+    ...(q ? { businessName: { contains: q } } : {}),
     ...(city ? { city: { contains: city } } : {}),
     ...(category
       ? {
@@ -102,6 +104,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
       <section className="panel section">
         <form className="grid grid-3" method="GET">
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label className="tiny">Search vendor</label>
+            <input
+              className="input"
+              defaultValue={q}
+              name="q"
+              placeholder="Search by vendor name"
+            />
+          </div>
           <div>
             <label className="tiny">Category</label>
             <select className="select" name="category" defaultValue={category}>

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { decimalToNumber } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+import { VendorQuickActions } from "@/components/VendorQuickActions";
 
 interface ProviderDetailPageProps {
   params: Promise<{ id: string }>;
@@ -50,6 +51,7 @@ export default async function ProviderDetailPage({
         <p className="tiny muted">
           Categories: {provider.categories.map((entry) => entry.category.name).join(", ")}
         </p>
+        <VendorQuickActions vendorId={provider.id} vendorName={provider.businessName} />
         <Link className="btn" href="/requests">
           Create request to contact this provider
         </Link>

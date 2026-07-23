@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { getSession } from "@/lib/auth";
-import { LogoutButton } from "@/components/LogoutButton";
+import { AppHeader } from "@/components/AppHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,19 +17,9 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body>
-        <header className="topbar">
-          <div className="container topbar-inner">
-            <Link className="headline" href="/">
-              THIS NOT MUZUNGU PRICE
-            </Link>
-            <div className="topbar-actions">
-              <Link className="btn browse-btn" href="/?verified=1">
-                Browse verified vendors
-              </Link>
-              {session ? <LogoutButton /> : <Link href="/auth">Sign in</Link>}
-            </div>
-          </div>
-        </header>
+        <AppHeader
+          session={session ? { name: session.name, role: session.role } : null}
+        />
         <main className="container section">{children}</main>
       </body>
     </html>
