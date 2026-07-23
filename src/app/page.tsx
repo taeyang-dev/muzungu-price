@@ -5,7 +5,7 @@ import { decimalToNumber } from "@/lib/api";
 import { getDefaultServiceImage } from "@/lib/default-images";
 import { FallbackImage } from "@/components/FallbackImage";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
-import { localizeCopy, tr } from "@/lib/i18n";
+import { Locale, localizeCopy, tr } from "@/lib/i18n";
 
 interface HomePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -63,7 +63,7 @@ function formatPrice(amount: number | null, currency: string | null): string {
   }).format(rwfValue);
 }
 
-function categoryLabel(locale: "en" | "ko", slug: string, fallback: string): string {
+function categoryLabel(locale: Locale, slug: string, fallback: string): string {
   const known: Record<string, { en: string; ko: string }> = {
     electrical: { en: "Electrical Services", ko: "전기 서비스" },
     events: { en: "Event Services", ko: "이벤트 서비스" },
@@ -82,9 +82,9 @@ function categoryLabel(locale: "en" | "ko", slug: string, fallback: string): str
   return locale === "ko" ? label.ko : label.en;
 }
 
-function unitLabel(locale: "en" | "ko", unit: string): string {
+function unitLabel(locale: Locale, unit: string): string {
   const normalized = unit.replace("per_", "per ");
-  if (locale === "en") {
+  if (locale !== "ko") {
     return normalized;
   }
   return normalized
@@ -94,7 +94,7 @@ function unitLabel(locale: "en" | "ko", unit: string): string {
     .replace("per person", "인당");
 }
 
-function extractMinimumOrder(locale: "en" | "ko", value: string | null): string | null {
+function extractMinimumOrder(locale: Locale, value: string | null): string | null {
   if (!value) {
     return null;
   }
@@ -107,7 +107,7 @@ function extractMinimumOrder(locale: "en" | "ko", value: string | null): string 
   return match[1]?.trim() || null;
 }
 
-function isCustomOrderService(locale: "en" | "ko", title: string): boolean {
+function isCustomOrderService(locale: Locale, title: string): boolean {
   const normalized = localizeCopy(locale, title).toLowerCase();
   return normalized.includes("custom") || normalized.includes("맞춤");
 }

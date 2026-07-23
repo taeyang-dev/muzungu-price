@@ -7,7 +7,7 @@ import { VendorChatBox } from "@/components/VendorChatBox";
 import { FallbackImage } from "@/components/FallbackImage";
 import { getDefaultServiceImage } from "@/lib/default-images";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
-import { localizeCopy, tr } from "@/lib/i18n";
+import { Locale, localizeCopy, tr } from "@/lib/i18n";
 
 interface ProviderDetailPageProps {
   params: Promise<{ id: string }>;
@@ -74,7 +74,7 @@ function splitByWeights(total: number, weights: number[]): number[] {
 
 function getBreakdown(
   baseRwf: number | null,
-  locale: "en" | "ko"
+  locale: Locale
 ): BreakdownLine[] {
   if (!baseRwf) {
     return [];
@@ -180,7 +180,7 @@ function getBreakdown(
   ];
 }
 
-function extractMinimumOrder(locale: "en" | "ko", value: string | null): string | null {
+function extractMinimumOrder(locale: Locale, value: string | null): string | null {
   if (!value) {
     return null;
   }
@@ -192,7 +192,7 @@ function extractMinimumOrder(locale: "en" | "ko", value: string | null): string 
   return match[1]?.trim() ?? null;
 }
 
-function isCustomOrderService(locale: "en" | "ko", title: string): boolean {
+function isCustomOrderService(locale: Locale, title: string): boolean {
   const normalized = localizeCopy(locale, title).toLowerCase();
   return normalized.includes("custom") || normalized.includes("맞춤");
 }
@@ -204,7 +204,7 @@ function reviewerAvatarUrl(name: string): string {
 }
 
 function getBillingStatusText(
-  locale: "en" | "ko",
+  locale: Locale,
   billingCapability:
     | {
         quotationAvailable: boolean;
@@ -223,9 +223,9 @@ function getBillingStatusText(
   };
 }
 
-function unitLabel(locale: "en" | "ko", unit: string): string {
+function unitLabel(locale: Locale, unit: string): string {
   const normalized = unit.replace("per_", "per ");
-  if (locale === "en") {
+  if (locale !== "ko") {
     return normalized;
   }
   return normalized

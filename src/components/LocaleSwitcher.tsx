@@ -45,6 +45,13 @@ export function LocaleSwitcher({ locale }: LocaleSwitcherProps) {
       >
         한국어
       </button>
+      <button
+        className={`locale-btn ${locale === "fr" ? "active" : ""}`}
+        onClick={() => void updateLocale("fr")}
+        type="button"
+      >
+        FR
+      </button>
     </div>
   );
 }
