@@ -157,14 +157,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <>
-      <section className="hero">
-        <h1>Find trusted local vendors with clear fixed pricing.</h1>
-        <p>
-          Browse verified vendors quickly, compare public prices, and contact the right provider
-          without guesswork.
-        </p>
-      </section>
-
       <section className="panel section">
         <form className="grid grid-3" method="GET">
           <div style={{ gridColumn: "1 / -1" }}>
@@ -248,12 +240,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 className="vendor-service-thumb"
                 src={serviceImage}
               />
-              <div className="vendor-badge-stack">
-                {approved && <span className="badge good compact">{approved.level?.replaceAll("_", " ") ?? "verified"}</span>}
-                {!approved && <span className="badge compact">Verification pending</span>}
-                {provider.billingCapability?.quotationAvailable && <span className="badge compact">Quotation</span>}
-                {provider.billingCapability?.ebmAvailable && <span className="badge compact">EBM</span>}
-              </div>
               <div className="vendor-head">
                 <div className="vendor-visual" style={{ background: visual.background }}>
                   {provider.logoUrl ? (
@@ -270,7 +256,23 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   )}
                 </div>
                 <div>
-                  <h3 className="vendor-name">{provider.businessName}</h3>
+                  <div className="vendor-title-row">
+                    <h3 className="vendor-name">{provider.businessName}</h3>
+                    <div className="vendor-inline-badges">
+                      {approved && (
+                        <span className="badge good compact">
+                          {approved.level?.replaceAll("_", " ") ?? "verified"}
+                        </span>
+                      )}
+                      {!approved && <span className="badge compact">Verification pending</span>}
+                      {provider.billingCapability?.quotationAvailable && (
+                        <span className="badge compact">Quotation</span>
+                      )}
+                      {provider.billingCapability?.ebmAvailable && (
+                        <span className="badge compact">EBM</span>
+                      )}
+                    </div>
+                  </div>
                   {provider.tagline && <p className="vendor-tagline">{provider.tagline}</p>}
                   <p className="muted tiny vendor-location">
                     📍 {provider.city ?? "City not listed"}, {provider.country ?? "Country not listed"}
