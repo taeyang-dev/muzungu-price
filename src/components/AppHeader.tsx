@@ -149,7 +149,7 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
             {session && (
               <Link href="/provider" onClick={() => setMenuOpen(false)}>
                 {session.role === "provider"
-                  ? tr(locale, "Vendor hub", "벤더 허브")
+                  ? tr(locale, "Vendor registration", "벤더 등록")
                   : tr(locale, "Register as vendor", "벤더 등록")}
               </Link>
             )}

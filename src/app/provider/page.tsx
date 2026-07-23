@@ -12,7 +12,7 @@ export default async function ProviderPage() {
   if (!session) {
     return (
       <section className="panel">
-        <h1>{tr(locale, "Provider Hub", "업체 허브")}</h1>
+        <h1>{tr(locale, "Vendor registration", "벤더 등록")}</h1>
         <p>{tr(locale, "Please sign in first.", "먼저 로그인해 주세요.")}</p>
         <Link className="btn" href="/auth">
           {tr(locale, "Go to Sign in", "로그인하러 가기")}
@@ -24,7 +24,7 @@ export default async function ProviderPage() {
   if (session.role !== "provider") {
     return (
       <section className="panel">
-        <h1>{tr(locale, "Provider Hub", "업체 허브")}</h1>
+        <h1>{tr(locale, "Vendor registration", "벤더 등록")}</h1>
         <p className="muted">
           {tr(
             locale,

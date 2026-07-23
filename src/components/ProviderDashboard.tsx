@@ -207,7 +207,7 @@ export function ProviderDashboard({
 
   return (
     <section className="grid">
-      <h1 style={{ marginBottom: 0 }}>{tr(locale, "Provider Hub", "업체 허브")}</h1>
+      <h1 style={{ marginBottom: 0 }}>{tr(locale, "Vendor registration", "벤더 등록")}</h1>
       <p className="muted">
         {tr(
           locale,
@@ -475,7 +475,7 @@ export function ProviderDashboard({
         <p className="tiny muted">
           {tr(
             locale,
-            "These sections are optional for onboarding and can be updated later from Provider Hub.",
+            "These sections are optional for onboarding and can be updated later from vendor registration.",
             "아래 항목은 초기 등록 시 필수가 아니며, 추후 프로필에서 언제든 수정할 수 있습니다."
           )}
         </p>
