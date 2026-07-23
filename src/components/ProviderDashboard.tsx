@@ -441,8 +441,15 @@ export function ProviderDashboard({
                 <input className="input" defaultValue={billing?.bankAccountNumber ?? ""} name="bankAccountNumber" />
               </div>
               <div>
-                <label className="tiny">{tr(locale, "Bank SWIFT code", "은행 SWIFT 코드")}</label>
+                <label className="tiny">{tr(locale, "Bank SWIFT code (optional)", "은행 SWIFT 코드 (선택)")}</label>
                 <input className="input" defaultValue={billing?.bankSwiftCode ?? ""} name="bankSwiftCode" />
+                <p className="tiny muted" style={{ marginTop: "6px", marginBottom: 0 }}>
+                  {tr(
+                    locale,
+                    "Optional: leave blank for domestic transfers.",
+                    "선택 입력: 국내 이체만 하시면 비워두셔도 됩니다."
+                  )}
+                </p>
               </div>
             </>
           )}
