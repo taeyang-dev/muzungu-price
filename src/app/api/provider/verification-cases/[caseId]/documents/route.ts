@@ -4,9 +4,24 @@ import { fail, ok } from "@/lib/api";
 import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 
+function isHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 const schema = z.object({
   docType: z.string().min(2),
-  fileUrl: z.string().url()
+  fileUrl: z
+    .string()
+    .min(1)
+    .refine(
+      (value) => value.startsWith("data:") || isHttpUrl(value),
+      "File must be an upload data URL or a valid URL"
+    )
 });
 
 interface RouteParams {
@@ -27,7 +42,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
       include: { providerProfile: true }
     });
     if (!verificationCase) {
-      return fail("Verification case not found", 404, "NOT_FOUND");
+      return fail("Submission target not found", 404, "NOT_FOUND");
     }
     if (verificationCase.providerProfile.userId !== auth.session.userId) {
       return fail("Insufficient permissions", 403, "AUTH_002");
@@ -45,6 +60,6 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     if (error instanceof z.ZodError) {
       return fail(error.issues[0]?.message ?? "Invalid payload", 400, "VAL_001");
     }
-    return fail("Failed to upload document metadata", 500, "VER_500");
+    return fail("Failed to upload document", 500, "VER_500");
   }
 }

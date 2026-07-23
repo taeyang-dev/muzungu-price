@@ -24,7 +24,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   });
 
   if (active) {
-    return fail("A verification case is already open", 409, "VER_002");
+    return fail("A document review is already in progress", 409, "VER_002");
   }
 
   const created = await prisma.verificationCase.create({

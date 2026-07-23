@@ -42,6 +42,7 @@ interface ProviderDashboardProps {
     | null;
   services: Service[];
   verificationCaseId: string | null;
+  verificationStatus: "pending" | "approved" | "rejected" | "on_hold" | null;
   billing:
     | {
         quotationAvailable: boolean;
@@ -71,6 +72,7 @@ export function ProviderDashboard({
   profile,
   services,
   verificationCaseId,
+  verificationStatus,
   billing
 }: ProviderDashboardProps) {
   const [feedback, setFeedback] = useState<string>("");
@@ -80,6 +82,7 @@ export function ProviderDashboard({
     billing?.paymentMethods ?? []
   );
   const router = useRouter();
+  const hasActiveReview = verificationStatus === "pending" || verificationStatus === "on_hold";
 
   function togglePaymentMethod(method: string, checked: boolean): void {
     setSelectedPaymentMethods((current) => {
@@ -115,6 +118,7 @@ export function ProviderDashboard({
     const logoFile = formData.get("logoFile");
     const coverFile = formData.get("coverFile");
     const serviceImageFile = formData.get("serviceImageFile");
+    const verificationDocumentFile = formData.get("verificationDocumentFile");
     if (logoFile instanceof File && logoFile.size > 0) {
       payload.logoUrl = await fileToDataUrl(logoFile);
     }
@@ -123,6 +127,9 @@ export function ProviderDashboard({
     }
     if (serviceImageFile instanceof File && serviceImageFile.size > 0) {
       payload.imageUrl = await fileToDataUrl(serviceImageFile);
+    }
+    if (verificationDocumentFile instanceof File && verificationDocumentFile.size > 0) {
+      payload.fileUrl = await fileToDataUrl(verificationDocumentFile);
     }
     if (formData.has("categoryIds")) {
       payload.categoryIds = formData
@@ -191,10 +198,10 @@ export function ProviderDashboard({
     const data = (await response.json()) as ApiResult;
     setLoading(false);
     if (!response.ok) {
-      setError(data.error?.message ?? tr(locale, "Failed to create verification case", "검증 케이스 생성에 실패했습니다."));
+      setError(data.error?.message ?? tr(locale, "Failed to start document review", "서류 검토 시작에 실패했습니다."));
       return;
     }
-    setFeedback(tr(locale, "Verification case started.", "검증 케이스가 시작되었습니다."));
+    setFeedback(tr(locale, "Document review started.", "서류 검토가 시작되었습니다."));
     router.refresh();
   }
 
@@ -660,12 +667,12 @@ export function ProviderDashboard({
       </article>
 
       <article className="panel">
-        <h2 style={{ marginTop: 0 }}>{tr(locale, "Verification workflow", "검증 워크플로우")}</h2>
+        <h2 style={{ marginTop: 0 }}>{tr(locale, "Business verification documents", "업체 확인 서류")}</h2>
         <p className="tiny muted">
           {tr(
             locale,
-            "Start a verification case, then upload your supporting documents.",
-            "검증 케이스를 시작하고 증빙 서류를 업로드하세요."
+            "Start document review and upload supporting files here.",
+            "서류 검토를 시작하고 증빙 파일을 여기서 업로드하세요."
           )}
         </p>
         <div className="grid grid-3">
@@ -688,12 +695,21 @@ export function ProviderDashboard({
             </ul>
           </div>
         </div>
-        <button className="btn" disabled={loading} onClick={() => void triggerVerification()} type="button">
+        {hasActiveReview && (
+          <p className="tiny muted" style={{ marginBottom: "8px" }}>
+            {tr(
+              locale,
+              "Your document review is in progress. You can upload more files below.",
+              "서류 검토가 진행 중입니다. 아래에서 추가 파일을 업로드할 수 있습니다."
+            )}
+          </p>
+        )}
+        <button className="btn" disabled={loading || hasActiveReview} onClick={() => void triggerVerification()} type="button">
           {verificationCaseId
-            ? tr(locale, "Create another case (if current closed)", "새 검증 케이스 만들기(현재 케이스 종료 시)")
-            : tr(locale, "Start verification case", "검증 케이스 시작")}
+            ? tr(locale, "Start new review request", "새 서류 검토 시작")
+            : tr(locale, "Start document review", "서류 검토 시작")}
         </button>
-        {verificationCaseId && (
+        {verificationCaseId && hasActiveReview && (
           <form
             className="grid"
             style={{ marginTop: "16px" }}
@@ -706,15 +722,30 @@ export function ProviderDashboard({
             }
           >
             <div>
-              <label className="tiny">{tr(locale, "Document type", "문서 유형")}</label>
-              <input className="input" name="docType" placeholder={tr(locale, "business_license", "사업자등록증")} required />
+              <label className="tiny">{tr(locale, "Document type", "서류 종류")}</label>
+              <select className="select" defaultValue="business_license" name="docType" required>
+                <option value="business_license">{tr(locale, "Business registration certificate", "사업자 등록증")}</option>
+                <option value="tin_certificate">{tr(locale, "Tax/TIN certificate", "세무/TIN 증빙")}</option>
+                <option value="owner_id">{tr(locale, "Owner/representative ID", "대표자 신분증")}</option>
+                <option value="bank_proof">{tr(locale, "Bank account ownership proof", "계좌 소유 증빙")}</option>
+                <option value="quotation_sample">{tr(locale, "Past quotation sample", "기존 견적서 샘플")}</option>
+                <option value="ebm_sample">{tr(locale, "EBM sample format", "EBM 발행 샘플")}</option>
+                <option value="other">{tr(locale, "Other", "기타")}</option>
+              </select>
             </div>
             <div>
-              <label className="tiny">{tr(locale, "File URL", "파일 URL")}</label>
-              <input className="input" name="fileUrl" placeholder="https://..." required />
+              <label className="tiny">{tr(locale, "File attachment", "파일 첨부")}</label>
+              <input className="input" accept=".pdf,.png,.jpg,.jpeg,.webp" name="verificationDocumentFile" required type="file" />
+              <p className="tiny muted" style={{ marginTop: "6px", marginBottom: 0 }}>
+                {tr(
+                  locale,
+                  "Accepted: PDF, PNG, JPG, WEBP",
+                  "업로드 가능 형식: PDF, PNG, JPG, WEBP"
+                )}
+              </p>
             </div>
             <button className="btn" disabled={loading} type="submit">
-              {tr(locale, "Add document metadata", "문서 메타데이터 추가")}
+              {tr(locale, "Upload document", "서류 업로드")}
             </button>
           </form>
         )}
