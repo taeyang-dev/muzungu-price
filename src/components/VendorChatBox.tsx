@@ -454,12 +454,13 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
             </div>
             <div className="chat-widget-header-actions">
               <button
-                aria-label={tr(locale, "Close chat", "채팅 닫기")}
+                aria-label={tr(locale, "Minimize chat", "채팅 내리기")}
                 className="chat-widget-close-btn"
                 onClick={() => setIsOpen(false)}
+                title={tr(locale, "Minimize", "내리기")}
                 type="button"
               >
-                {tr(locale, "Close", "닫기")}
+                −
               </button>
             </div>
           </div>

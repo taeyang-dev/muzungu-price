@@ -704,6 +704,7 @@ a {
   bottom: 18px;
   z-index: 55;
   width: min(360px, calc(100vw - 20px));
+  pointer-events: auto;
 }
 
 .chat-widget.closed {
@@ -761,9 +762,11 @@ a {
 }
 
 .chat-widget-close-btn {
-  min-width: 48px;
-  padding: 0 10px;
-  font-size: 0.74rem;
+  width: 28px;
+  min-width: 28px;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .chat-widget-body {
