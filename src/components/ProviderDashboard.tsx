@@ -42,7 +42,6 @@ interface ProviderDashboardProps {
     | null;
   services: Service[];
   verificationCaseId: string | null;
-  verificationStatus: "pending" | "approved" | "rejected" | "on_hold" | null;
   billing:
     | {
         quotationAvailable: boolean;
@@ -72,7 +71,6 @@ export function ProviderDashboard({
   profile,
   services,
   verificationCaseId,
-  verificationStatus,
   billing
 }: ProviderDashboardProps) {
   const [feedback, setFeedback] = useState<string>("");
@@ -82,7 +80,6 @@ export function ProviderDashboard({
     billing?.paymentMethods ?? []
   );
   const router = useRouter();
-  const verificationApproved = verificationStatus === "approved";
 
   function togglePaymentMethod(method: string, checked: boolean): void {
     setSelectedPaymentMethods((current) => {
@@ -223,8 +220,8 @@ export function ProviderDashboard({
         <p className="tiny muted">
           {tr(
             locale,
-            "Required fields are for verification. Public display fields are optional and recommended after verification is approved.",
-            "필수 항목은 검증용입니다. 사용자 노출용 정보는 선택 항목이며 검증 승인 후 입력을 권장합니다."
+            "Complete only required fields first. Optional sections can be completed later from this page.",
+            "먼저 필수 항목만 입력하고, 선택 항목은 나중에 이 페이지에서 수정할 수 있습니다."
           )}
         </p>
         <form
@@ -251,19 +248,6 @@ export function ProviderDashboard({
               <option value="freelancer">{tr(locale, "Freelancer", "프리랜서")}</option>
               <option value="company">{tr(locale, "Company", "업체")}</option>
             </select>
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "One-line intro", "한줄 소개")}</label>
-            <input
-              className="input"
-              defaultValue={profile?.tagline ?? ""}
-              name="tagline"
-              placeholder={tr(
-                locale,
-                "Reliable electrical support for offices and NGOs.",
-                "NGO와 사무실을 위한 믿을 수 있는 전기 서비스"
-              )}
-            />
           </div>
           <div>
             <label className="tiny">{tr(locale, "City", "도시")}</label>
@@ -313,63 +297,6 @@ export function ProviderDashboard({
               ))}
             </div>
           </div>
-
-          <fieldset
-            disabled={!verificationApproved}
-            style={{
-              gridColumn: "1 / -1",
-              border: "1px dashed var(--line)",
-              borderRadius: "12px",
-              padding: "12px"
-            }}
-          >
-            <legend className="tiny">{tr(locale, "Optional public profile (after verification)", "선택: 사용자 노출 정보 (검증 승인 후)")}</legend>
-            {!verificationApproved && (
-              <p className="tiny muted" style={{ marginTop: 0 }}>
-                {tr(
-                  locale,
-                  "This section unlocks after verification is approved.",
-                  "검증 승인 후 이 섹션을 입력할 수 있습니다."
-                )}
-              </p>
-            )}
-            <div className="grid grid-3">
-              <div>
-                <label className="tiny">{tr(locale, "One-line intro", "한줄 소개")}</label>
-                <input
-                  className="input"
-                  defaultValue={profile?.tagline ?? ""}
-                  name="tagline"
-                  placeholder={tr(
-                    locale,
-                    "Example: Fast and trusted office electrical support.",
-                    "예시: 사무공간 전기 문제를 빠르고 정확하게 해결합니다."
-                  )}
-                />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label className="tiny">{tr(locale, "Detailed description", "상세 소개")}</label>
-                <textarea
-                  className="textarea"
-                  defaultValue={profile?.bio ?? ""}
-                  name="bio"
-                  placeholder={tr(
-                    locale,
-                    "Example: We provide fixed-price installation, maintenance, and emergency support with verified technicians.",
-                    "예시: 검증된 기술진이 정찰제 설치/정비/긴급출동 서비스를 제공합니다."
-                  )}
-                />
-              </div>
-              <div>
-                <label className="tiny">{tr(locale, "Logo image attachment", "로고 이미지 첨부")}</label>
-                <input className="input" accept="image/*" name="logoFile" type="file" />
-              </div>
-              <div>
-                <label className="tiny">{tr(locale, "Cover image attachment", "커버 이미지 첨부")}</label>
-                <input className="input" accept="image/*" name="coverFile" type="file" />
-              </div>
-            </div>
-          </fieldset>
           <button className="btn" disabled={loading} type="submit">
             {loading ? tr(locale, "Saving...", "저장 중...") : tr(locale, "Save profile", "프로필 저장")}
           </button>
@@ -530,12 +457,77 @@ export function ProviderDashboard({
       </article>
 
       <article className="panel">
+        <h2 style={{ marginTop: 0 }}>{tr(locale, "Optional sections (you can fill later)", "선택 사항 (나중에 입력 가능)")}</h2>
+        <p className="tiny muted">
+          {tr(
+            locale,
+            "These sections are optional for onboarding and can be updated later from Provider Hub.",
+            "아래 항목은 초기 등록 시 필수가 아니며, 추후 프로필에서 언제든 수정할 수 있습니다."
+          )}
+        </p>
+      </article>
+
+      <article className="panel">
+        <h2 style={{ marginTop: 0 }}>{tr(locale, "Optional public profile", "선택: 사용자 노출 프로필")}</h2>
+        {!profile && (
+          <p className="tiny muted">
+            {tr(
+              locale,
+              "Save the required profile section first to enable this form.",
+              "먼저 필수 프로필을 저장하면 이 선택 폼을 사용할 수 있습니다."
+            )}
+          </p>
+        )}
+        {profile && (
+          <form className="grid grid-3" onSubmit={(event) => submitJson(event, "/api/provider/profile", "PATCH")}>
+            <div>
+              <label className="tiny">{tr(locale, "One-line intro", "한줄 소개")}</label>
+              <input
+                className="input"
+                defaultValue={profile.tagline ?? ""}
+                name="tagline"
+                placeholder={tr(
+                  locale,
+                  "Example: Fast and trusted office electrical support.",
+                  "예시: 사무공간 전기 문제를 빠르고 정확하게 해결합니다."
+                )}
+              />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label className="tiny">{tr(locale, "Detailed description", "상세 소개")}</label>
+              <textarea
+                className="textarea"
+                defaultValue={profile.bio ?? ""}
+                name="bio"
+                placeholder={tr(
+                  locale,
+                  "Example: We provide fixed-price installation, maintenance, and emergency support with verified technicians.",
+                  "예시: 검증된 기술진이 정찰제 설치/정비/긴급출동 서비스를 제공합니다."
+                )}
+              />
+            </div>
+            <div>
+              <label className="tiny">{tr(locale, "Logo image attachment", "로고 이미지 첨부")}</label>
+              <input className="input" accept="image/*" name="logoFile" type="file" />
+            </div>
+            <div>
+              <label className="tiny">{tr(locale, "Cover image attachment", "커버 이미지 첨부")}</label>
+              <input className="input" accept="image/*" name="coverFile" type="file" />
+            </div>
+            <button className="btn" disabled={loading} type="submit">
+              {tr(locale, "Save optional profile", "선택 프로필 저장")}
+            </button>
+          </form>
+        )}
+      </article>
+
+      <article className="panel">
         <h2 style={{ marginTop: 0 }}>{tr(locale, "Create service", "서비스 등록")}</h2>
         <p className="tiny muted">
           {tr(
             locale,
-            "Use required fields first. Optional display details can be filled after verification is approved.",
-            "필수 항목으로 먼저 등록하고, 선택 노출 정보는 검증 승인 후 입력하세요."
+            "Optional section — you can register services later and edit them anytime.",
+            "선택 항목입니다. 서비스 등록은 나중에 해도 되며, 추후 언제든 수정할 수 있습니다."
           )}
         </p>
         <form className="grid grid-3" onSubmit={(event) => submitJson(event, "/api/provider/services", "POST")}>
@@ -557,45 +549,22 @@ export function ProviderDashboard({
             <label className="tiny">{tr(locale, "Title", "서비스명")}</label>
             <input className="input" name="title" required />
           </div>
-
-          <fieldset
-            disabled={!verificationApproved}
-            style={{
-              gridColumn: "1 / -1",
-              border: "1px dashed var(--line)",
-              borderRadius: "12px",
-              padding: "12px"
-            }}
-          >
-            <legend className="tiny">{tr(locale, "Optional (after verification)", "선택 (검증 승인 후)")}</legend>
-            {!verificationApproved && (
-              <p className="tiny muted" style={{ marginTop: 0 }}>
-                {tr(
-                  locale,
-                  "Service optional fields unlock after verification approval.",
-                  "서비스 선택 항목은 검증 승인 후 입력할 수 있습니다."
-                )}
-              </p>
-            )}
-            <div className="grid grid-3">
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label className="tiny">{tr(locale, "Description (optional)", "상세 설명 (선택)")}</label>
-                <textarea
-                  className="textarea"
-                  name="description"
-                  placeholder={tr(
-                    locale,
-                    "Example: Includes on-site setup, safety checklist, and post-service support.",
-                    "예시: 현장 설치, 안전 점검표, 서비스 이후 지원이 포함됩니다."
-                  )}
-                />
-              </div>
-              <div>
-                <label className="tiny">{tr(locale, "Service image attachment", "서비스 이미지 첨부")}</label>
-                <input className="input" accept="image/*" name="serviceImageFile" type="file" />
-              </div>
-            </div>
-          </fieldset>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label className="tiny">{tr(locale, "Description (optional)", "상세 설명 (선택)")}</label>
+            <textarea
+              className="textarea"
+              name="description"
+              placeholder={tr(
+                locale,
+                "Example: Includes on-site setup, safety checklist, and post-service support.",
+                "예시: 현장 설치, 안전 점검표, 서비스 이후 지원이 포함됩니다."
+              )}
+            />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Service image attachment", "서비스 이미지 첨부")}</label>
+            <input className="input" accept="image/*" name="serviceImageFile" type="file" />
+          </div>
           <button className="btn" disabled={loading} type="submit">
             {tr(locale, "Add service", "서비스 추가")}
           </button>
@@ -604,6 +573,13 @@ export function ProviderDashboard({
 
       <article className="panel">
         <h2 style={{ marginTop: 0 }}>{tr(locale, "Add price card to a service", "서비스 가격 카드 추가")}</h2>
+        <p className="tiny muted">
+          {tr(
+            locale,
+            "Optional section — you can add pricing later from your profile.",
+            "선택 항목입니다. 가격은 나중에 프로필에서 추가해도 됩니다."
+          )}
+        </p>
         <form
           className="grid grid-3"
           onSubmit={(event) => {

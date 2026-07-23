@@ -118,7 +118,6 @@ export default async function ProviderPage() {
       }
       services={profile?.services ?? []}
       verificationCaseId={profile?.verificationCases[0]?.id ?? null}
-      verificationStatus={profile?.verificationCases[0]?.status ?? null}
     />
   );
 }
