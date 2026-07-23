@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { decimalToNumber } from "@/lib/api";
 import { getDefaultServiceImage } from "@/lib/default-images";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
-import { tr } from "@/lib/i18n";
+import { localizeCopy, tr } from "@/lib/i18n";
 
 interface HomePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -15,7 +15,10 @@ const visualByCategory: Record<string, { emoji: string; background: string }> = 
   events: { emoji: "🎉", background: "linear-gradient(140deg, #f5f3ff, #ddd6fe)" },
   "language-lessons": { emoji: "🗣️", background: "linear-gradient(140deg, #eff6ff, #bfdbfe)" },
   "real-estate": { emoji: "🏠", background: "linear-gradient(140deg, #ecfeff, #bae6fd)" },
-  safari: { emoji: "🦁", background: "linear-gradient(140deg, #ecfccb, #d9f99d)" }
+  safari: { emoji: "🦁", background: "linear-gradient(140deg, #ecfccb, #d9f99d)" },
+  furniture: { emoji: "🪑", background: "linear-gradient(140deg, #f5f3ff, #ddd6fe)" },
+  electronics: { emoji: "💻", background: "linear-gradient(140deg, #e0f2fe, #bae6fd)" },
+  "art-experience": { emoji: "🎨", background: "linear-gradient(140deg, #fae8ff, #f5d0fe)" }
 };
 
 const searchKeywordGroups: Record<string, string[]> = {
@@ -23,7 +26,10 @@ const searchKeywordGroups: Record<string, string[]> = {
   events: ["event", "events", "wedding", "conference", "planner"],
   "language-lessons": ["language", "lessons", "teacher", "translator", "english"],
   "real-estate": ["real estate", "property", "housing", "rent", "apartment", "broker"],
-  safari: ["safari", "tour", "travel", "guide", "trip"]
+  safari: ["safari", "tour", "travel", "guide", "trip"],
+  furniture: ["furniture", "chair", "desk", "table", "carpentry", "wood"],
+  electronics: ["electronics", "laptop", "printer", "monitor", "equipment", "tech"],
+  "art-experience": ["art", "gallery", "workshop", "painting", "craft"]
 };
 
 function getInitials(name: string): string {
@@ -56,6 +62,36 @@ function formatPrice(amount: number | null, currency: string | null): string {
   }).format(rwfValue);
 }
 
+function categoryLabel(locale: "en" | "ko", slug: string, fallback: string): string {
+  const known: Record<string, { en: string; ko: string }> = {
+    electrical: { en: "Electrical Services", ko: "전기 서비스" },
+    events: { en: "Event Services", ko: "이벤트 서비스" },
+    "language-lessons": { en: "Language Lessons", ko: "언어 수업" },
+    "real-estate": { en: "Real Estate", ko: "부동산" },
+    safari: { en: "Safari Tours", ko: "사파리 투어" },
+    furniture: { en: "Furniture Making", ko: "가구 제작" },
+    electronics: { en: "Electronics Sales", ko: "전자제품 판매" },
+    "art-experience": { en: "Art Experience", ko: "아트 체험" },
+    other: { en: "Other Services", ko: "기타 서비스" }
+  };
+  const label = known[slug];
+  if (!label) {
+    return fallback;
+  }
+  return locale === "ko" ? label.ko : label.en;
+}
+
+function unitLabel(locale: "en" | "ko", unit: string): string {
+  const normalized = unit.replace("per_", "per ");
+  if (locale === "en") {
+    return normalized;
+  }
+  return normalized
+    .replace("per hour", "시간당")
+    .replace("per day", "일당")
+    .replace("per project", "프로젝트당");
+}
+
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
   const locale = await getLocaleFromCookies();
@@ -66,7 +102,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     .filter(([, keywords]) => keywords.some((keyword) => normalizedQ.includes(keyword)))
     .flatMap(([slug, keywords]) => [slug, ...keywords]);
   const searchTerms = Array.from(new Set([q, ...derivedTerms])).filter(Boolean);
-  const verifiedOnly = params.verified === "1";
   const quotationOnly = params.quotation === "1";
   const ebmOnly = params.ebm === "1";
   const category = typeof params.category === "string" ? params.category : undefined;
@@ -109,15 +144,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               category: {
                 slug: category
               }
-            }
-          }
-        }
-      : {}),
-    ...(verifiedOnly
-      ? {
-          verificationCases: {
-            some: {
-              status: "approved"
             }
           }
         }
@@ -181,7 +207,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <option value="">{tr(locale, "All categories", "전체 카테고리")}</option>
               {categories.map((item) => (
                 <option value={item.slug} key={item.id}>
-                  {item.name}
+                  {categoryLabel(locale, item.slug, item.name)}
                 </option>
               ))}
             </select>
@@ -193,10 +219,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <div>
             <label className="tiny">{tr(locale, "Filters", "필터")}</label>
             <div className="row tiny" style={{ marginTop: "8px" }}>
-              <label>
-                <input defaultChecked={verifiedOnly} name="verified" type="checkbox" value="1" />{" "}
-                {tr(locale, "Verified only", "검증된 업체만")}
-              </label>
               <label>
                 <input
                   defaultChecked={quotationOnly}
@@ -281,7 +303,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                       )}
                     </div>
                   </div>
-                  {provider.tagline && <p className="vendor-tagline">{provider.tagline}</p>}
+                  {provider.tagline && <p className="vendor-tagline">{localizeCopy(locale, provider.tagline)}</p>}
                   <p className="muted tiny vendor-location">
                     📍 {provider.city ?? tr(locale, "City not listed", "도시 미등록")},{" "}
                     {provider.country ?? tr(locale, "Country not listed", "국가 미등록")}
@@ -299,15 +321,17 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <div className="hr" />
               <p className="tiny vendor-price-line">
                 {representative
-                  ? `From ${formatPrice(
+                  ? `${tr(locale, "From", "최저")} ${formatPrice(
                       decimalToNumber(representative.basePrice),
                       representative.currency
-                    )} (${representative.unit.replace("per_", "per ")})`
+                    )} (${unitLabel(locale, representative.unit)})`
                   : tr(locale, "No public price card yet", "공개된 가격 카드가 없습니다.")}
               </p>
               <p className="tiny vendor-category-line">
                 {tr(locale, "Categories", "카테고리")}:{" "}
-                {provider.categories.map((entry) => entry.category.name).join(", ")}
+                {provider.categories
+                  .map((entry) => categoryLabel(locale, entry.category.slug, entry.category.name))
+                  .join(", ")}
               </p>
               <Link className="btn" href={`/providers/${provider.id}`}>
                 {tr(locale, "View profile", "업체 상세 보기")}

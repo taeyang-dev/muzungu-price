@@ -720,9 +720,63 @@ a {
 .chat-form {
   margin-top: 10px;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   gap: 8px;
+}
+
+.chat-upload-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.chat-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.chat-upload-label input[type="file"] {
+  max-width: 220px;
+}
+
+.chat-pending-list,
+.chat-attachment-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.chat-pending-list li,
+.chat-attachment-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: #11151d;
+  font-size: 0.75rem;
+}
+
+.chat-pending-list button {
+  border: 1px solid var(--line);
+  background: #191d26;
+  color: #f8fafc;
+  border-radius: 999px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.chat-attachment-list a {
+  text-decoration: underline;
 }
 
 @media (max-width: 900px) {

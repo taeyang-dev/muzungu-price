@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { Locale, tr } from "@/lib/i18n";
+import { recordChatVendor } from "@/lib/vendor-storage";
 
 type DisplayLang = "original" | "en" | "ko" | "rw";
 type StoredLang = "en" | "ko" | "rw";
@@ -12,21 +13,31 @@ interface VendorChatBoxProps {
   locale: Locale;
 }
 
+interface ChatAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  dataUrl: string;
+}
+
 interface ChatMessage {
   id: string;
   sender: "user" | "vendor";
   text: string;
   timestamp: string;
   translations?: Partial<Record<StoredLang, string>>;
-  sourceLanguage?: string;
+  attachments?: ChatAttachment[];
 }
 
 interface TranslateResult {
   data?: {
     translatedText?: string;
-    detectedSourceLanguage?: string;
   };
 }
+
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
+const MAX_ATTACHMENT_COUNT = 3;
 
 const languageLabels: Record<DisplayLang, { en: string; ko: string }> = {
   original: { en: "Original", ko: "원문" },
@@ -37,6 +48,16 @@ const languageLabels: Record<DisplayLang, { en: string; ko: string }> = {
 
 function getStorageKey(vendorId: string): string {
   return `muzungu_chat_${vendorId}`;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function readChat(vendorId: string): ChatMessage[] {
@@ -62,7 +83,7 @@ function writeChat(vendorId: string, messages: ChatMessage[]): void {
   if (typeof window === "undefined") {
     return;
   }
-  window.localStorage.setItem(getStorageKey(vendorId), JSON.stringify(messages.slice(-50)));
+  window.localStorage.setItem(getStorageKey(vendorId), JSON.stringify(messages.slice(-30)));
 }
 
 function hasHangul(text: string): boolean {
@@ -74,6 +95,10 @@ function defaultDisplayLanguage(locale: Locale): DisplayLang {
 }
 
 async function translateText(text: string, targetLanguage: StoredLang): Promise<string> {
+  if (!text.trim()) {
+    return "";
+  }
+
   const response = await fetch("/api/translate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -85,6 +110,15 @@ async function translateText(text: string, targetLanguage: StoredLang): Promise<
   });
   const body = (await response.json()) as TranslateResult;
   return body.data?.translatedText ?? text;
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
 }
 
 export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxProps) {
@@ -116,10 +150,16 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
   );
   const [translatingMessageId, setTranslatingMessageId] = useState<string | null>(null);
   const [isBulkTranslating, setIsBulkTranslating] = useState(false);
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
+  const [attachmentNotice, setAttachmentNotice] = useState("");
 
   useEffect(() => {
     writeChat(vendorId, messages);
   }, [vendorId, messages]);
+
+  useEffect(() => {
+    recordChatVendor({ id: vendorId, name: vendorName });
+  }, [vendorId, vendorName]);
 
   function visibleText(message: ChatMessage): string {
     if (displayLanguage === "original") {
@@ -135,7 +175,7 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
     }
 
     const message = messages.find((item) => item.id === messageId);
-    if (!message) {
+    if (!message || !message.text.trim()) {
       return;
     }
 
@@ -172,7 +212,9 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
       return;
     }
 
-    const missing = messages.filter((message) => !message.translations?.[nextLanguage]);
+    const missing = messages.filter(
+      (message) => message.text.trim().length > 0 && !message.translations?.[nextLanguage]
+    );
     if (missing.length === 0) {
       setDisplayLanguage(nextLanguage);
       return;
@@ -212,10 +254,57 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
     }
   }
 
+  async function onPickFiles(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) {
+      return;
+    }
+
+    const next = [...pendingAttachments];
+    for (const file of files) {
+      if (next.length >= MAX_ATTACHMENT_COUNT) {
+        setAttachmentNotice(
+          tr(
+            locale,
+            `You can attach up to ${MAX_ATTACHMENT_COUNT} files per message.`,
+            `메시지당 최대 ${MAX_ATTACHMENT_COUNT}개 파일까지 첨부할 수 있습니다.`
+          )
+        );
+        break;
+      }
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setAttachmentNotice(
+          tr(
+            locale,
+            `File is too large: ${file.name}. Maximum size is ${formatFileSize(MAX_FILE_SIZE_BYTES)}.`,
+            `파일 용량이 너무 큽니다: ${file.name}. 최대 ${formatFileSize(MAX_FILE_SIZE_BYTES)}까지 가능합니다.`
+          )
+        );
+        continue;
+      }
+
+      const dataUrl = await readFileAsDataUrl(file);
+      next.push({
+        id: `${file.name}-${file.size}-${Date.now()}`,
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+        dataUrl
+      });
+    }
+
+    setPendingAttachments(next);
+    event.target.value = "";
+  }
+
+  function removePendingAttachment(id: string): void {
+    setPendingAttachments((current) => current.filter((item) => item.id !== id));
+  }
+
   async function sendMessage(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const trimmed = input.trim();
-    if (!trimmed) {
+    if (!trimmed && pendingAttachments.length === 0) {
       return;
     }
 
@@ -224,12 +313,15 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
       id: `user-${now}`,
       sender: "user",
       text: trimmed,
-      timestamp: now
+      timestamp: now,
+      attachments: pendingAttachments
     };
 
     const vendorText = hasHangul(trimmed)
       ? "Thanks for your request. We can share timeline and formal quotation in 24 hours."
-      : "Murakoze kubutumwa bwawe. Turagutegurira igihe, igiciro n'inyandiko zose vuba.";
+      : pendingAttachments.length > 0
+        ? "Murakoze ku butumwa n'inyandiko mwaduhaye. Turazisuzuma duhite tubasubiza."
+        : "Murakoze kubutumwa bwawe. Turagutegurira igihe, igiciro n'inyandiko zose vuba.";
 
     const vendorMessage: ChatMessage = {
       id: `vendor-${now}`,
@@ -256,7 +348,10 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
     };
 
     setMessages((current) => [...current, userMessage, vendorMessage]);
+    recordChatVendor({ id: vendorId, name: vendorName });
     setInput("");
+    setPendingAttachments([]);
+    setAttachmentNotice("");
   }
 
   return (
@@ -285,7 +380,19 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
       <div className="chat-box">
         {messages.map((message) => (
           <div className={`chat-message ${message.sender}`} key={message.id}>
-            <p>{visibleText(message)}</p>
+            {message.text ? <p>{visibleText(message)}</p> : <p>{tr(locale, "(Attachment)", "(첨부파일)")}</p>}
+            {message.attachments && message.attachments.length > 0 && (
+              <ul className="chat-attachment-list">
+                {message.attachments.map((attachment) => (
+                  <li key={attachment.id}>
+                    <a download={attachment.name} href={attachment.dataUrl}>
+                      {attachment.name}
+                    </a>
+                    <span>{formatFileSize(attachment.sizeBytes)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
             <div className="chat-inline-actions">
               {(Object.keys(languageLabels) as DisplayLang[]).map((lang) => (
                 <button
@@ -314,9 +421,30 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
           placeholder={tr(locale, "Write a message...", "메시지를 입력하세요...")}
           value={input}
         />
-        <button className="btn" type="submit">
-          {tr(locale, "Send", "보내기")}
-        </button>
+        <div className="chat-upload-row">
+          <label className="chat-upload-label">
+            <span>{tr(locale, "Attach file", "파일 첨부")}</span>
+            <input multiple onChange={(event) => void onPickFiles(event)} type="file" />
+          </label>
+          <button className="btn" type="submit">
+            {tr(locale, "Send", "보내기")}
+          </button>
+        </div>
+        {pendingAttachments.length > 0 && (
+          <ul className="chat-pending-list">
+            {pendingAttachments.map((attachment) => (
+              <li key={attachment.id}>
+                <span>
+                  {attachment.name} ({formatFileSize(attachment.sizeBytes)})
+                </span>
+                <button onClick={() => removePendingAttachment(attachment.id)} type="button">
+                  {tr(locale, "Remove", "삭제")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {attachmentNotice && <p className="tiny muted">{attachmentNotice}</p>}
       </form>
     </article>
   );

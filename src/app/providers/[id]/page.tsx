@@ -6,7 +6,7 @@ import { VendorQuickActions } from "@/components/VendorQuickActions";
 import { VendorChatBox } from "@/components/VendorChatBox";
 import { getDefaultServiceImage } from "@/lib/default-images";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
-import { tr } from "@/lib/i18n";
+import { localizeCopy, tr } from "@/lib/i18n";
 
 interface ProviderDetailPageProps {
   params: Promise<{ id: string }>;
@@ -71,7 +71,11 @@ export default async function ProviderDetailPage({
       },
       billingCapability: true,
       verificationCases: { where: { status: "approved" }, orderBy: { reviewedAt: "desc" }, take: 1 },
-      reviews: { orderBy: { createdAt: "desc" }, take: 20 }
+      reviews: {
+        include: { reviewer: true },
+        orderBy: { createdAt: "desc" },
+        take: 20
+      }
     }
   });
 
@@ -80,7 +84,7 @@ export default async function ProviderDetailPage({
   }
 
   const verification = provider.verificationCases[0];
-  const topServices = provider.services.slice(0, 3).map((service) => service.title);
+  const topServices = provider.services.slice(0, 3).map((service) => localizeCopy(locale, service.title));
 
   return (
     <section className="grid provider-detail-page">
@@ -110,7 +114,7 @@ export default async function ProviderDetailPage({
           )}
           <div>
             <h1 style={{ marginTop: 0, marginBottom: "8px" }}>{provider.businessName}</h1>
-            {provider.tagline && <p className="provider-tagline">{provider.tagline}</p>}
+            {provider.tagline && <p className="provider-tagline">{localizeCopy(locale, provider.tagline)}</p>}
             <p className="muted provider-meta-line">
               {provider.city ?? tr(locale, "Unknown city", "도시 정보 없음")},{" "}
               {provider.country ?? tr(locale, "Unknown country", "국가 정보 없음")}
@@ -131,7 +135,11 @@ export default async function ProviderDetailPage({
             </div>
           </div>
         </div>
-        <p>{provider.bio ?? tr(locale, "No business overview provided yet.", "업체 소개가 아직 등록되지 않았습니다.")}</p>
+        <p>
+          {provider.bio
+            ? localizeCopy(locale, provider.bio)
+            : tr(locale, "No business overview provided yet.", "업체 소개가 아직 등록되지 않았습니다.")}
+        </p>
         <div className="provider-chip-row">
           {provider.categories.map((entry) => (
             <span className="badge" key={entry.id}>
@@ -212,7 +220,9 @@ export default async function ProviderDetailPage({
         </article>
       </section>
 
-      <VendorChatBox locale={locale} vendorId={provider.id} vendorName={provider.businessName} />
+      <div id="vendor-chat">
+        <VendorChatBox locale={locale} vendorId={provider.id} vendorName={provider.businessName} />
+      </div>
 
       <article className="panel">
         <h2 style={{ marginTop: 0 }}>{tr(locale, "Services and pricing", "서비스 및 가격")}</h2>
@@ -227,9 +237,11 @@ export default async function ProviderDetailPage({
                 className="service-image"
                 src={service.imageUrl ?? getDefaultServiceImage(service.category.slug)}
               />
-              <h3 style={{ marginTop: 0 }}>{service.title}</h3>
+              <h3 style={{ marginTop: 0 }}>{localizeCopy(locale, service.title)}</h3>
               <p className="tiny muted">
-                {service.description ?? tr(locale, "No service description", "서비스 설명이 없습니다.")}
+                {service.description
+                  ? localizeCopy(locale, service.description)
+                  : tr(locale, "No service description", "서비스 설명이 없습니다.")}
               </p>
               {service.priceCards.length === 0 && (
                 <p className="tiny muted">{tr(locale, "No price cards yet.", "가격 카드가 없습니다.")}</p>
@@ -252,9 +264,10 @@ export default async function ProviderDetailPage({
                     </ul>
                   </details>
                   <div className="tiny muted">
-                    {tr(locale, "Includes", "포함")}: {price.inclusions ?? tr(locale, "Not specified", "미기재")} |{" "}
+                    {tr(locale, "Includes", "포함")}:{" "}
+                    {price.inclusions ? localizeCopy(locale, price.inclusions) : tr(locale, "Not specified", "미기재")} |{" "}
                     {tr(locale, "Excludes", "미포함")}:{" "}
-                    {price.exclusions ?? tr(locale, "Not specified", "미기재")}
+                    {price.exclusions ? localizeCopy(locale, price.exclusions) : tr(locale, "Not specified", "미기재")}
                   </div>
                 </div>
               ))}
@@ -271,12 +284,17 @@ export default async function ProviderDetailPage({
         {provider.reviews.map((review) => (
           <div key={review.id} style={{ marginBottom: "12px" }}>
             <strong>{review.ratingOverall}/5</strong>
+            <p className="tiny" style={{ margin: "4px 0" }}>
+              {tr(locale, "Reviewed by", "작성자")}: {review.reviewer.name}
+            </p>
             <p className="tiny muted" style={{ margin: "4px 0" }}>
               {tr(locale, "Price transparency", "가격 투명성")} {review.ratingPriceTransparency ?? "-"} ·{" "}
               {tr(locale, "Timeliness", "시간 준수")} {review.ratingTimeliness ?? "-"} ·{" "}
               {tr(locale, "Quality", "품질")} {review.ratingQuality ?? "-"}
             </p>
-            <p style={{ margin: 0 }}>{review.comment ?? tr(locale, "No comment.", "코멘트 없음")}</p>
+            <p style={{ margin: 0 }}>
+              {review.comment ? localizeCopy(locale, review.comment) : tr(locale, "No comment.", "코멘트 없음")}
+            </p>
           </div>
         ))}
       </article>

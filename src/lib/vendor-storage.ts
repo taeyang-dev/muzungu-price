@@ -5,6 +5,7 @@ export interface VendorReference {
 
 const FAVORITE_KEY = "muzungu_favorite_vendors";
 const RECENT_KEY = "muzungu_recent_vendors";
+const CHAT_THREADS_KEY = "muzungu_chat_threads";
 const STORAGE_EVENT = "vendor-storage-updated";
 
 function readList(key: string): VendorReference[] {
@@ -52,6 +53,10 @@ export function readRecentVendors(): VendorReference[] {
   return readList(RECENT_KEY);
 }
 
+export function readChatVendors(): VendorReference[] {
+  return readList(CHAT_THREADS_KEY);
+}
+
 export function isFavoriteVendor(id: string): boolean {
   return readFavoriteVendors().some((vendor) => vendor.id === id);
 }
@@ -79,6 +84,14 @@ export function recordRecentVendor(vendor: VendorReference): void {
   const current = readRecentVendors();
   writeList(
     RECENT_KEY,
+    [vendor, ...current.filter((item) => item.id !== vendor.id)].slice(0, 10)
+  );
+}
+
+export function recordChatVendor(vendor: VendorReference): void {
+  const current = readChatVendors();
+  writeList(
+    CHAT_THREADS_KEY,
     [vendor, ...current.filter((item) => item.id !== vendor.id)].slice(0, 10)
   );
 }

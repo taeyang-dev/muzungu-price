@@ -6,6 +6,7 @@ import { LogoutButton } from "@/components/LogoutButton";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import {
   getVendorStorageEventName,
+  readChatVendors,
   readFavoriteVendors,
   readRecentVendors,
   VendorReference
@@ -22,10 +23,12 @@ interface AppHeaderProps {
 
 function VendorList({
   items,
-  emptyText
+  emptyText,
+  hrefSuffix = ""
 }: {
   items: VendorReference[];
   emptyText: string;
+  hrefSuffix?: string;
 }) {
   if (items.length === 0) {
     return <p className="drawer-empty">{emptyText}</p>;
@@ -35,7 +38,7 @@ function VendorList({
     <ul className="drawer-vendor-list">
       {items.map((item) => (
         <li key={item.id}>
-          <Link href={`/providers/${item.id}`}>{item.name}</Link>
+          <Link href={`/providers/${item.id}${hrefSuffix}`}>{item.name}</Link>
         </li>
       ))}
     </ul>
@@ -46,11 +49,13 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [favorites, setFavorites] = useState<VendorReference[]>([]);
   const [recent, setRecent] = useState<VendorReference[]>([]);
+  const [chatVendors, setChatVendors] = useState<VendorReference[]>([]);
 
   useEffect(() => {
     function refresh(): void {
       setFavorites(readFavoriteVendors());
       setRecent(readRecentVendors());
+      setChatVendors(readChatVendors());
     }
 
     refresh();
@@ -98,8 +103,8 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
           </Link>
           <div className="topbar-actions">
             <LocaleSwitcher locale={locale} />
-            <Link className="btn browse-btn" href="/?verified=1">
-              {tr(locale, "Browse verified vendors", "검증된 업체 보기")}
+            <Link className="btn browse-btn" href="/">
+              {tr(locale, "Browse vendors", "업체 둘러보기")}
             </Link>
             {session ? (
               <LogoutButton locale={locale} />
@@ -141,8 +146,8 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
             <Link href="/requests" onClick={() => setMenuOpen(false)}>
               {tr(locale, "Requests", "요청서")}
             </Link>
-            <Link href="/?verified=1" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "Browse verified vendors", "검증된 업체 보기")}
+            <Link href="/" onClick={() => setMenuOpen(false)}>
+              {tr(locale, "Browse vendors", "업체 둘러보기")}
             </Link>
             {!session && (
               <Link href="/auth" onClick={() => setMenuOpen(false)}>
@@ -150,6 +155,15 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
               </Link>
             )}
           </nav>
+        </section>
+
+        <section className="drawer-section">
+          <h3>{tr(locale, "Messages with vendors", "업체와 대화")}</h3>
+          <VendorList
+            items={chatVendors}
+            emptyText={tr(locale, "No active chats yet.", "대화중인 업체가 없습니다.")}
+            hrefSuffix="#vendor-chat"
+          />
         </section>
 
         <section className="drawer-section">
