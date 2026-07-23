@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { VendorQuickActions } from "@/components/VendorQuickActions";
 import { VendorChatBox } from "@/components/VendorChatBox";
 import { getDefaultServiceImage } from "@/lib/default-images";
+import { getLocaleFromCookies } from "@/lib/i18n-server";
+import { tr } from "@/lib/i18n";
 
 interface ProviderDetailPageProps {
   params: Promise<{ id: string }>;
@@ -34,7 +36,10 @@ function formatRwf(amount: number | null): string {
   }).format(amount);
 }
 
-function getBreakdown(baseRwf: number | null): Array<{ label: string; value: string }> {
+function getBreakdown(
+  baseRwf: number | null,
+  locale: "en" | "ko"
+): Array<{ label: string; value: string }> {
   if (!baseRwf) {
     return [];
   }
@@ -42,16 +47,17 @@ function getBreakdown(baseRwf: number | null): Array<{ label: string; value: str
   const vat = Math.round(baseRwf * 0.18);
   const total = baseRwf + delivery + vat;
   return [
-    { label: "Service fee", value: formatRwf(baseRwf) },
-    { label: "Delivery fee", value: formatRwf(delivery) },
-    { label: "VAT (18%)", value: formatRwf(vat) },
-    { label: "Estimated total", value: formatRwf(total) }
+    { label: tr(locale, "Service fee", "서비스 비용"), value: formatRwf(baseRwf) },
+    { label: tr(locale, "Delivery fee", "배달비"), value: formatRwf(delivery) },
+    { label: tr(locale, "VAT (18%)", "부가세 (18%)"), value: formatRwf(vat) },
+    { label: tr(locale, "Estimated total", "예상 총액"), value: formatRwf(total) }
   ];
 }
 
 export default async function ProviderDetailPage({
   params
 }: ProviderDetailPageProps) {
+  const locale = await getLocaleFromCookies();
   const { id } = await params;
   const provider = await prisma.providerProfile.findUnique({
     where: { id },
@@ -106,21 +112,26 @@ export default async function ProviderDetailPage({
             <h1 style={{ marginTop: 0, marginBottom: "8px" }}>{provider.businessName}</h1>
             {provider.tagline && <p className="provider-tagline">{provider.tagline}</p>}
             <p className="muted provider-meta-line">
-              {provider.city ?? "Unknown city"}, {provider.country ?? "Unknown country"}
-              {provider.yearsInBusiness ? ` · ${provider.yearsInBusiness} years in business` : ""}
+              {provider.city ?? tr(locale, "Unknown city", "도시 정보 없음")},{" "}
+              {provider.country ?? tr(locale, "Unknown country", "국가 정보 없음")}
+              {provider.yearsInBusiness
+                ? ` · ${provider.yearsInBusiness} ${tr(locale, "years in business", "년 업력")}`
+                : ""}
             </p>
             <div className="row">
               {verification ? (
                 <span className="badge good">{verification.level?.replaceAll("_", " ") ?? "verified"}</span>
               ) : (
-                <span className="badge">Verification pending</span>
+                <span className="badge">{tr(locale, "Verification pending", "검증 대기중")}</span>
               )}
-              {provider.billingCapability?.quotationAvailable && <span className="badge">Quotation Ready</span>}
+              {provider.billingCapability?.quotationAvailable && (
+                <span className="badge">{tr(locale, "Quotation Ready", "견적서 가능")}</span>
+              )}
               {provider.billingCapability?.ebmAvailable && <span className="badge">EBM Ready</span>}
             </div>
           </div>
         </div>
-        <p>{provider.bio ?? "No business overview provided yet."}</p>
+        <p>{provider.bio ?? tr(locale, "No business overview provided yet.", "업체 소개가 아직 등록되지 않았습니다.")}</p>
         <div className="provider-chip-row">
           {provider.categories.map((entry) => (
             <span className="badge" key={entry.id}>
@@ -132,48 +143,54 @@ export default async function ProviderDetailPage({
 
       <section className="provider-summary-grid">
         <article className="panel">
-          <h2 style={{ marginTop: 0 }}>Business snapshot</h2>
+          <h2 style={{ marginTop: 0 }}>{tr(locale, "Business snapshot", "업체 요약")}</h2>
           <ul className="provider-list">
             <li>
-              <strong>Top services:</strong>{" "}
-              {topServices.length > 0 ? topServices.join(", ") : "No services listed yet"}
+              <strong>{tr(locale, "Top services", "주요 서비스")}:</strong>{" "}
+              {topServices.length > 0 ? topServices.join(", ") : tr(locale, "No services listed yet", "서비스 정보 없음")}
             </li>
             <li>
-              <strong>Years in business:</strong> {provider.yearsInBusiness ?? "Not provided"}
+              <strong>{tr(locale, "Years in business", "업력")}:</strong>{" "}
+              {provider.yearsInBusiness ?? tr(locale, "Not provided", "미입력")}
             </li>
             <li>
-              <strong>Vendor type:</strong> {provider.providerType}
+              <strong>{tr(locale, "Vendor type", "업체 유형")}:</strong> {provider.providerType}
             </li>
             <li>
-              <strong>Documentation:</strong>{" "}
-              {provider.billingCapability?.quotationAvailable ? "Quotation" : "No quotation"} /{" "}
-              {provider.billingCapability?.ebmAvailable ? "EBM" : "No EBM"}
+              <strong>{tr(locale, "Documentation", "증빙 문서")}:</strong>{" "}
+              {provider.billingCapability?.quotationAvailable
+                ? tr(locale, "Quotation", "견적서")
+                : tr(locale, "No quotation", "견적서 불가")}{" "}
+              /{" "}
+              {provider.billingCapability?.ebmAvailable ? "EBM" : tr(locale, "No EBM", "EBM 불가")}
             </li>
           </ul>
           <VendorQuickActions vendorId={provider.id} vendorName={provider.businessName} />
         </article>
 
         <article className="panel">
-          <h2 style={{ marginTop: 0 }}>Contact details</h2>
+          <h2 style={{ marginTop: 0 }}>{tr(locale, "Contact details", "연락처 정보")}</h2>
           <ul className="provider-list">
             <li>
-              <strong>Email:</strong> {provider.contactEmail ?? "Not provided"}
+              <strong>{tr(locale, "Email", "이메일")}:</strong>{" "}
+              {provider.contactEmail ?? tr(locale, "Not provided", "미입력")}
             </li>
             <li>
-              <strong>Phone:</strong> {provider.contactPhone ?? "Not provided"}
+              <strong>{tr(locale, "Phone", "전화번호")}:</strong>{" "}
+              {provider.contactPhone ?? tr(locale, "Not provided", "미입력")}
             </li>
             <li>
-              <strong>Website:</strong>{" "}
+              <strong>{tr(locale, "Website", "웹사이트")}:</strong>{" "}
               {provider.websiteUrl ? (
                 <a href={provider.websiteUrl} rel="noreferrer" target="_blank">
                   {provider.websiteUrl}
                 </a>
               ) : (
-                "Not provided"
+                tr(locale, "Not provided", "미입력")
               )}
             </li>
             <li>
-              <strong>Location:</strong>{" "}
+              <strong>{tr(locale, "Location", "위치")}:</strong>{" "}
               {provider.city && provider.country ? (
                 <a
                   href={`https://www.google.com/maps/search/${encodeURIComponent(
@@ -182,24 +199,26 @@ export default async function ProviderDetailPage({
                   rel="noreferrer"
                   target="_blank"
                 >
-                  View on map
+                  {tr(locale, "View on map", "지도에서 보기")}
                 </a>
               ) : (
-                "Not provided"
+                tr(locale, "Not provided", "미입력")
               )}
             </li>
           </ul>
           <Link className="btn provider-action-btn" href="/requests">
-            Request this vendor
+            {tr(locale, "Request this vendor", "이 업체에 요청 보내기")}
           </Link>
         </article>
       </section>
 
-      <VendorChatBox vendorId={provider.id} vendorName={provider.businessName} />
+      <VendorChatBox locale={locale} vendorId={provider.id} vendorName={provider.businessName} />
 
       <article className="panel">
-        <h2 style={{ marginTop: 0 }}>Services and pricing</h2>
-        {provider.services.length === 0 && <p className="muted">No services published yet.</p>}
+        <h2 style={{ marginTop: 0 }}>{tr(locale, "Services and pricing", "서비스 및 가격")}</h2>
+        {provider.services.length === 0 && (
+          <p className="muted">{tr(locale, "No services published yet.", "등록된 서비스가 없습니다.")}</p>
+        )}
         <div className="cards">
           {provider.services.map((service) => (
             <div className="card service-detail-card" key={service.id}>
@@ -209,8 +228,12 @@ export default async function ProviderDetailPage({
                 src={service.imageUrl ?? getDefaultServiceImage(service.category.slug)}
               />
               <h3 style={{ marginTop: 0 }}>{service.title}</h3>
-              <p className="tiny muted">{service.description ?? "No service description"}</p>
-              {service.priceCards.length === 0 && <p className="tiny muted">No price cards yet.</p>}
+              <p className="tiny muted">
+                {service.description ?? tr(locale, "No service description", "서비스 설명이 없습니다.")}
+              </p>
+              {service.priceCards.length === 0 && (
+                <p className="tiny muted">{tr(locale, "No price cards yet.", "가격 카드가 없습니다.")}</p>
+              )}
               {service.priceCards.map((price) => (
                 <div className="price-row" key={price.id}>
                   <details className="price-breakdown">
@@ -220,7 +243,7 @@ export default async function ProviderDetailPage({
                       <span>({price.unit.replace("per_", "per ")})</span>
                     </summary>
                     <ul>
-                      {getBreakdown(toRwf(decimalToNumber(price.basePrice), price.currency)).map((item) => (
+                      {getBreakdown(toRwf(decimalToNumber(price.basePrice), price.currency), locale).map((item) => (
                         <li key={`${price.id}-${item.label}`}>
                           <span>{item.label}:</span>
                           <span>{item.value}</span>
@@ -229,8 +252,9 @@ export default async function ProviderDetailPage({
                     </ul>
                   </details>
                   <div className="tiny muted">
-                    Includes: {price.inclusions ?? "Not specified"} | Excludes:{" "}
-                    {price.exclusions ?? "Not specified"}
+                    {tr(locale, "Includes", "포함")}: {price.inclusions ?? tr(locale, "Not specified", "미기재")} |{" "}
+                    {tr(locale, "Excludes", "미포함")}:{" "}
+                    {price.exclusions ?? tr(locale, "Not specified", "미기재")}
                   </div>
                 </div>
               ))}
@@ -240,16 +264,19 @@ export default async function ProviderDetailPage({
       </article>
 
       <article className="panel">
-        <h2 style={{ marginTop: 0 }}>Recent Reviews</h2>
-        {provider.reviews.length === 0 && <p className="muted">No reviews yet.</p>}
+        <h2 style={{ marginTop: 0 }}>{tr(locale, "Recent Reviews", "최근 리뷰")}</h2>
+        {provider.reviews.length === 0 && (
+          <p className="muted">{tr(locale, "No reviews yet.", "아직 리뷰가 없습니다.")}</p>
+        )}
         {provider.reviews.map((review) => (
           <div key={review.id} style={{ marginBottom: "12px" }}>
             <strong>{review.ratingOverall}/5</strong>
             <p className="tiny muted" style={{ margin: "4px 0" }}>
-              Price transparency {review.ratingPriceTransparency ?? "-"} · Timeliness{" "}
-              {review.ratingTimeliness ?? "-"} · Quality {review.ratingQuality ?? "-"}
+              {tr(locale, "Price transparency", "가격 투명성")} {review.ratingPriceTransparency ?? "-"} ·{" "}
+              {tr(locale, "Timeliness", "시간 준수")} {review.ratingTimeliness ?? "-"} ·{" "}
+              {tr(locale, "Quality", "품질")} {review.ratingQuality ?? "-"}
             </p>
-            <p style={{ margin: 0 }}>{review.comment ?? "No comment."}</p>
+            <p style={{ margin: 0 }}>{review.comment ?? tr(locale, "No comment.", "코멘트 없음")}</p>
           </div>
         ))}
       </article>

@@ -2,16 +2,19 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminVerificationPanel } from "@/components/AdminVerificationPanel";
+import { getLocaleFromCookies } from "@/lib/i18n-server";
+import { tr } from "@/lib/i18n";
 
 export default async function AdminPage() {
   const session = await getSession();
+  const locale = await getLocaleFromCookies();
   if (!session) {
     return (
       <section className="panel">
-        <h1>Admin</h1>
-        <p>Please sign in first.</p>
+        <h1>{tr(locale, "Admin", "관리자")}</h1>
+        <p>{tr(locale, "Please sign in first.", "먼저 로그인해 주세요.")}</p>
         <Link className="btn" href="/auth">
-          Go to Sign in
+          {tr(locale, "Go to Sign in", "로그인하러 가기")}
         </Link>
       </section>
     );
@@ -20,8 +23,10 @@ export default async function AdminPage() {
   if (session.role !== "admin") {
     return (
       <section className="panel">
-        <h1>Admin</h1>
-        <p className="muted">Only admin accounts can access verification controls.</p>
+        <h1>{tr(locale, "Admin", "관리자")}</h1>
+        <p className="muted">
+          {tr(locale, "Only admin accounts can access verification controls.", "관리자 계정만 검증 관리를 사용할 수 있습니다.")}
+        </p>
       </section>
     );
   }
@@ -38,5 +43,10 @@ export default async function AdminPage() {
     orderBy: { createdAt: "desc" }
   });
 
-  return <AdminVerificationPanel cases={cases.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() }))} />;
+  return (
+    <AdminVerificationPanel
+      cases={cases.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() }))}
+      locale={locale}
+    />
+  );
 }

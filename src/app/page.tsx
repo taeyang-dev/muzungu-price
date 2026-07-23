@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { decimalToNumber } from "@/lib/api";
 import { getDefaultServiceImage } from "@/lib/default-images";
+import { getLocaleFromCookies } from "@/lib/i18n-server";
+import { tr } from "@/lib/i18n";
 
 interface HomePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -56,6 +58,7 @@ function formatPrice(amount: number | null, currency: string | null): string {
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
+  const locale = await getLocaleFromCookies();
 
   const q = typeof params.q === "string" ? params.q.trim() : "";
   const normalizedQ = q.toLowerCase();
@@ -160,18 +163,22 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section className="panel section">
         <form className="grid grid-3" method="GET">
           <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">Search vendor</label>
+            <label className="tiny">{tr(locale, "Search vendor", "업체 검색")}</label>
             <input
               className="input"
               defaultValue={q}
               name="q"
-              placeholder="Search by vendor or category (e.g. electricity)"
+              placeholder={tr(
+                locale,
+                "Search by vendor or category (e.g. electricity)",
+                "업체명 또는 카테고리로 검색 (예: electricity)"
+              )}
             />
           </div>
           <div>
-            <label className="tiny">Category</label>
+            <label className="tiny">{tr(locale, "Category", "카테고리")}</label>
             <select className="select" name="category" defaultValue={category}>
-              <option value="">All categories</option>
+              <option value="">{tr(locale, "All categories", "전체 카테고리")}</option>
               {categories.map((item) => (
                 <option value={item.slug} key={item.id}>
                   {item.name}
@@ -180,15 +187,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </select>
           </div>
           <div>
-            <label className="tiny">City</label>
-            <input className="input" name="city" defaultValue={city} placeholder="Kampala" />
+            <label className="tiny">{tr(locale, "City", "도시")}</label>
+            <input className="input" name="city" defaultValue={city} placeholder={tr(locale, "Kampala", "키갈리")} />
           </div>
           <div>
-            <label className="tiny">Filters</label>
+            <label className="tiny">{tr(locale, "Filters", "필터")}</label>
             <div className="row tiny" style={{ marginTop: "8px" }}>
               <label>
                 <input defaultChecked={verifiedOnly} name="verified" type="checkbox" value="1" />{" "}
-                Verified only
+                {tr(locale, "Verified only", "검증된 업체만")}
               </label>
               <label>
                 <input
@@ -197,15 +204,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   type="checkbox"
                   value="1"
                 />{" "}
-                Quotation
+                {tr(locale, "Quotation", "견적서")}
               </label>
               <label>
-                <input defaultChecked={ebmOnly} name="ebm" type="checkbox" value="1" /> EBM
+                <input defaultChecked={ebmOnly} name="ebm" type="checkbox" value="1" />{" "}
+                {tr(locale, "EBM", "EBM")}
               </label>
             </div>
           </div>
           <button className="btn" type="submit">
-            Apply filters
+            {tr(locale, "Apply filters", "필터 적용")}
           </button>
         </form>
       </section>
@@ -275,15 +283,18 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   </div>
                   {provider.tagline && <p className="vendor-tagline">{provider.tagline}</p>}
                   <p className="muted tiny vendor-location">
-                    📍 {provider.city ?? "City not listed"}, {provider.country ?? "Country not listed"}
+                    📍 {provider.city ?? tr(locale, "City not listed", "도시 미등록")},{" "}
+                    {provider.country ?? tr(locale, "Country not listed", "국가 미등록")}
                   </p>
                 </div>
               </div>
               <div className="row tiny vendor-rating-row">
                 <span className="vendor-rating">
-                  {averageRating ? `★ ${averageRating.toFixed(1)}` : "No ratings yet"}
+                  {averageRating ? `★ ${averageRating.toFixed(1)}` : tr(locale, "No ratings yet", "아직 평점 없음")}
                 </span>
-                <span className="muted">({provider.reviews.length} reviews)</span>
+                <span className="muted">
+                  ({provider.reviews.length} {tr(locale, "reviews", "리뷰")})
+                </span>
               </div>
               <div className="hr" />
               <p className="tiny vendor-price-line">
@@ -292,13 +303,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                       decimalToNumber(representative.basePrice),
                       representative.currency
                     )} (${representative.unit.replace("per_", "per ")})`
-                  : "No public price card yet"}
+                  : tr(locale, "No public price card yet", "공개된 가격 카드가 없습니다.")}
               </p>
               <p className="tiny vendor-category-line">
-                Categories: {provider.categories.map((entry) => entry.category.name).join(", ")}
+                {tr(locale, "Categories", "카테고리")}:{" "}
+                {provider.categories.map((entry) => entry.category.name).join(", ")}
               </p>
               <Link className="btn" href={`/providers/${provider.id}`}>
-                View profile
+                {tr(locale, "View profile", "업체 상세 보기")}
               </Link>
             </article>
           );

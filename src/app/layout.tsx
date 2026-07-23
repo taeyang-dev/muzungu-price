@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getSession } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
+import { getLocaleFromCookies } from "@/lib/i18n-server";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,11 +14,13 @@ export default async function RootLayout({
   children
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await getSession();
+  const locale = await getLocaleFromCookies();
 
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body>
         <AppHeader
+          locale={locale}
           session={session ? { name: session.name, role: session.role } : null}
         />
         <main className="container section">{children}</main>

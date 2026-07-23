@@ -2,12 +2,17 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Locale, tr } from "@/lib/i18n";
 
 interface AuthResult {
   error?: { message: string };
 }
 
-export function AuthPanel() {
+interface AuthPanelProps {
+  locale: Locale;
+}
+
+export function AuthPanel({ locale }: AuthPanelProps) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,7 +34,7 @@ export function AuthPanel() {
 
     const data = (await response.json()) as AuthResult;
     if (!response.ok) {
-      setError(data.error?.message ?? "Authentication failed");
+      setError(data.error?.message ?? tr(locale, "Authentication failed", "인증에 실패했습니다."));
       setLoading(false);
       return;
     }
@@ -40,39 +45,45 @@ export function AuthPanel() {
 
   return (
     <section className="panel" style={{ maxWidth: "520px", margin: "0 auto" }}>
-      <h1 style={{ marginTop: 0 }}>{mode === "login" ? "Sign in" : "Create account"}</h1>
+      <h1 style={{ marginTop: 0 }}>
+        {mode === "login" ? tr(locale, "Sign in", "로그인") : tr(locale, "Create account", "계정 만들기")}
+      </h1>
       <p className="muted tiny">
-        Demo users after seeding: admin@muzunguprice.com / admin1234 and electric.pro@example.com /
-        provider1234
+        {tr(locale, "Demo users after seeding", "시드 데이터 데모 계정")}: admin@muzunguprice.com /
+        admin1234 · electric.pro@example.com / provider1234
       </p>
       {error && <div className="flash error">{error}</div>}
       <form className="grid" onSubmit={submit}>
         {mode === "register" && (
           <>
             <div>
-              <label className="tiny">Name</label>
+              <label className="tiny">{tr(locale, "Name", "이름")}</label>
               <input className="input" name="name" required />
             </div>
             <div>
-              <label className="tiny">Role</label>
+              <label className="tiny">{tr(locale, "Role", "역할")}</label>
               <select className="select" defaultValue="customer" name="role" required>
-                <option value="customer">Customer</option>
-                <option value="provider">Provider</option>
-                <option value="org_buyer">Institution Buyer</option>
+                <option value="customer">{tr(locale, "Customer", "고객")}</option>
+                <option value="provider">{tr(locale, "Provider", "업체/프리랜서")}</option>
+                <option value="org_buyer">{tr(locale, "Institution Buyer", "기관 구매자")}</option>
               </select>
             </div>
           </>
         )}
         <div>
-          <label className="tiny">Email</label>
+          <label className="tiny">{tr(locale, "Email", "이메일")}</label>
           <input className="input" name="email" type="email" required />
         </div>
         <div>
-          <label className="tiny">Password</label>
+          <label className="tiny">{tr(locale, "Password", "비밀번호")}</label>
           <input className="input" name="password" type="password" required />
         </div>
         <button className="btn" disabled={loading} type="submit">
-          {loading ? "Please wait..." : mode === "login" ? "Login" : "Register"}
+          {loading
+            ? tr(locale, "Please wait...", "처리 중...")
+            : mode === "login"
+              ? tr(locale, "Login", "로그인")
+              : tr(locale, "Register", "회원가입")}
         </button>
       </form>
       <div className="hr" />
@@ -81,7 +92,9 @@ export function AuthPanel() {
         onClick={() => setMode(mode === "login" ? "register" : "login")}
         type="button"
       >
-        {mode === "login" ? "Need an account?" : "Already have an account?"}
+        {mode === "login"
+          ? tr(locale, "Need an account?", "계정이 없나요?")
+          : tr(locale, "Already have an account?", "이미 계정이 있나요?")}
       </button>
     </section>
   );

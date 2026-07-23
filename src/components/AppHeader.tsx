@@ -3,18 +3,21 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LogoutButton } from "@/components/LogoutButton";
+import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import {
   getVendorStorageEventName,
   readFavoriteVendors,
   readRecentVendors,
   VendorReference
 } from "@/lib/vendor-storage";
+import { Locale, tr } from "@/lib/i18n";
 
 interface AppHeaderProps {
   session: {
     name: string;
     role: string;
   } | null;
+  locale: Locale;
 }
 
 function VendorList({
@@ -39,7 +42,7 @@ function VendorList({
   );
 }
 
-export function AppHeader({ session }: AppHeaderProps) {
+export function AppHeader({ session, locale }: AppHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [favorites, setFavorites] = useState<VendorReference[]>([]);
   const [recent, setRecent] = useState<VendorReference[]>([]);
@@ -94,10 +97,15 @@ export function AppHeader({ session }: AppHeaderProps) {
             <img alt="This not Muzungu Price logo" className="brand-mark" src="/brand-mark.svg" />
           </Link>
           <div className="topbar-actions">
+            <LocaleSwitcher locale={locale} />
             <Link className="btn browse-btn" href="/?verified=1">
-              Browse verified vendors
+              {tr(locale, "Browse verified vendors", "검증된 업체 보기")}
             </Link>
-            {session ? <LogoutButton /> : <Link href="/auth">Sign in</Link>}
+            {session ? (
+              <LogoutButton locale={locale} />
+            ) : (
+              <Link href="/auth">{tr(locale, "Sign in", "로그인")}</Link>
+            )}
           </div>
         </div>
       </header>
@@ -109,47 +117,49 @@ export function AppHeader({ session }: AppHeaderProps) {
       />
       <aside className={`drawer ${menuOpen ? "open" : ""}`}>
         <div className="drawer-header">
-          <h2>Quick Menu</h2>
+          <h2>{tr(locale, "Quick Menu", "빠른 메뉴")}</h2>
           <button aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} type="button">
             ✕
           </button>
         </div>
 
         <section className="drawer-section">
-          <h3>My page</h3>
+          <h3>{tr(locale, "My page", "마이페이지")}</h3>
           {session ? (
             <p className="drawer-meta">
               {session.name} · {session.role}
             </p>
           ) : (
-            <p className="drawer-meta">Sign in to save vendors and view history.</p>
+            <p className="drawer-meta">
+              {tr(locale, "Sign in to save vendors and view history.", "로그인하면 즐겨찾기와 최근 본 업체를 저장할 수 있어요.")}
+            </p>
           )}
           <nav className="drawer-nav">
             <Link href="/" onClick={() => setMenuOpen(false)}>
-              Home
+              {tr(locale, "Home", "홈")}
             </Link>
             <Link href="/requests" onClick={() => setMenuOpen(false)}>
-              Requests
+              {tr(locale, "Requests", "요청서")}
             </Link>
             <Link href="/?verified=1" onClick={() => setMenuOpen(false)}>
-              Browse verified vendors
+              {tr(locale, "Browse verified vendors", "검증된 업체 보기")}
             </Link>
             {!session && (
               <Link href="/auth" onClick={() => setMenuOpen(false)}>
-                Sign in / register
+                {tr(locale, "Sign in / register", "로그인 / 회원가입")}
               </Link>
             )}
           </nav>
         </section>
 
         <section className="drawer-section">
-          <h3>Favorite vendors</h3>
-          <VendorList items={favorites} emptyText="No favorites yet." />
+          <h3>{tr(locale, "Favorite vendors", "즐겨찾는 업체")}</h3>
+          <VendorList items={favorites} emptyText={tr(locale, "No favorites yet.", "즐겨찾기한 업체가 없습니다.")} />
         </section>
 
         <section className="drawer-section">
-          <h3>Recently viewed</h3>
-          <VendorList items={recent} emptyText="No recent views yet." />
+          <h3>{tr(locale, "Recently viewed", "최근 본 업체")}</h3>
+          <VendorList items={recent} emptyText={tr(locale, "No recent views yet.", "최근 본 업체가 없습니다.")} />
         </section>
       </aside>
     </>

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Locale, tr } from "@/lib/i18n";
 
 interface Category {
   id: string;
@@ -20,6 +21,7 @@ interface Service {
 
 interface ProviderDashboardProps {
   categories: Category[];
+  locale: Locale;
   profile:
     | {
         id: string;
@@ -55,6 +57,7 @@ interface ApiResult {
 }
 
 export function ProviderDashboard({
+  locale,
   categories,
   profile,
   services,
@@ -108,11 +111,11 @@ export function ProviderDashboard({
     setLoading(false);
 
     if (!response.ok) {
-      setError(data.error?.message ?? "Request failed");
+      setError(data.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
       return;
     }
 
-    setFeedback("Saved successfully");
+    setFeedback(tr(locale, "Saved successfully", "저장되었습니다."));
     router.refresh();
     event.currentTarget.reset();
   }
@@ -127,24 +130,32 @@ export function ProviderDashboard({
     const data = (await response.json()) as ApiResult;
     setLoading(false);
     if (!response.ok) {
-      setError(data.error?.message ?? "Failed to create verification case");
+      setError(data.error?.message ?? tr(locale, "Failed to create verification case", "검증 케이스 생성에 실패했습니다."));
       return;
     }
-    setFeedback("Verification case started.");
+    setFeedback(tr(locale, "Verification case started.", "검증 케이스가 시작되었습니다."));
     router.refresh();
   }
 
   return (
     <section className="grid">
-      <h1 style={{ marginBottom: 0 }}>Provider Hub</h1>
+      <h1 style={{ marginBottom: 0 }}>{tr(locale, "Provider Hub", "업체 허브")}</h1>
       <p className="muted">
-        Publish transparent price cards, enable Quotation/EBM, and submit verification evidence.
+        {tr(
+          locale,
+          "Publish transparent price cards, enable Quotation/EBM, and submit verification evidence.",
+          "투명한 가격카드를 공개하고, Quotation/EBM 설정 및 검증 자료를 제출하세요."
+        )}
       </p>
       {error && <div className="flash error">{error}</div>}
       {feedback && <div className="flash success">{feedback}</div>}
 
       <article className="panel">
-        <h2 style={{ marginTop: 0 }}>{profile ? "Update profile" : "Create provider profile"}</h2>
+        <h2 style={{ marginTop: 0 }}>
+          {profile
+            ? tr(locale, "Update profile", "프로필 수정")
+            : tr(locale, "Create provider profile", "업체 프로필 만들기")}
+        </h2>
         <form
           className="grid grid-3"
           onSubmit={(event) =>
@@ -152,7 +163,7 @@ export function ProviderDashboard({
           }
         >
           <div>
-            <label className="tiny">Business name</label>
+            <label className="tiny">{tr(locale, "Business name", "업체명")}</label>
             <input
               className="input"
               defaultValue={profile?.businessName ?? ""}
@@ -161,43 +172,47 @@ export function ProviderDashboard({
             />
           </div>
           <div>
-            <label className="tiny">Type</label>
+            <label className="tiny">{tr(locale, "Type", "유형")}</label>
             <select className="select" defaultValue={profile?.providerType ?? "freelancer"} name="providerType">
-              <option value="freelancer">Freelancer</option>
-              <option value="company">Company</option>
+              <option value="freelancer">{tr(locale, "Freelancer", "프리랜서")}</option>
+              <option value="company">{tr(locale, "Company", "업체")}</option>
             </select>
           </div>
           <div>
-            <label className="tiny">One-line intro</label>
+            <label className="tiny">{tr(locale, "One-line intro", "한줄 소개")}</label>
             <input
               className="input"
               defaultValue={profile?.tagline ?? ""}
               name="tagline"
-              placeholder="Reliable electrical support for offices and NGOs."
+              placeholder={tr(
+                locale,
+                "Reliable electrical support for offices and NGOs.",
+                "NGO와 사무실을 위한 믿을 수 있는 전기 서비스"
+              )}
             />
           </div>
           <div>
-            <label className="tiny">City</label>
+            <label className="tiny">{tr(locale, "City", "도시")}</label>
             <input className="input" defaultValue={profile?.city ?? ""} name="city" />
           </div>
           <div>
-            <label className="tiny">Country</label>
+            <label className="tiny">{tr(locale, "Country", "국가")}</label>
             <input className="input" defaultValue={profile?.country ?? ""} name="country" />
           </div>
           <div>
-            <label className="tiny">Contact email</label>
+            <label className="tiny">{tr(locale, "Contact email", "연락 이메일")}</label>
             <input className="input" defaultValue={profile?.contactEmail ?? ""} name="contactEmail" />
           </div>
           <div>
-            <label className="tiny">Contact phone</label>
+            <label className="tiny">{tr(locale, "Contact phone", "연락처")}</label>
             <input className="input" defaultValue={profile?.contactPhone ?? ""} name="contactPhone" />
           </div>
           <div>
-            <label className="tiny">Website</label>
+            <label className="tiny">{tr(locale, "Website", "웹사이트")}</label>
             <input className="input" defaultValue={profile?.websiteUrl ?? ""} name="websiteUrl" />
           </div>
           <div>
-            <label className="tiny">Years in business</label>
+            <label className="tiny">{tr(locale, "Years in business", "업력(년)")}</label>
             <input
               className="input"
               defaultValue={profile?.yearsInBusiness ?? ""}
@@ -207,15 +222,15 @@ export function ProviderDashboard({
             />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">Logo image URL</label>
+            <label className="tiny">{tr(locale, "Logo image URL", "로고 이미지 URL")}</label>
             <input className="input" defaultValue={profile?.logoUrl ?? ""} name="logoUrl" />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">Cover image URL</label>
+            <label className="tiny">{tr(locale, "Cover image URL", "커버 이미지 URL")}</label>
             <input className="input" defaultValue={profile?.coverImageUrl ?? ""} name="coverImageUrl" />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">Industry / categories</label>
+            <label className="tiny">{tr(locale, "Industry / categories", "업종 / 카테고리")}</label>
             <div className="category-checkbox-grid">
               <input name="categoryIds" type="hidden" value="" />
               {categories.map((category) => (
@@ -232,27 +247,28 @@ export function ProviderDashboard({
             </div>
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">Bio</label>
+            <label className="tiny">{tr(locale, "Bio", "상세 소개")}</label>
             <textarea className="textarea" defaultValue={profile?.bio ?? ""} name="bio" />
           </div>
           <button className="btn" disabled={loading} type="submit">
-            {loading ? "Saving..." : "Save profile"}
+            {loading ? tr(locale, "Saving...", "저장 중...") : tr(locale, "Save profile", "프로필 저장")}
           </button>
         </form>
       </article>
 
       <article className="panel">
-        <h2 style={{ marginTop: 0 }}>Quotation / EBM settings</h2>
+        <h2 style={{ marginTop: 0 }}>{tr(locale, "Quotation / EBM settings", "Quotation / EBM 설정")}</h2>
         <form className="grid grid-3" onSubmit={(event) => submitJson(event, "/api/provider/billing-capabilities", "PUT")}>
           <label className="tiny">
             <input defaultChecked={billing?.quotationAvailable ?? false} name="quotationAvailable" type="checkbox" />{" "}
-            Quotation available
+            {tr(locale, "Quotation available", "견적서 발행 가능")}
           </label>
           <label className="tiny">
-            <input defaultChecked={billing?.ebmAvailable ?? false} name="ebmAvailable" type="checkbox" /> EBM available
+            <input defaultChecked={billing?.ebmAvailable ?? false} name="ebmAvailable" type="checkbox" />{" "}
+            {tr(locale, "EBM available", "EBM 발행 가능")}
           </label>
           <div>
-            <label className="tiny">Quotation lead time (hours)</label>
+            <label className="tiny">{tr(locale, "Quotation lead time (hours)", "견적서 발행 리드타임(시간)")}</label>
             <input
               className="input"
               defaultValue={billing?.quotationLeadTimeHours ?? ""}
@@ -261,22 +277,22 @@ export function ProviderDashboard({
             />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">EBM notes</label>
+            <label className="tiny">{tr(locale, "EBM notes", "EBM 메모")}</label>
             <textarea className="textarea" defaultValue={billing?.ebmNotes ?? ""} name="ebmNotes" />
           </div>
           <button className="btn" disabled={loading} type="submit">
-            Save billing settings
+            {tr(locale, "Save billing settings", "발행 설정 저장")}
           </button>
         </form>
       </article>
 
       <article className="panel">
-        <h2 style={{ marginTop: 0 }}>Create service</h2>
+        <h2 style={{ marginTop: 0 }}>{tr(locale, "Create service", "서비스 등록")}</h2>
         <form className="grid grid-3" onSubmit={(event) => submitJson(event, "/api/provider/services", "POST")}>
           <div>
-            <label className="tiny">Category</label>
+            <label className="tiny">{tr(locale, "Category", "카테고리")}</label>
             <select className="select" name="categoryId" required>
-              <option value="">Choose category</option>
+              <option value="">{tr(locale, "Choose category", "카테고리 선택")}</option>
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -285,25 +301,25 @@ export function ProviderDashboard({
             </select>
           </div>
           <div>
-            <label className="tiny">Title</label>
+            <label className="tiny">{tr(locale, "Title", "서비스명")}</label>
             <input className="input" name="title" required />
           </div>
           <div>
-            <label className="tiny">Service image URL (optional)</label>
+            <label className="tiny">{tr(locale, "Service image URL (optional)", "서비스 이미지 URL (선택)")}</label>
             <input className="input" name="imageUrl" placeholder="https://..." />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">Description</label>
+            <label className="tiny">{tr(locale, "Description", "설명")}</label>
             <textarea className="textarea" name="description" />
           </div>
           <button className="btn" disabled={loading} type="submit">
-            Add service
+            {tr(locale, "Add service", "서비스 추가")}
           </button>
         </form>
       </article>
 
       <article className="panel">
-        <h2 style={{ marginTop: 0 }}>Add price card to a service</h2>
+        <h2 style={{ marginTop: 0 }}>{tr(locale, "Add price card to a service", "서비스 가격 카드 추가")}</h2>
         <form
           className="grid grid-3"
           onSubmit={(event) => {
@@ -311,7 +327,7 @@ export function ProviderDashboard({
             const formData = new FormData(event.currentTarget);
             const serviceId = formData.get("serviceId");
             if (!serviceId || typeof serviceId !== "string") {
-              setError("Select a service first.");
+              setError(tr(locale, "Select a service first.", "먼저 서비스를 선택해 주세요."));
               return;
             }
             void submitJson(
@@ -322,9 +338,9 @@ export function ProviderDashboard({
           }}
         >
           <div>
-            <label className="tiny">Service</label>
+            <label className="tiny">{tr(locale, "Service", "서비스")}</label>
             <select className="select" name="serviceId" required>
-              <option value="">Choose service</option>
+              <option value="">{tr(locale, "Choose service", "서비스 선택")}</option>
               {services.map((service) => (
                 <option key={service.id} value={service.id}>
                   {service.title}
@@ -333,53 +349,60 @@ export function ProviderDashboard({
             </select>
           </div>
           <div>
-            <label className="tiny">Tier</label>
+            <label className="tiny">{tr(locale, "Tier", "티어")}</label>
             <select className="select" defaultValue="standard" name="tier">
-              <option value="basic">Basic</option>
-              <option value="standard">Standard</option>
-              <option value="premium">Premium</option>
+              <option value="basic">{tr(locale, "Basic", "기본")}</option>
+              <option value="standard">{tr(locale, "Standard", "표준")}</option>
+              <option value="premium">{tr(locale, "Premium", "프리미엄")}</option>
             </select>
           </div>
           <div>
-            <label className="tiny">Currency</label>
+            <label className="tiny">{tr(locale, "Currency", "통화")}</label>
             <input className="input" defaultValue="RWF" maxLength={3} name="currency" required />
           </div>
           <div>
-            <label className="tiny">Base price</label>
+            <label className="tiny">{tr(locale, "Base price", "기본 가격")}</label>
             <input className="input" min={1} name="basePrice" required type="number" />
           </div>
           <div>
-            <label className="tiny">Unit</label>
+            <label className="tiny">{tr(locale, "Unit", "단위")}</label>
             <select className="select" defaultValue="per_project" name="unit">
-              <option value="per_hour">Per hour</option>
-              <option value="per_day">Per day</option>
-              <option value="per_project">Per project</option>
+              <option value="per_hour">{tr(locale, "Per hour", "시간당")}</option>
+              <option value="per_day">{tr(locale, "Per day", "일당")}</option>
+              <option value="per_project">{tr(locale, "Per project", "프로젝트당")}</option>
             </select>
           </div>
           <label className="tiny">
-            <input defaultChecked name="isPublic" type="checkbox" /> Publicly visible
+            <input defaultChecked name="isPublic" type="checkbox" />{" "}
+            {tr(locale, "Publicly visible", "공개 노출")}
           </label>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">Inclusions</label>
+            <label className="tiny">{tr(locale, "Inclusions", "포함 항목")}</label>
             <textarea className="textarea" name="inclusions" />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">Exclusions</label>
+            <label className="tiny">{tr(locale, "Exclusions", "미포함 항목")}</label>
             <textarea className="textarea" name="exclusions" />
           </div>
           <button className="btn" disabled={loading} type="submit">
-            Add price card
+            {tr(locale, "Add price card", "가격 카드 추가")}
           </button>
         </form>
       </article>
 
       <article className="panel">
-        <h2 style={{ marginTop: 0 }}>Verification workflow</h2>
+        <h2 style={{ marginTop: 0 }}>{tr(locale, "Verification workflow", "검증 워크플로우")}</h2>
         <p className="tiny muted">
-          Start a verification case, then upload your supporting documents.
+          {tr(
+            locale,
+            "Start a verification case, then upload your supporting documents.",
+            "검증 케이스를 시작하고 증빙 서류를 업로드하세요."
+          )}
         </p>
         <button className="btn" disabled={loading} onClick={() => void triggerVerification()} type="button">
-          {verificationCaseId ? "Create another case (if current closed)" : "Start verification case"}
+          {verificationCaseId
+            ? tr(locale, "Create another case (if current closed)", "새 검증 케이스 만들기(현재 케이스 종료 시)")
+            : tr(locale, "Start verification case", "검증 케이스 시작")}
         </button>
         {verificationCaseId && (
           <form
@@ -394,15 +417,15 @@ export function ProviderDashboard({
             }
           >
             <div>
-              <label className="tiny">Document type</label>
-              <input className="input" name="docType" placeholder="business_license" required />
+              <label className="tiny">{tr(locale, "Document type", "문서 유형")}</label>
+              <input className="input" name="docType" placeholder={tr(locale, "business_license", "사업자등록증")} required />
             </div>
             <div>
-              <label className="tiny">File URL</label>
+              <label className="tiny">{tr(locale, "File URL", "파일 URL")}</label>
               <input className="input" name="fileUrl" placeholder="https://..." required />
             </div>
             <button className="btn" disabled={loading} type="submit">
-              Add document metadata
+              {tr(locale, "Add document metadata", "문서 메타데이터 추가")}
             </button>
           </form>
         )}

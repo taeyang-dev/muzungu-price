@@ -1,10 +1,12 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Locale, tr } from "@/lib/i18n";
 
 interface VendorChatBoxProps {
   vendorId: string;
   vendorName: string;
+  locale: Locale;
 }
 
 interface ChatMessage {
@@ -44,17 +46,20 @@ function writeChat(vendorId: string, messages: ChatMessage[]): void {
   window.localStorage.setItem(getStorageKey(vendorId), JSON.stringify(messages.slice(-50)));
 }
 
-export function VendorChatBox({ vendorId, vendorName }: VendorChatBoxProps) {
+export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxProps) {
   const initialMessage = useMemo<ChatMessage[]>(
     () => [
       {
         id: "welcome-message",
         sender: "vendor",
-        text: `Hi, this is ${vendorName}. Share your request and we will respond quickly with pricing details.`,
+        text:
+          locale === "ko"
+            ? `안녕하세요, ${vendorName}입니다. 요청 내용을 남겨주시면 가격 정보를 포함해 빠르게 답변드릴게요.`
+            : `Hi, this is ${vendorName}. Share your request and we will respond quickly with pricing details.`,
         timestamp: new Date().toISOString()
       }
     ],
-    [vendorName]
+    [vendorName, locale]
   );
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -89,7 +94,10 @@ export function VendorChatBox({ vendorId, vendorName }: VendorChatBoxProps) {
       {
         id: `vendor-${now}`,
         sender: "vendor",
-        text: "Thanks for your message. We will confirm scope, timeline, and final RWF quotation shortly.",
+        text:
+          locale === "ko"
+            ? "문의 감사합니다. 범위와 일정, 최종 RWF 견적을 곧 안내드리겠습니다."
+            : "Thanks for your message. We will confirm scope, timeline, and final RWF quotation shortly.",
         timestamp: new Date(Date.now() + 30000).toISOString()
       }
     ];
@@ -100,7 +108,7 @@ export function VendorChatBox({ vendorId, vendorName }: VendorChatBoxProps) {
 
   return (
     <article className="panel">
-      <h2 style={{ marginTop: 0 }}>Chat with vendor</h2>
+      <h2 style={{ marginTop: 0 }}>{tr(locale, "Chat with vendor", "업체와 채팅")}</h2>
       <div className="chat-box">
         {messages.map((message) => (
           <div className={`chat-message ${message.sender}`} key={message.id}>
@@ -113,11 +121,11 @@ export function VendorChatBox({ vendorId, vendorName }: VendorChatBoxProps) {
         <input
           className="input"
           onChange={(event) => setInput(event.target.value)}
-          placeholder="Write a message..."
+          placeholder={tr(locale, "Write a message...", "메시지를 입력하세요...")}
           value={input}
         />
         <button className="btn" type="submit">
-          Send
+          {tr(locale, "Send", "보내기")}
         </button>
       </form>
     </article>

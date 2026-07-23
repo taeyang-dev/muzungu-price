@@ -4,16 +4,19 @@ import { decimalToNumber } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RequestsPanel } from "@/components/RequestsPanel";
+import { getLocaleFromCookies } from "@/lib/i18n-server";
+import { tr } from "@/lib/i18n";
 
 export default async function RequestsPage() {
   const session = await getSession();
+  const locale = await getLocaleFromCookies();
   if (!session) {
     return (
       <section className="panel">
-        <h1>Requests</h1>
-        <p>Please sign in to create requests or submit offers.</p>
+        <h1>{tr(locale, "Requests", "요청서")}</h1>
+        <p>{tr(locale, "Please sign in to create requests or submit offers.", "요청서를 만들거나 오퍼를 제출하려면 로그인해 주세요.")}</p>
         <Link className="btn" href="/auth">
-          Go to Sign in
+          {tr(locale, "Go to Sign in", "로그인하러 가기")}
         </Link>
       </section>
     );
@@ -47,6 +50,7 @@ export default async function RequestsPage() {
   return (
     <RequestsPanel
       categories={categories}
+      locale={locale}
       requests={requests.map((item) => ({
         id: item.id,
         title: item.title,

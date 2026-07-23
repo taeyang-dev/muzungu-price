@@ -83,6 +83,31 @@ a {
   align-items: center;
 }
 
+.locale-switcher {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+  background: #191d26;
+}
+
+.locale-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: transparent;
+  color: #f8fafc;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.locale-btn.active {
+  background: #facc15;
+  color: #18181b;
+  font-weight: 700;
+}
+
 .topbar-actions a {
   font-size: 0.9rem;
   color: #f8fafc;
@@ -683,5 +708,10 @@ a {
 
   .topbar-actions a:not(.btn) {
     display: none;
+  }
+
+  .locale-btn {
+    padding: 6px 8px;
+    font-size: 0.7rem;
   }
 }

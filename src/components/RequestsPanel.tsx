@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Locale, tr } from "@/lib/i18n";
 
 interface Category {
   id: string;
@@ -45,13 +46,14 @@ interface RequestsPanelProps {
   role: "customer" | "provider" | "org_buyer" | "admin";
   categories: Category[];
   requests: RequestItem[];
+  locale: Locale;
 }
 
 interface ApiResult {
   error?: { message: string };
 }
 
-export function RequestsPanel({ role, categories, requests }: RequestsPanelProps) {
+export function RequestsPanel({ role, categories, requests, locale }: RequestsPanelProps) {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -90,10 +92,10 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
     const data = (await response.json()) as ApiResult;
     setLoading(false);
     if (!response.ok) {
-      setError(data.error?.message ?? "Request failed");
+      setError(data.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
       return;
     }
-    setFeedback("Saved successfully.");
+    setFeedback(tr(locale, "Saved successfully.", "저장되었습니다."));
     router.refresh();
     event.currentTarget.reset();
   }
@@ -105,10 +107,10 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
     const data = (await response.json()) as ApiResult;
     setLoading(false);
     if (!response.ok) {
-      setError(data.error?.message ?? "Failed to accept offer");
+      setError(data.error?.message ?? tr(locale, "Failed to accept offer", "오퍼 수락에 실패했습니다."));
       return;
     }
-    setFeedback("Offer accepted and booking created.");
+    setFeedback(tr(locale, "Offer accepted and booking created.", "오퍼가 수락되어 예약이 생성되었습니다."));
     router.refresh();
   }
 
@@ -123,10 +125,10 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
     const data = (await response.json()) as ApiResult;
     setLoading(false);
     if (!response.ok) {
-      setError(data.error?.message ?? "Failed to update booking");
+      setError(data.error?.message ?? tr(locale, "Failed to update booking", "예약 상태 업데이트에 실패했습니다."));
       return;
     }
-    setFeedback("Booking status updated.");
+    setFeedback(tr(locale, "Booking status updated.", "예약 상태가 업데이트되었습니다."));
     router.refresh();
   }
 
@@ -145,31 +147,35 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
     const data = (await response.json()) as ApiResult;
     setLoading(false);
     if (!response.ok) {
-      setError(data.error?.message ?? "Failed to submit review");
+      setError(data.error?.message ?? tr(locale, "Failed to submit review", "리뷰 제출에 실패했습니다."));
       return;
     }
-    setFeedback("Review submitted.");
+    setFeedback(tr(locale, "Review submitted.", "리뷰가 제출되었습니다."));
     router.refresh();
     event.currentTarget.reset();
   }
 
   return (
     <section className="grid">
-      <h1 style={{ marginBottom: 0 }}>Requests & Matching</h1>
+      <h1 style={{ marginBottom: 0 }}>{tr(locale, "Requests & Matching", "요청서 & 매칭")}</h1>
       <p className="muted">
-        Create procurement requests, gather fixed-price offers, and close bookings with review-based trust.
+        {tr(
+          locale,
+          "Create procurement requests, gather fixed-price offers, and close bookings with review-based trust.",
+          "요청서를 만들고 정가 오퍼를 비교한 뒤, 리뷰 기반으로 거래를 확정하세요."
+        )}
       </p>
       {error && <div className="flash error">{error}</div>}
       {feedback && <div className="flash success">{feedback}</div>}
 
       {(role === "customer" || role === "org_buyer") && (
         <article className="panel">
-          <h2 style={{ marginTop: 0 }}>Create a request</h2>
+          <h2 style={{ marginTop: 0 }}>{tr(locale, "Create a request", "요청서 작성")}</h2>
           <form className="grid grid-3" onSubmit={(event) => submitJson(event, "/api/requests", "POST")}>
             <div>
-              <label className="tiny">Category</label>
+              <label className="tiny">{tr(locale, "Category", "카테고리")}</label>
               <select className="select" name="categoryId" required>
-                <option value="">Select category</option>
+                <option value="">{tr(locale, "Select category", "카테고리 선택")}</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
@@ -178,61 +184,66 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
               </select>
             </div>
             <div>
-              <label className="tiny">Title</label>
+              <label className="tiny">{tr(locale, "Title", "제목")}</label>
               <input className="input" name="title" required />
             </div>
             <div>
-              <label className="tiny">Location</label>
-              <input className="input" name="locationText" placeholder="Kampala" />
+              <label className="tiny">{tr(locale, "Location", "위치")}</label>
+              <input className="input" name="locationText" placeholder={tr(locale, "Kampala", "키갈리")} />
             </div>
             <div>
-              <label className="tiny">Budget min</label>
+              <label className="tiny">{tr(locale, "Budget min", "최소 예산")}</label>
               <input className="input" name="budgetMin" type="number" />
             </div>
             <div>
-              <label className="tiny">Budget max</label>
+              <label className="tiny">{tr(locale, "Budget max", "최대 예산")}</label>
               <input className="input" name="budgetMax" type="number" />
             </div>
             <div>
-              <label className="tiny">Currency</label>
-              <input className="input" defaultValue="USD" maxLength={3} name="currency" />
+              <label className="tiny">{tr(locale, "Currency", "통화")}</label>
+              <input className="input" defaultValue="RWF" maxLength={3} name="currency" />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
-              <label className="tiny">Requirements</label>
+              <label className="tiny">{tr(locale, "Requirements", "요청 사항")}</label>
               <textarea className="textarea" name="requirementText" required />
             </div>
             <label className="tiny">
-              <input name="needsQuotation" type="checkbox" /> Quotation required
+              <input name="needsQuotation" type="checkbox" /> {tr(locale, "Quotation required", "견적서 필요")}
             </label>
             <label className="tiny">
-              <input name="needsEbm" type="checkbox" /> EBM required
+              <input name="needsEbm" type="checkbox" /> {tr(locale, "EBM required", "EBM 필요")}
             </label>
             <button className="btn" disabled={loading} type="submit">
-              Create request
+              {tr(locale, "Create request", "요청서 만들기")}
             </button>
           </form>
         </article>
       )}
 
       <article className="panel">
-        <h2 style={{ marginTop: 0 }}>{role === "provider" ? "Open requests" : "My requests"}</h2>
-        {requests.length === 0 && <p className="muted">No requests yet.</p>}
+        <h2 style={{ marginTop: 0 }}>
+          {role === "provider"
+            ? tr(locale, "Open requests", "열린 요청서")
+            : tr(locale, "My requests", "내 요청서")}
+        </h2>
+        {requests.length === 0 && <p className="muted">{tr(locale, "No requests yet.", "요청서가 없습니다.")}</p>}
         <div className="grid">
           {requests.map((item) => (
             <div className="card" key={item.id}>
               <h3 style={{ marginTop: 0 }}>{item.title}</h3>
               <p className="tiny muted" style={{ marginTop: 0 }}>
-                {item.category.name} · {item.locationText ?? "No location"} · Status: {item.status}
+                {item.category.name} · {item.locationText ?? tr(locale, "No location", "위치 없음")} ·{" "}
+                {tr(locale, "Status", "상태")}: {item.status}
               </p>
               <p>{item.requirementText}</p>
               <p className="tiny">
-                Budget:{" "}
+                {tr(locale, "Budget", "예산")}:{" "}
                 {item.budgetMin && item.budgetMax
-                  ? `${item.currency ?? "USD"} ${item.budgetMin} - ${item.budgetMax}`
-                  : "Not specified"}
+                  ? `${item.currency ?? "RWF"} ${item.budgetMin} - ${item.budgetMax}`
+                  : tr(locale, "Not specified", "미기재")}
               </p>
-              {item.needsQuotation && <span className="badge">Quotation required</span>}
-              {item.needsEbm && <span className="badge">EBM required</span>}
+              {item.needsQuotation && <span className="badge">{tr(locale, "Quotation required", "견적서 필요")}</span>}
+              {item.needsEbm && <span className="badge">{tr(locale, "EBM required", "EBM 필요")}</span>}
 
               {role === "provider" && (
                 <form
@@ -241,18 +252,20 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
                   onSubmit={(event) => submitJson(event, `/api/requests/${item.id}/offers`, "POST")}
                 >
                   <div className="row">
-                    <input className="input" name="quotedPrice" placeholder="Quoted price" required type="number" />
-                    <input className="input" defaultValue="USD" maxLength={3} name="currency" />
+                    <input className="input" name="quotedPrice" placeholder={tr(locale, "Quoted price", "제안 가격")} required type="number" />
+                    <input className="input" defaultValue="RWF" maxLength={3} name="currency" />
                   </div>
-                  <textarea className="textarea" name="scopeText" placeholder="Scope and assumptions" />
+                  <textarea className="textarea" name="scopeText" placeholder={tr(locale, "Scope and assumptions", "작업 범위 및 가정")} />
                   <label className="tiny">
-                    <input defaultChecked name="canIssueQuotation" type="checkbox" /> Can issue quotation
+                    <input defaultChecked name="canIssueQuotation" type="checkbox" />{" "}
+                    {tr(locale, "Can issue quotation", "견적서 발행 가능")}
                   </label>
                   <label className="tiny">
-                    <input defaultChecked name="canIssueEbm" type="checkbox" /> Can issue EBM
+                    <input defaultChecked name="canIssueEbm" type="checkbox" />{" "}
+                    {tr(locale, "Can issue EBM", "EBM 발행 가능")}
                   </label>
                   <button className="btn" disabled={loading} type="submit">
-                    Submit offer
+                    {tr(locale, "Submit offer", "오퍼 제출")}
                   </button>
                 </form>
               )}
@@ -260,7 +273,9 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
               {role !== "provider" && (
                 <>
                   <div className="hr" />
-                  <h4>Offers ({item.offers.length})</h4>
+                  <h4>
+                    {tr(locale, "Offers", "오퍼")} ({item.offers.length})
+                  </h4>
                   {item.offers.map((offer) => (
                     <div className="card" key={offer.id} style={{ marginBottom: "8px" }}>
                       <div className="row tiny">
@@ -268,11 +283,18 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
                         <span>
                           {offer.currency} {offer.quotedPrice}
                         </span>
-                        <span>Status: {offer.status}</span>
+                        <span>
+                          {tr(locale, "Status", "상태")}: {offer.status}
+                        </span>
                       </div>
                       <div className="tiny">
-                        {offer.canIssueQuotation ? "Quotation yes" : "Quotation no"} ·{" "}
-                        {offer.canIssueEbm ? "EBM yes" : "EBM no"}
+                        {offer.canIssueQuotation
+                          ? tr(locale, "Quotation yes", "견적서 가능")
+                          : tr(locale, "Quotation no", "견적서 불가")}{" "}
+                        ·{" "}
+                        {offer.canIssueEbm
+                          ? tr(locale, "EBM yes", "EBM 가능")
+                          : tr(locale, "EBM no", "EBM 불가")}
                       </div>
                       {offer.status === "sent" && !item.booking && (
                         <button
@@ -281,7 +303,7 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
                           onClick={() => void acceptOffer(offer.id)}
                           type="button"
                         >
-                          Accept offer
+                          {tr(locale, "Accept offer", "오퍼 수락")}
                         </button>
                       )}
                     </div>
@@ -291,9 +313,10 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
 
               {item.booking && (
                 <div style={{ marginTop: "12px" }}>
-                  <h4>Booking</h4>
+                  <h4>{tr(locale, "Booking", "예약")}</h4>
                   <p className="tiny">
-                    {item.booking.currency} {item.booking.finalPrice} · Status: {item.booking.status}
+                    {item.booking.currency} {item.booking.finalPrice} · {tr(locale, "Status", "상태")}:{" "}
+                    {item.booking.status}
                   </p>
                   <div className="row">
                     <button
@@ -302,7 +325,7 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
                       onClick={() => void updateBookingStatus(item.booking!.id, "in_progress")}
                       type="button"
                     >
-                      In Progress
+                      {tr(locale, "In Progress", "진행 중")}
                     </button>
                     <button
                       className="btn secondary"
@@ -310,7 +333,7 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
                       onClick={() => void updateBookingStatus(item.booking!.id, "completed")}
                       type="button"
                     >
-                      Mark completed
+                      {tr(locale, "Mark completed", "완료로 표시")}
                     </button>
                   </div>
                   {(role === "customer" || role === "org_buyer") && item.booking.status === "completed" && (
@@ -325,7 +348,7 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
                           max={5}
                           min={1}
                           name="ratingOverall"
-                          placeholder="Overall (1-5)"
+                          placeholder={tr(locale, "Overall (1-5)", "종합 평점 (1-5)")}
                           required
                           type="number"
                         />
@@ -334,7 +357,7 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
                           max={5}
                           min={1}
                           name="ratingPriceTransparency"
-                          placeholder="Price"
+                          placeholder={tr(locale, "Price", "가격")}
                           type="number"
                         />
                         <input
@@ -342,7 +365,7 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
                           max={5}
                           min={1}
                           name="ratingTimeliness"
-                          placeholder="Time"
+                          placeholder={tr(locale, "Time", "시간")}
                           type="number"
                         />
                         <input
@@ -350,13 +373,13 @@ export function RequestsPanel({ role, categories, requests }: RequestsPanelProps
                           max={5}
                           min={1}
                           name="ratingQuality"
-                          placeholder="Quality"
+                          placeholder={tr(locale, "Quality", "품질")}
                           type="number"
                         />
                       </div>
-                      <textarea className="textarea" name="comment" placeholder="Feedback" />
+                      <textarea className="textarea" name="comment" placeholder={tr(locale, "Feedback", "후기 작성")} />
                       <button className="btn" disabled={loading} type="submit">
-                        Submit review
+                        {tr(locale, "Submit review", "리뷰 제출")}
                       </button>
                     </form>
                   )}
