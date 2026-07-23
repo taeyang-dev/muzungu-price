@@ -46,7 +46,10 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
       : Promise.resolve([])
   );
 
-  const selectedVendorId = vendorId ?? vendorDirectory[0]?.id ?? null;
+  const selectedVendorId =
+    (vendorId && vendorDirectory.some((vendor) => vendor.id === vendorId) ? vendorId : null) ??
+    vendorDirectory[0]?.id ??
+    null;
   const vendorContext = selectedVendorId
     ? await prisma.providerProfile.findUnique({
         where: { id: selectedVendorId },
@@ -138,8 +141,6 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
           : null
       }))}
       role={session.role}
-      selectedVendorId={selectedVendorId}
-      vendorOptions={vendorDirectory}
       vendorContext={
         vendorContext
           ? {

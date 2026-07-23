@@ -13,7 +13,7 @@ const schema = z.object({
   organizationName: z.string().optional(),
   organizationTinNumber: z.string().optional(),
   purchaseCode: z.string().optional(),
-  paymentTerm: z.enum(["prepaid", "postpaid", "deposit", "other"]).optional(),
+  paymentTerm: z.enum(["prepaid", "postpaid", "deposit"]).optional(),
   paymentMethod: z.enum(["bank_transfer", "momo", "cash", "card", "other"]).optional(),
   paymentNote: z.string().optional(),
   documentFileName: z.string().optional(),
