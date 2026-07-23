@@ -15,7 +15,9 @@ const schema = z.object({
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const payload = schema.parse(await request.json());
-    const existing = await prisma.user.findUnique({ where: { email: payload.email } });
+    const normalizedEmail = payload.email.trim().toLowerCase();
+    const normalizedName = payload.name.trim();
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
     if (existing) {
       return fail("Email already exists", 409, "AUTH_003");
@@ -24,8 +26,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const passwordHash = await bcrypt.hash(payload.password, 10);
     const user = await prisma.user.create({
       data: {
-        name: payload.name,
-        email: payload.email,
+        name: normalizedName,
+        email: normalizedEmail,
         role: payload.role,
         passwordHash
       }
@@ -44,7 +46,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       email: user.email,
       role: user.role
     });
-    setSessionCookie(response, token);
+    setSessionCookie(response, token, request);
     return response;
   } catch (error) {
     if (error instanceof z.ZodError) {

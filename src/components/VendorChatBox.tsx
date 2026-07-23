@@ -55,6 +55,10 @@ function getStorageKey(vendorId: string): string {
   return `muzungu_chat_${vendorId}`;
 }
 
+function getChatOpenStorageKey(vendorId: string): string {
+  return `muzungu_chat_open_${vendorId}`;
+}
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) {
     return `${bytes} B`;
@@ -171,9 +175,15 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
       const stored = readChat(vendorId);
       setMessages(stored.length > 0 ? stored : initialMessage);
       setLoadedVendorId(vendorId);
+      const storedOpen = window.localStorage.getItem(getChatOpenStorageKey(vendorId));
+      setIsOpen(storedOpen !== "0");
     }, 0);
     return () => window.clearTimeout(timerId);
   }, [vendorId, initialMessage]);
+
+  useEffect(() => {
+    window.localStorage.setItem(getChatOpenStorageKey(vendorId), isOpen ? "1" : "0");
+  }, [vendorId, isOpen]);
 
   useEffect(() => {
     if (loadedVendorId !== vendorId) {
@@ -442,9 +452,16 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
               <strong>{vendorName}</strong>
               <p>{tr(locale, "Messenger-style quick chat", "메신저형 빠른 채팅")}</p>
             </div>
-            <button aria-label="Minimize chat" onClick={() => setIsOpen(false)} type="button">
-              −
-            </button>
+            <div className="chat-widget-header-actions">
+              <button
+                aria-label={tr(locale, "Close chat", "채팅 닫기")}
+                className="chat-widget-close-btn"
+                onClick={() => setIsOpen(false)}
+                type="button"
+              >
+                {tr(locale, "Close", "닫기")}
+              </button>
+            </div>
           </div>
           <div className="chat-widget-body">
             <p className="tiny muted chat-helper">

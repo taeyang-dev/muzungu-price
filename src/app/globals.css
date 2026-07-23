@@ -755,6 +755,17 @@ a {
   cursor: pointer;
 }
 
+.chat-widget-header-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.chat-widget-close-btn {
+  min-width: 48px;
+  padding: 0 10px;
+  font-size: 0.74rem;
+}
+
 .chat-widget-body {
   padding: 10px;
 }

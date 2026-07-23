@@ -13,7 +13,19 @@ const schema = z.object({
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const payload = schema.parse(await request.json());
-    const user = await prisma.user.findUnique({ where: { email: payload.email } });
+    const normalizedEmail = payload.email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+    if (!user) {
+      const userCount = await prisma.user.count();
+      if (userCount === 0) {
+        return fail(
+          "No account data found. Run `npm run db:seed` first, or create a new account.",
+          400,
+          "AUTH_002"
+        );
+      }
+    }
 
     if (!user) {
       return fail("Invalid email or password", 401, "AUTH_001");
@@ -37,7 +49,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       name: user.name,
       email: user.email
     });
-    setSessionCookie(response, token);
+    setSessionCookie(response, token, request);
     return response;
   } catch (error) {
     if (error instanceof z.ZodError) {

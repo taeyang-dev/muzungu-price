@@ -16,6 +16,24 @@ const secretKey = new TextEncoder().encode(
   process.env.AUTH_SECRET ?? "muzungu-dev-secret-unsafe"
 );
 
+function shouldUseSecureCookie(request?: NextRequest): boolean {
+  if (!request) {
+    return process.env.NODE_ENV === "production";
+  }
+
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  if (forwardedProto) {
+    return forwardedProto.includes("https");
+  }
+
+  const protocol = request.nextUrl.protocol.replace(":", "");
+  if (protocol) {
+    return protocol === "https";
+  }
+
+  return process.env.NODE_ENV === "production";
+}
+
 export async function signSession(session: SessionPayload): Promise<string> {
   return new SignJWT(session)
     .setProtectedHeader({ alg: "HS256" })
@@ -53,24 +71,24 @@ export async function getSessionFromRequest(
   return verifySession(token);
 }
 
-export function setSessionCookie(response: NextResponse, token: string): void {
+export function setSessionCookie(response: NextResponse, token: string, request?: NextRequest): void {
   response.cookies.set({
     name: SESSION_COOKIE,
     value: token,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookie(request),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7
   });
 }
 
-export function clearSessionCookie(response: NextResponse): void {
+export function clearSessionCookie(response: NextResponse, request?: NextRequest): void {
   response.cookies.set({
     name: SESSION_COOKIE,
     value: "",
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookie(request),
     sameSite: "lax",
     path: "/",
     maxAge: 0

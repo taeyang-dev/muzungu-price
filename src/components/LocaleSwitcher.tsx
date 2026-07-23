@@ -11,12 +11,22 @@ export function LocaleSwitcher({ locale }: LocaleSwitcherProps) {
   const router = useRouter();
 
   async function updateLocale(nextLocale: Locale): Promise<void> {
-    await fetch("/api/locale", {
+    const response = await fetch("/api/locale", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      cache: "no-store",
       body: JSON.stringify({ locale: nextLocale })
     });
+
+    // Fallback for browsers that may delay applying Set-Cookie from fetch responses.
+    document.cookie = `mp_lang=${nextLocale}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+
+    if (!response.ok) {
+      return;
+    }
     router.refresh();
+    window.location.reload();
   }
 
   return (
