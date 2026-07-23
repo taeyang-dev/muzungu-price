@@ -133,6 +133,7 @@ model ProviderProfile {
   categories            ProviderCategory[]
   verificationCases     VerificationCase[]
   services              Service[]
+  requestsReceived      ServiceRequest[]
   billingCapability     ProviderBillingCapability?
   offers                RequestOffer[]
   bookings              Booking[]
@@ -196,6 +197,7 @@ model Service {
   providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
   category          ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   priceCards        ServicePriceCard[]
+  requests          ServiceRequest[]
 }
 
 model ServicePriceCard {
@@ -219,6 +221,15 @@ model ProviderBillingCapability {
   ebmAvailable           Boolean         @default(false)
   quotationLeadTimeHours Int?
   ebmNotes               String?
+  vendorTinNumber        String?
+  paymentTermsCsv        String?
+  paymentMethodsCsv      String?
+  momoAccountName        String?
+  momoNumber             String?
+  bankName               String?
+  bankAccountName        String?
+  bankAccountNumber      String?
+  bankSwiftCode          String?
   updatedAt              DateTime        @updatedAt
   providerProfile        ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
 }
@@ -228,6 +239,18 @@ model ServiceRequest {
   requesterUserId String
   organizationId  String?
   categoryId      String
+  requestType     String          @default("general")
+  providerProfileId String?
+  serviceId       String?
+  organizationName String?
+  organizationTinNumber String?
+  purchaseCode    String?
+  paymentTerm     String?
+  paymentMethod   String?
+  paymentNote     String?
+  paymentDueAt    DateTime?
+  documentFileName String?
+  requestedAmount Decimal?
   title           String
   requirementText String
   locationText    String?
@@ -241,6 +264,8 @@ model ServiceRequest {
   requester       User            @relation("Requester", fields: [requesterUserId], references: [id], onDelete: Cascade)
   organization    Organization?   @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   category        ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  providerProfile ProviderProfile? @relation(fields: [providerProfileId], references: [id], onDelete: SetNull)
+  service         Service?        @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   offers          RequestOffer[]
   booking         Booking?
 }

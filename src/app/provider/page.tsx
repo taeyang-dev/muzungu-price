@@ -53,7 +53,35 @@ export default async function ProviderPage() {
 
   return (
     <ProviderDashboard
-      billing={profile?.billingCapability ?? null}
+      billing={
+        profile?.billingCapability
+          ? {
+              quotationAvailable: profile.billingCapability.quotationAvailable,
+              ebmAvailable: profile.billingCapability.ebmAvailable,
+              quotationLeadTimeHours: profile.billingCapability.quotationLeadTimeHours,
+              ebmNotes: profile.billingCapability.ebmNotes,
+              vendorTinNumber: profile.billingCapability.vendorTinNumber,
+              paymentTerms: profile.billingCapability.paymentTermsCsv
+                ? profile.billingCapability.paymentTermsCsv
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                : [],
+              paymentMethods: profile.billingCapability.paymentMethodsCsv
+                ? profile.billingCapability.paymentMethodsCsv
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                : [],
+              momoAccountName: profile.billingCapability.momoAccountName,
+              momoNumber: profile.billingCapability.momoNumber,
+              bankName: profile.billingCapability.bankName,
+              bankAccountName: profile.billingCapability.bankAccountName,
+              bankAccountNumber: profile.billingCapability.bankAccountNumber,
+              bankSwiftCode: profile.billingCapability.bankSwiftCode
+            }
+          : null
+      }
       categories={categories}
       locale={locale}
       profile={

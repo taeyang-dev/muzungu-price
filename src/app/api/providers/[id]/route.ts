@@ -52,7 +52,16 @@ export async function GET(_request: NextRequest, { params }: RouteParams): Promi
           quotation_available: provider.billingCapability.quotationAvailable,
           ebm_available: provider.billingCapability.ebmAvailable,
           quotation_lead_time_hours: provider.billingCapability.quotationLeadTimeHours,
-          ebm_notes: provider.billingCapability.ebmNotes
+          ebm_notes: provider.billingCapability.ebmNotes,
+          vendor_tin_number: provider.billingCapability.vendorTinNumber,
+          payment_terms_csv: provider.billingCapability.paymentTermsCsv,
+          payment_methods_csv: provider.billingCapability.paymentMethodsCsv,
+          momo_account_name: provider.billingCapability.momoAccountName,
+          momo_number: provider.billingCapability.momoNumber,
+          bank_name: provider.billingCapability.bankName,
+          bank_account_name: provider.billingCapability.bankAccountName,
+          bank_account_number: provider.billingCapability.bankAccountNumber,
+          bank_swift_code: provider.billingCapability.bankSwiftCode
         }
       : null,
     services: provider.services.map((service) => ({

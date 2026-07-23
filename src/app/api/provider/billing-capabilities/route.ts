@@ -8,7 +8,16 @@ const schema = z.object({
   quotationAvailable: z.boolean(),
   ebmAvailable: z.boolean(),
   quotationLeadTimeHours: z.coerce.number().int().positive().optional(),
-  ebmNotes: z.string().optional()
+  ebmNotes: z.string().optional(),
+  vendorTinNumber: z.string().optional(),
+  paymentTerms: z.array(z.string()).optional(),
+  paymentMethods: z.array(z.string()).optional(),
+  momoAccountName: z.string().optional(),
+  momoNumber: z.string().optional(),
+  bankName: z.string().optional(),
+  bankAccountName: z.string().optional(),
+  bankAccountNumber: z.string().optional(),
+  bankSwiftCode: z.string().optional()
 });
 
 export async function PUT(request: NextRequest): Promise<NextResponse> {
@@ -19,6 +28,25 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 
   try {
     const payload = schema.parse(await request.json());
+    const updateData = {
+      quotationAvailable: payload.quotationAvailable,
+      ebmAvailable: payload.ebmAvailable,
+      quotationLeadTimeHours: payload.quotationLeadTimeHours ?? null,
+      ebmNotes: payload.ebmNotes || null,
+      vendorTinNumber: payload.vendorTinNumber || null,
+      paymentTermsCsv:
+        payload.paymentTerms && payload.paymentTerms.length > 0 ? payload.paymentTerms.join(",") : null,
+      paymentMethodsCsv:
+        payload.paymentMethods && payload.paymentMethods.length > 0
+          ? payload.paymentMethods.join(",")
+          : null,
+      momoAccountName: payload.momoAccountName || null,
+      momoNumber: payload.momoNumber || null,
+      bankName: payload.bankName || null,
+      bankAccountName: payload.bankAccountName || null,
+      bankAccountNumber: payload.bankAccountNumber || null,
+      bankSwiftCode: payload.bankSwiftCode || null
+    };
     const profile = await prisma.providerProfile.findUnique({
       where: { userId: auth.session.userId }
     });
@@ -28,10 +56,10 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 
     const updated = await prisma.providerBillingCapability.upsert({
       where: { providerProfileId: profile.id },
-      update: payload,
+      update: updateData,
       create: {
         providerProfileId: profile.id,
-        ...payload
+        ...updateData
       }
     });
     return ok(updated);

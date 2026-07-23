@@ -6,7 +6,18 @@ import { requireRole, requireSession } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
-  categoryId: z.string(),
+  categoryId: z.string().optional(),
+  requestType: z.enum(["general", "quotation", "purchase", "ebm"]).default("general"),
+  providerProfileId: z.string().optional(),
+  serviceId: z.string().optional(),
+  organizationName: z.string().optional(),
+  organizationTinNumber: z.string().optional(),
+  purchaseCode: z.string().optional(),
+  paymentTerm: z.enum(["prepaid", "postpaid", "deposit", "other"]).optional(),
+  paymentMethod: z.enum(["bank_transfer", "momo", "cash", "card", "other"]).optional(),
+  paymentNote: z.string().optional(),
+  documentFileName: z.string().optional(),
+  requestedAmount: z.coerce.number().positive().optional(),
   title: z.string().min(3),
   requirementText: z.string().min(10),
   locationText: z.string().optional(),
@@ -26,6 +37,44 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     const payload = schema.parse(await request.json());
+    const selectedService = payload.serviceId
+      ? await prisma.service.findUnique({
+          where: { id: payload.serviceId },
+          select: { id: true, categoryId: true, providerProfileId: true }
+        })
+      : null;
+
+    const categoryId = payload.categoryId ?? selectedService?.categoryId;
+    if (!categoryId) {
+      return fail("categoryId is required (or provide a valid serviceId)", 400, "VAL_001");
+    }
+
+    const providerProfileId = payload.providerProfileId ?? selectedService?.providerProfileId ?? null;
+
+    if (payload.requestType === "quotation") {
+      if (!payload.serviceId || !selectedService) {
+        return fail("Select a valid service for quotation request", 400, "VAL_001");
+      }
+      if (!payload.organizationName || payload.organizationName.trim().length < 2) {
+        return fail("Organization name is required for quotation request", 400, "VAL_001");
+      }
+    }
+
+    if (payload.requestType === "purchase") {
+      if (!payload.serviceId || !selectedService) {
+        return fail("Select a valid service for purchase request", 400, "VAL_001");
+      }
+      if (!payload.paymentTerm || !payload.paymentMethod) {
+        return fail("paymentTerm and paymentMethod are required for purchase request", 400, "VAL_001");
+      }
+    }
+
+    if (payload.requestType === "ebm") {
+      if (!payload.organizationTinNumber || payload.organizationTinNumber.trim().length < 5) {
+        return fail("Organization TIN number is required for EBM request", 400, "VAL_001");
+      }
+    }
+
     if (
       payload.budgetMin !== undefined &&
       payload.budgetMax !== undefined &&
@@ -38,15 +87,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       data: {
         requesterUserId: auth.session.userId,
         organizationId: payload.organizationId,
-        categoryId: payload.categoryId,
+        categoryId,
+        requestType: payload.requestType,
+        providerProfileId,
+        serviceId: payload.serviceId ?? null,
+        organizationName: payload.organizationName?.trim() || null,
+        organizationTinNumber: payload.organizationTinNumber?.trim() || null,
+        purchaseCode: payload.purchaseCode?.trim() || null,
+        paymentTerm: payload.paymentTerm ?? null,
+        paymentMethod: payload.paymentMethod ?? null,
+        paymentNote: payload.paymentNote?.trim() || null,
+        paymentDueAt:
+          payload.requestType === "purchase" &&
+          (payload.paymentTerm === "prepaid" || payload.paymentTerm === "deposit")
+            ? new Date(Date.now() + 2 * 60 * 60 * 1000)
+            : null,
+        documentFileName: payload.documentFileName?.trim() || null,
+        requestedAmount: payload.requestedAmount ?? null,
         title: payload.title,
         requirementText: payload.requirementText,
         locationText: payload.locationText,
         budgetMin: payload.budgetMin,
         budgetMax: payload.budgetMax,
         currency: payload.currency?.toUpperCase(),
-        needsQuotation: payload.needsQuotation,
-        needsEbm: payload.needsEbm
+        needsQuotation: payload.requestType === "quotation" ? true : payload.needsQuotation,
+        needsEbm: payload.requestType === "ebm" ? true : payload.needsEbm
       }
     });
     return ok(created);
@@ -73,6 +138,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     where,
     include: {
       category: true,
+      providerProfile: true,
+      service: true,
       offers: {
         include: {
           providerProfile: true
@@ -95,6 +162,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       currency: item.currency,
       needsQuotation: item.needsQuotation,
       needsEbm: item.needsEbm,
+      requestType: item.requestType,
+      providerProfileId: item.providerProfileId,
+      providerName: item.providerProfile?.businessName ?? null,
+      serviceId: item.serviceId,
+      serviceTitle: item.service?.title ?? null,
+      organizationName: item.organizationName,
+      organizationTinNumber: item.organizationTinNumber,
+      purchaseCode: item.purchaseCode,
+      paymentTerm: item.paymentTerm,
+      paymentMethod: item.paymentMethod,
+      paymentNote: item.paymentNote,
+      paymentDueAt: item.paymentDueAt,
+      documentFileName: item.documentFileName,
+      requestedAmount: decimalToNumber(item.requestedAmount),
       status: item.status,
       category: item.category,
       offers: item.offers.map((offer) => ({

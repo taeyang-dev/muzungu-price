@@ -48,6 +48,15 @@ interface ProviderDashboardProps {
         ebmAvailable: boolean;
         quotationLeadTimeHours: number | null;
         ebmNotes: string | null;
+        vendorTinNumber: string | null;
+        paymentTerms: string[];
+        paymentMethods: string[];
+        momoAccountName: string | null;
+        momoNumber: string | null;
+        bankName: string | null;
+        bankAccountName: string | null;
+        bankAccountNumber: string | null;
+        bankSwiftCode: string | null;
       }
     | null;
 }
@@ -97,6 +106,20 @@ export function ProviderDashboard({
     }
     if ("canIssueEbm" in payload) {
       payload.canIssueEbm = payload.canIssueEbm === "on";
+    }
+    if (formData.has("paymentTerms")) {
+      payload.paymentTerms = formData
+        .getAll("paymentTerms")
+        .filter((item): item is string => typeof item === "string" && item.length > 0);
+    } else {
+      payload.paymentTerms = [];
+    }
+    if (formData.has("paymentMethods")) {
+      payload.paymentMethods = formData
+        .getAll("paymentMethods")
+        .filter((item): item is string => typeof item === "string" && item.length > 0);
+    } else {
+      payload.paymentMethods = [];
     }
 
     setLoading(true);
@@ -268,6 +291,10 @@ export function ProviderDashboard({
             {tr(locale, "EBM available", "EBM 발행 가능")}
           </label>
           <div>
+            <label className="tiny">{tr(locale, "Vendor TIN number", "업체 TIN 번호")}</label>
+            <input className="input" defaultValue={billing?.vendorTinNumber ?? ""} name="vendorTinNumber" />
+          </div>
+          <div>
             <label className="tiny">{tr(locale, "Quotation lead time (hours)", "견적서 발행 리드타임(시간)")}</label>
             <input
               className="input"
@@ -275,6 +302,121 @@ export function ProviderDashboard({
               name="quotationLeadTimeHours"
               type="number"
             />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label className="tiny">{tr(locale, "Available payment terms", "가능한 결제 조건")}</label>
+            <div className="category-checkbox-grid">
+              <label className="category-check">
+                <input
+                  defaultChecked={billing?.paymentTerms.includes("prepaid") ?? false}
+                  name="paymentTerms"
+                  type="checkbox"
+                  value="prepaid"
+                />{" "}
+                {tr(locale, "Prepaid", "선불")}
+              </label>
+              <label className="category-check">
+                <input
+                  defaultChecked={billing?.paymentTerms.includes("postpaid") ?? false}
+                  name="paymentTerms"
+                  type="checkbox"
+                  value="postpaid"
+                />{" "}
+                {tr(locale, "Postpaid", "후불")}
+              </label>
+              <label className="category-check">
+                <input
+                  defaultChecked={billing?.paymentTerms.includes("deposit") ?? false}
+                  name="paymentTerms"
+                  type="checkbox"
+                  value="deposit"
+                />{" "}
+                {tr(locale, "Deposit / partial prepay", "계약금 선지급")}
+              </label>
+              <label className="category-check">
+                <input
+                  defaultChecked={billing?.paymentTerms.includes("other") ?? false}
+                  name="paymentTerms"
+                  type="checkbox"
+                  value="other"
+                />{" "}
+                {tr(locale, "Other", "기타")}
+              </label>
+            </div>
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label className="tiny">{tr(locale, "Available payment methods", "가능한 결제 수단")}</label>
+            <div className="category-checkbox-grid">
+              <label className="category-check">
+                <input
+                  defaultChecked={billing?.paymentMethods.includes("bank_transfer") ?? false}
+                  name="paymentMethods"
+                  type="checkbox"
+                  value="bank_transfer"
+                />{" "}
+                {tr(locale, "Bank transfer", "은행 이체")}
+              </label>
+              <label className="category-check">
+                <input
+                  defaultChecked={billing?.paymentMethods.includes("momo") ?? false}
+                  name="paymentMethods"
+                  type="checkbox"
+                  value="momo"
+                />{" "}
+                {tr(locale, "MoMo transfer", "모모 이체")}
+              </label>
+              <label className="category-check">
+                <input
+                  defaultChecked={billing?.paymentMethods.includes("cash") ?? false}
+                  name="paymentMethods"
+                  type="checkbox"
+                  value="cash"
+                />{" "}
+                {tr(locale, "Cash", "현금")}
+              </label>
+              <label className="category-check">
+                <input
+                  defaultChecked={billing?.paymentMethods.includes("card") ?? false}
+                  name="paymentMethods"
+                  type="checkbox"
+                  value="card"
+                />{" "}
+                {tr(locale, "Card", "카드")}
+              </label>
+              <label className="category-check">
+                <input
+                  defaultChecked={billing?.paymentMethods.includes("other") ?? false}
+                  name="paymentMethods"
+                  type="checkbox"
+                  value="other"
+                />{" "}
+                {tr(locale, "Other", "기타")}
+              </label>
+            </div>
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "MoMo account name", "모모 계정 이름")}</label>
+            <input className="input" defaultValue={billing?.momoAccountName ?? ""} name="momoAccountName" />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "MoMo number", "모모 번호")}</label>
+            <input className="input" defaultValue={billing?.momoNumber ?? ""} name="momoNumber" />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Bank name", "은행명")}</label>
+            <input className="input" defaultValue={billing?.bankName ?? ""} name="bankName" />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Bank account name", "은행 계좌명")}</label>
+            <input className="input" defaultValue={billing?.bankAccountName ?? ""} name="bankAccountName" />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Bank account number", "은행 계좌번호")}</label>
+            <input className="input" defaultValue={billing?.bankAccountNumber ?? ""} name="bankAccountNumber" />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Bank SWIFT code", "은행 SWIFT 코드")}</label>
+            <input className="input" defaultValue={billing?.bankSwiftCode ?? ""} name="bankSwiftCode" />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
             <label className="tiny">{tr(locale, "EBM notes", "EBM 메모")}</label>

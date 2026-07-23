@@ -294,14 +294,32 @@ async function main() {
       quotationAvailable: true,
       ebmAvailable: true,
       quotationLeadTimeHours: 24,
-      ebmNotes: "Issued after payment confirmation."
+      ebmNotes: "Issued after payment confirmation.",
+      vendorTinNumber: "TIN-EP-450129",
+      paymentTermsCsv: "prepaid,postpaid,deposit,other",
+      paymentMethodsCsv: "bank_transfer,momo,cash",
+      momoAccountName: "Kampala Electric Pro Ltd",
+      momoNumber: "+250788123456",
+      bankName: "Bank of Kigali",
+      bankAccountName: "Kampala Electric Pro Ltd",
+      bankAccountNumber: "1100-2299-5577",
+      bankSwiftCode: "BKRWRWRW"
     },
     create: {
       providerProfileId: providerProfile.id,
       quotationAvailable: true,
       ebmAvailable: true,
       quotationLeadTimeHours: 24,
-      ebmNotes: "Issued after payment confirmation."
+      ebmNotes: "Issued after payment confirmation.",
+      vendorTinNumber: "TIN-EP-450129",
+      paymentTermsCsv: "prepaid,postpaid,deposit,other",
+      paymentMethodsCsv: "bank_transfer,momo,cash",
+      momoAccountName: "Kampala Electric Pro Ltd",
+      momoNumber: "+250788123456",
+      bankName: "Bank of Kigali",
+      bankAccountName: "Kampala Electric Pro Ltd",
+      bankAccountNumber: "1100-2299-5577",
+      bankSwiftCode: "BKRWRWRW"
     }
   });
 
@@ -767,12 +785,34 @@ async function main() {
 
     await prisma.providerBillingCapability.upsert({
       where: { providerProfileId: stageProfile.id },
-      update: { quotationAvailable: true, ebmAvailable: true, quotationLeadTimeHours: 12 },
+      update: {
+        quotationAvailable: true,
+        ebmAvailable: true,
+        quotationLeadTimeHours: 12,
+        vendorTinNumber: "TIN-STAGE-22001",
+        paymentTermsCsv: "prepaid,deposit,postpaid",
+        paymentMethodsCsv: "bank_transfer,momo",
+        momoAccountName: "Kigali Stage & Sound",
+        momoNumber: "+250788222111",
+        bankName: "I&M Bank Rwanda",
+        bankAccountName: "Kigali Stage & Sound",
+        bankAccountNumber: "3388-2000-1234",
+        bankSwiftCode: "IMRWRWRW"
+      },
       create: {
         providerProfileId: stageProfile.id,
         quotationAvailable: true,
         ebmAvailable: true,
-        quotationLeadTimeHours: 12
+        quotationLeadTimeHours: 12,
+        vendorTinNumber: "TIN-STAGE-22001",
+        paymentTermsCsv: "prepaid,deposit,postpaid",
+        paymentMethodsCsv: "bank_transfer,momo",
+        momoAccountName: "Kigali Stage & Sound",
+        momoNumber: "+250788222111",
+        bankName: "I&M Bank Rwanda",
+        bankAccountName: "Kigali Stage & Sound",
+        bankAccountNumber: "3388-2000-1234",
+        bankSwiftCode: "IMRWRWRW"
       }
     });
 
@@ -1003,12 +1043,34 @@ async function main() {
 
     await prisma.providerBillingCapability.upsert({
       where: { providerProfileId: artProfile.id },
-      update: { quotationAvailable: true, ebmAvailable: false, quotationLeadTimeHours: 8 },
+      update: {
+        quotationAvailable: true,
+        ebmAvailable: false,
+        quotationLeadTimeHours: 8,
+        vendorTinNumber: "TIN-ART-90021",
+        paymentTermsCsv: "prepaid,postpaid,other",
+        paymentMethodsCsv: "bank_transfer,momo,cash",
+        momoAccountName: "Imigongo Art Gallery",
+        momoNumber: "+250788555222",
+        bankName: "Equity Bank Rwanda",
+        bankAccountName: "Imigongo Art Gallery",
+        bankAccountNumber: "7722-1199-3322",
+        bankSwiftCode: "EQBLRWRW"
+      },
       create: {
         providerProfileId: artProfile.id,
         quotationAvailable: true,
         ebmAvailable: false,
-        quotationLeadTimeHours: 8
+        quotationLeadTimeHours: 8,
+        vendorTinNumber: "TIN-ART-90021",
+        paymentTermsCsv: "prepaid,postpaid,other",
+        paymentMethodsCsv: "bank_transfer,momo,cash",
+        momoAccountName: "Imigongo Art Gallery",
+        momoNumber: "+250788555222",
+        bankName: "Equity Bank Rwanda",
+        bankAccountName: "Imigongo Art Gallery",
+        bankAccountNumber: "7722-1199-3322",
+        bankSwiftCode: "EQBLRWRW"
       }
     });
 
@@ -1346,12 +1408,34 @@ async function main() {
 
     await prisma.providerBillingCapability.upsert({
       where: { providerProfileId: furnitureProfile.id },
-      update: { quotationAvailable: true, ebmAvailable: true, quotationLeadTimeHours: 18 },
+      update: {
+        quotationAvailable: true,
+        ebmAvailable: true,
+        quotationLeadTimeHours: 18,
+        vendorTinNumber: "TIN-FUR-77812",
+        paymentTermsCsv: "deposit,postpaid,other",
+        paymentMethodsCsv: "bank_transfer,momo",
+        momoAccountName: "Kivu Craft Furniture",
+        momoNumber: "+250788901112",
+        bankName: "Cogebanque",
+        bankAccountName: "Kivu Craft Furniture",
+        bankAccountNumber: "8844-5566-1133",
+        bankSwiftCode: "COGBRWRW"
+      },
       create: {
         providerProfileId: furnitureProfile.id,
         quotationAvailable: true,
         ebmAvailable: true,
-        quotationLeadTimeHours: 18
+        quotationLeadTimeHours: 18,
+        vendorTinNumber: "TIN-FUR-77812",
+        paymentTermsCsv: "deposit,postpaid,other",
+        paymentMethodsCsv: "bank_transfer,momo",
+        momoAccountName: "Kivu Craft Furniture",
+        momoNumber: "+250788901112",
+        bankName: "Cogebanque",
+        bankAccountName: "Kivu Craft Furniture",
+        bankAccountNumber: "8844-5566-1133",
+        bankSwiftCode: "COGBRWRW"
       }
     });
 
@@ -1697,12 +1781,34 @@ async function main() {
 
     await prisma.providerBillingCapability.upsert({
       where: { providerProfileId: electronicsProfile.id },
-      update: { quotationAvailable: true, ebmAvailable: true, quotationLeadTimeHours: 6 },
+      update: {
+        quotationAvailable: true,
+        ebmAvailable: true,
+        quotationLeadTimeHours: 6,
+        vendorTinNumber: "TIN-TECH-55220",
+        paymentTermsCsv: "prepaid,postpaid,deposit,other",
+        paymentMethodsCsv: "bank_transfer,momo,card",
+        momoAccountName: "Kigali Tech Market",
+        momoNumber: "+250788340340",
+        bankName: "KCB Rwanda",
+        bankAccountName: "Kigali Tech Market",
+        bankAccountNumber: "9900-1122-4444",
+        bankSwiftCode: "KCBLRWRW"
+      },
       create: {
         providerProfileId: electronicsProfile.id,
         quotationAvailable: true,
         ebmAvailable: true,
-        quotationLeadTimeHours: 6
+        quotationLeadTimeHours: 6,
+        vendorTinNumber: "TIN-TECH-55220",
+        paymentTermsCsv: "prepaid,postpaid,deposit,other",
+        paymentMethodsCsv: "bank_transfer,momo,card",
+        momoAccountName: "Kigali Tech Market",
+        momoNumber: "+250788340340",
+        bankName: "KCB Rwanda",
+        bankAccountName: "Kigali Tech Market",
+        bankAccountNumber: "9900-1122-4444",
+        bankSwiftCode: "KCBLRWRW"
       }
     });
 

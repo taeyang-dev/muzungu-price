@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { LogoutButton } from "@/components/LogoutButton";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { getSavedDocumentCounts } from "@/lib/document-storage";
+import { getRequestedDocumentCounts } from "@/lib/request-documents-storage";
 import {
   getVendorStorageEventName,
   readChatVendors,
@@ -52,6 +53,7 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
   const [recent, setRecent] = useState<VendorReference[]>([]);
   const [chatVendors, setChatVendors] = useState<VendorReference[]>([]);
   const [docCounts, setDocCounts] = useState({ quotation: 0, ebm: 0 });
+  const [requestDocCounts, setRequestDocCounts] = useState({ quotation: 0, ebm: 0 });
 
   useEffect(() => {
     function refresh(): void {
@@ -59,6 +61,7 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
       setRecent(readRecentVendors());
       setChatVendors(readChatVendors());
       setDocCounts(getSavedDocumentCounts());
+      setRequestDocCounts(getRequestedDocumentCounts());
     }
 
     refresh();
@@ -147,7 +150,7 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
               {tr(locale, "Home", "홈")}
             </Link>
             <Link href="/requests" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "Requests", "요청서")}
+              {tr(locale, "Requests", "요청서")} ({requestDocCounts.quotation + requestDocCounts.ebm})
             </Link>
             <Link href="/documents" onClick={() => setMenuOpen(false)}>
               {tr(locale, "Documents", "문서함")}
@@ -170,6 +173,18 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
             emptyText={tr(locale, "No active chats yet.", "대화중인 업체가 없습니다.")}
             hrefSuffix="#vendor-chat"
           />
+        </section>
+
+        <section className="drawer-section">
+          <h3>{tr(locale, "Request documents", "요청 문서")}</h3>
+          <nav className="drawer-nav">
+            <Link href="/requests#requested-documents" onClick={() => setMenuOpen(false)}>
+              {tr(locale, "Requested quotations", "요청한 견적서")} ({requestDocCounts.quotation})
+            </Link>
+            <Link href="/requests#requested-documents" onClick={() => setMenuOpen(false)}>
+              {tr(locale, "Requested EBM", "요청한 EBM")} ({requestDocCounts.ebm})
+            </Link>
+          </nav>
         </section>
 
         <section className="drawer-section">

@@ -381,7 +381,7 @@ export default async function ProviderDetailPage({
               )}
             </li>
           </ul>
-          <Link className="btn provider-action-btn" href="/requests">
+          <Link className="btn provider-action-btn" href={`/requests?vendorId=${provider.id}`}>
             {tr(locale, "Request this vendor", "이 업체에 요청 보내기")}
           </Link>
         </article>
