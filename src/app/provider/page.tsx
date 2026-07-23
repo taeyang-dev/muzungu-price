@@ -31,7 +31,12 @@ export default async function ProviderPage() {
     prisma.providerProfile.findUnique({
       where: { userId: session.userId },
       include: {
-        services: true,
+        services: {
+          include: {
+            category: true
+          }
+        },
+        categories: true,
         billingCapability: true,
         verificationCases: {
           orderBy: { createdAt: "desc" },
@@ -51,6 +56,7 @@ export default async function ProviderPage() {
               id: profile.id,
               businessName: profile.businessName,
               providerType: profile.providerType,
+              tagline: profile.tagline,
               city: profile.city,
               country: profile.country,
               bio: profile.bio,
@@ -59,7 +65,8 @@ export default async function ProviderPage() {
               contactEmail: profile.contactEmail,
               contactPhone: profile.contactPhone,
               websiteUrl: profile.websiteUrl,
-              yearsInBusiness: profile.yearsInBusiness
+              yearsInBusiness: profile.yearsInBusiness,
+              categoryIds: profile.categories.map((entry) => entry.categoryId)
             }
           : null
       }

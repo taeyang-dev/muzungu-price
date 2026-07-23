@@ -32,6 +32,20 @@ function getInitials(name: string): string {
     .join("");
 }
 
+function formatPrice(amount: number | null, currency: string | null): string {
+  if (amount === null || amount === undefined) {
+    return "Price not available";
+  }
+  if (currency === "RWF" || !currency) {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+      maximumFractionDigits: 0
+    }).format(amount);
+  }
+  return `${currency} ${amount.toFixed(2)}`;
+}
+
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
 
@@ -124,7 +138,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           where: { status: "approved" },
           orderBy: { reviewedAt: "desc" },
           take: 1
-        }
+        },
+        reviews: true
       },
       orderBy: { createdAt: "desc" }
     }),
@@ -207,9 +222,22 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           const representative = provider.services
             .flatMap((service) => service.priceCards)
             .sort((a, b) => a.basePrice.comparedTo(b.basePrice))[0];
+          const serviceImage = provider.services.find((service) => service.imageUrl)?.imageUrl;
+          const averageRating =
+            provider.reviews.length > 0
+              ? provider.reviews.reduce((sum, review) => sum + review.ratingOverall, 0) /
+                provider.reviews.length
+              : null;
 
           return (
             <article className="card" key={provider.id}>
+              {serviceImage && (
+                <img
+                  alt={`${provider.businessName} service`}
+                  className="vendor-service-thumb"
+                  src={serviceImage}
+                />
+              )}
               <div className="vendor-head">
                 <div className="vendor-visual" style={{ background: visual.background }}>
                   {provider.logoUrl ? (
@@ -226,11 +254,18 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   )}
                 </div>
                 <div>
-                  <h3 style={{ margin: "0 0 6px 0" }}>{provider.businessName}</h3>
-                  <p className="muted tiny" style={{ marginTop: 0 }}>
-                    {provider.city ?? "City not listed"}, {provider.country ?? "Country not listed"}
+                  <h3 className="vendor-name">{provider.businessName}</h3>
+                  {provider.tagline && <p className="vendor-tagline">{provider.tagline}</p>}
+                  <p className="muted tiny vendor-location">
+                    📍 {provider.city ?? "City not listed"}, {provider.country ?? "Country not listed"}
                   </p>
                 </div>
+              </div>
+              <div className="row tiny vendor-rating-row">
+                <span className="vendor-rating">
+                  {averageRating ? `★ ${averageRating.toFixed(1)}` : "No ratings yet"}
+                </span>
+                <span className="muted">({provider.reviews.length} reviews)</span>
               </div>
               {approved && <span className="badge good">{approved.level?.replaceAll("_", " ") ?? "verified"}</span>}
               {!approved && <span className="badge">Verification pending</span>}
@@ -238,14 +273,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               {provider.billingCapability?.ebmAvailable && <span className="badge">EBM</span>}
 
               <div className="hr" />
-              <p className="tiny" style={{ margin: 0 }}>
+              <p className="tiny vendor-price-line">
                 {representative
-                  ? `From ${representative.currency} ${decimalToNumber(
-                      representative.basePrice
-                    )?.toFixed(2)} (${representative.unit.replace("per_", "per ")})`
+                  ? `From ${formatPrice(
+                      decimalToNumber(representative.basePrice),
+                      representative.currency
+                    )} (${representative.unit.replace("per_", "per ")})`
                   : "No public price card yet"}
               </p>
-              <p className="tiny">
+              <p className="tiny vendor-category-line">
                 Categories: {provider.categories.map((entry) => entry.category.name).join(", ")}
               </p>
               <Link className="btn" href={`/providers/${provider.id}`}>

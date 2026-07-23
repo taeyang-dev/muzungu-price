@@ -116,6 +116,7 @@ model ProviderProfile {
   userId                String                    @unique
   businessName          String
   providerType          ProviderType
+  tagline               String?
   bio                   String?
   logoUrl               String?
   coverImageUrl         String?
@@ -188,6 +189,7 @@ model Service {
   categoryId        String
   title             String
   description       String?
+  imageUrl          String?
   isActive          Boolean         @default(true)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt

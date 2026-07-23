@@ -26,7 +26,14 @@ export async function GET(_request: NextRequest, { params }: RouteParams): Promi
   return ok({
     id: provider.id,
     business_name: provider.businessName,
+    tagline: provider.tagline,
     bio: provider.bio,
+    logo_url: provider.logoUrl,
+    cover_image_url: provider.coverImageUrl,
+    contact_email: provider.contactEmail,
+    contact_phone: provider.contactPhone,
+    website_url: provider.websiteUrl,
+    years_in_business: provider.yearsInBusiness,
     city: provider.city,
     country: provider.country,
     categories: provider.categories.map((entry) => ({
@@ -52,6 +59,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams): Promi
       id: service.id,
       title: service.title,
       description: service.description,
+      image_url: service.imageUrl,
       prices: service.priceCards.map((price) => ({
         id: price.id,
         tier: price.tier,

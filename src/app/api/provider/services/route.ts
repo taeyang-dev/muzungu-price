@@ -7,7 +7,8 @@ import { prisma } from "@/lib/prisma";
 const schema = z.object({
   categoryId: z.string(),
   title: z.string().min(2),
-  description: z.string().optional()
+  description: z.string().optional(),
+  imageUrl: z.string().url().optional().or(z.literal(""))
 });
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -30,7 +31,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         providerProfileId: profile.id,
         categoryId: payload.categoryId,
         title: payload.title,
-        description: payload.description
+        description: payload.description,
+        imageUrl: payload.imageUrl || null
       }
     });
 

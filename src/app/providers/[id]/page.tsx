@@ -8,6 +8,20 @@ interface ProviderDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+function formatPrice(amount: number | null, currency: string): string {
+  if (amount === null || amount === undefined) {
+    return "Price not available";
+  }
+  if (currency === "RWF") {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+      maximumFractionDigits: 0
+    }).format(amount);
+  }
+  return `${currency} ${amount.toFixed(2)}`;
+}
+
 export default async function ProviderDetailPage({
   params
 }: ProviderDetailPageProps) {
@@ -58,6 +72,7 @@ export default async function ProviderDetailPage({
           )}
           <div>
             <h1 style={{ marginTop: 0, marginBottom: "8px" }}>{provider.businessName}</h1>
+            {provider.tagline && <p className="provider-tagline">{provider.tagline}</p>}
             <p className="muted provider-meta-line">
               {provider.city ?? "Unknown city"}, {provider.country ?? "Unknown country"}
               {provider.yearsInBusiness ? ` · ${provider.yearsInBusiness} years in business` : ""}
@@ -125,6 +140,22 @@ export default async function ProviderDetailPage({
                 "Not provided"
               )}
             </li>
+            <li>
+              <strong>Location:</strong>{" "}
+              {provider.city && provider.country ? (
+                <a
+                  href={`https://www.google.com/maps/search/${encodeURIComponent(
+                    `${provider.city}, ${provider.country}`
+                  )}`}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  View on map
+                </a>
+              ) : (
+                "Not provided"
+              )}
+            </li>
           </ul>
           <Link className="btn" href="/requests">
             Request this vendor
@@ -138,6 +169,9 @@ export default async function ProviderDetailPage({
         <div className="cards">
           {provider.services.map((service) => (
             <div className="card service-detail-card" key={service.id}>
+              {service.imageUrl && (
+                <img alt={`${service.title} visual`} className="service-image" src={service.imageUrl} />
+              )}
               <h3 style={{ marginTop: 0 }}>{service.title}</h3>
               <p className="tiny muted">{service.description ?? "No service description"}</p>
               {service.priceCards.length === 0 && <p className="tiny muted">No price cards yet.</p>}
@@ -146,7 +180,7 @@ export default async function ProviderDetailPage({
                   <div className="row tiny">
                     <strong>{price.tier.toUpperCase()}</strong>
                     <span>
-                      {price.currency} {decimalToNumber(price.basePrice)?.toFixed(2)}
+                      {formatPrice(decimalToNumber(price.basePrice), price.currency)}
                     </span>
                     <span>({price.unit.replace("per_", "per ")})</span>
                   </div>

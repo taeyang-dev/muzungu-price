@@ -67,6 +67,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return {
       id: provider.id,
       business_name: provider.businessName,
+      tagline: provider.tagline,
+      logo_url: provider.logoUrl,
       city: provider.city,
       country: provider.country,
       categories: provider.categories.map((entry) => entry.category.name),

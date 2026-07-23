@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 const schema = z.object({
   title: z.string().min(2).optional(),
   description: z.string().optional(),
+  imageUrl: z.string().url().optional().or(z.literal("")),
   isActive: z.boolean().optional()
 });
 
@@ -40,6 +41,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
       data: {
         title: payload.title,
         description: payload.description,
+        imageUrl: payload.imageUrl === undefined ? undefined : payload.imageUrl || null,
         isActive: payload.isActive
       }
     });

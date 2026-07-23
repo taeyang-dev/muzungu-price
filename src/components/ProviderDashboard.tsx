@@ -12,6 +12,10 @@ interface Category {
 interface Service {
   id: string;
   title: string;
+  imageUrl?: string | null;
+  category?: {
+    name: string;
+  };
 }
 
 interface ProviderDashboardProps {
@@ -21,6 +25,7 @@ interface ProviderDashboardProps {
         id: string;
         businessName: string;
         providerType: "freelancer" | "company";
+        tagline: string | null;
         city: string | null;
         country: string | null;
         bio: string | null;
@@ -30,6 +35,7 @@ interface ProviderDashboardProps {
         contactPhone: string | null;
         websiteUrl: string | null;
         yearsInBusiness: number | null;
+        categoryIds: string[];
       }
     | null;
   services: Service[];
@@ -68,6 +74,11 @@ export function ProviderDashboard({
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const payload: Record<string, unknown> = Object.fromEntries(formData.entries());
+    if (formData.has("categoryIds")) {
+      payload.categoryIds = formData
+        .getAll("categoryIds")
+        .filter((item): item is string => typeof item === "string" && item.length > 0);
+    }
 
     if ("quotationAvailable" in payload) {
       payload.quotationAvailable = payload.quotationAvailable === "on";
@@ -157,6 +168,15 @@ export function ProviderDashboard({
             </select>
           </div>
           <div>
+            <label className="tiny">One-line intro</label>
+            <input
+              className="input"
+              defaultValue={profile?.tagline ?? ""}
+              name="tagline"
+              placeholder="Reliable electrical support for offices and NGOs."
+            />
+          </div>
+          <div>
             <label className="tiny">City</label>
             <input className="input" defaultValue={profile?.city ?? ""} name="city" />
           </div>
@@ -193,6 +213,23 @@ export function ProviderDashboard({
           <div style={{ gridColumn: "1 / -1" }}>
             <label className="tiny">Cover image URL</label>
             <input className="input" defaultValue={profile?.coverImageUrl ?? ""} name="coverImageUrl" />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label className="tiny">Industry / categories</label>
+            <div className="category-checkbox-grid">
+              <input name="categoryIds" type="hidden" value="" />
+              {categories.map((category) => (
+                <label className="category-check" key={category.id}>
+                  <input
+                    defaultChecked={profile?.categoryIds.includes(category.id) ?? false}
+                    name="categoryIds"
+                    type="checkbox"
+                    value={category.id}
+                  />{" "}
+                  {category.name}
+                </label>
+              ))}
+            </div>
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
             <label className="tiny">Bio</label>
@@ -251,6 +288,10 @@ export function ProviderDashboard({
             <label className="tiny">Title</label>
             <input className="input" name="title" required />
           </div>
+          <div>
+            <label className="tiny">Service image URL (optional)</label>
+            <input className="input" name="imageUrl" placeholder="https://..." />
+          </div>
           <div style={{ gridColumn: "1 / -1" }}>
             <label className="tiny">Description</label>
             <textarea className="textarea" name="description" />
@@ -301,7 +342,7 @@ export function ProviderDashboard({
           </div>
           <div>
             <label className="tiny">Currency</label>
-            <input className="input" defaultValue="USD" maxLength={3} name="currency" required />
+            <input className="input" defaultValue="RWF" maxLength={3} name="currency" required />
           </div>
           <div>
             <label className="tiny">Base price</label>

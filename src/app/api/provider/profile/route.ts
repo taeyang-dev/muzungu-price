@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 const createSchema = z.object({
   businessName: z.string().min(2),
   providerType: z.enum(["freelancer", "company"]),
+  tagline: z.string().max(140).optional(),
   bio: z.string().optional(),
   logoUrl: z.string().url().optional().or(z.literal("")),
   coverImageUrl: z.string().url().optional().or(z.literal("")),
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         userId: auth.session.userId,
         businessName: payload.businessName,
         providerType: payload.providerType,
+        tagline: payload.tagline,
         bio: payload.bio,
         logoUrl: payload.logoUrl || null,
         coverImageUrl: payload.coverImageUrl || null,
@@ -92,6 +94,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       data: {
         businessName: payload.businessName ?? undefined,
         providerType: payload.providerType ?? undefined,
+        tagline: payload.tagline ?? undefined,
         bio: payload.bio ?? undefined,
         logoUrl: payload.logoUrl === undefined ? undefined : payload.logoUrl || null,
         coverImageUrl:

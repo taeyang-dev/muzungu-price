@@ -18,6 +18,7 @@ body {
   font-family: Inter, "Segoe UI", sans-serif;
   color: var(--text);
   background: var(--bg);
+  line-height: 1.5;
 }
 
 a {
@@ -265,6 +266,11 @@ a {
   padding: 10px 14px;
   cursor: pointer;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  text-align: center;
 }
 
 .btn.secondary {
@@ -297,6 +303,8 @@ a {
   border-radius: 16px;
   padding: 16px;
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+  display: grid;
+  gap: 8px;
 }
 
 .vendor-head {
@@ -322,6 +330,44 @@ a {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.vendor-service-thumb {
+  width: 100%;
+  height: 132px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+
+.vendor-name {
+  margin: 0 0 4px 0;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.vendor-tagline {
+  margin: 0;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+.vendor-location {
+  margin: 4px 0 0 0;
+}
+
+.vendor-rating-row {
+  margin-top: 2px;
+}
+
+.vendor-rating {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vendor-price-line,
+.vendor-category-line {
+  margin: 0;
 }
 
 .vendor-emoji {
@@ -418,6 +464,12 @@ a {
   margin-bottom: 8px;
 }
 
+.provider-tagline {
+  margin: 0 0 6px 0;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
 .provider-hero > p {
   margin: 14px 18px 8px 18px;
 }
@@ -450,11 +502,33 @@ a {
   gap: 10px;
 }
 
+.service-image {
+  width: 100%;
+  height: 170px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
 .price-row {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10px;
   background: #f8fafc;
+}
+
+.category-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.category-check {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  font-size: 0.9rem;
 }
 
 @media (max-width: 900px) {
