@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { decimalToNumber, fail, ok } from "@/lib/api";
-import { requireRole, requireSession } from "@/lib/guards";
+import { requireSession } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
@@ -30,7 +30,7 @@ const schema = z.object({
 });
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const auth = await requireRole(request, ["customer", "org_buyer"]);
+  const auth = await requireSession(request);
   if (auth.error || !auth.session) {
     return auth.error as NextResponse;
   }

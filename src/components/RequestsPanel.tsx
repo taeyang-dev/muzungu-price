@@ -442,8 +442,7 @@ export function RequestsPanel({
       {error && <div className="flash error">{error}</div>}
       {feedback && <div className="flash success">{feedback}</div>}
 
-      {(role === "customer" || role === "org_buyer") && (
-        <article className="panel" id="vendor-request">
+      <article className="panel" id="vendor-selector">
           <h2 style={{ marginTop: 0 }}>{tr(locale, "Choose vendor", "업체 선택")}</h2>
           {vendorOptions.length === 0 ? (
             <p className="muted">
@@ -470,10 +469,9 @@ export function RequestsPanel({
             </div>
           )}
         </article>
-      )}
 
-      {(role === "customer" || role === "org_buyer") && vendorContext && (
-        <article className="panel">
+      {vendorContext && (
+        <article className="panel" id="vendor-request">
           <h2 style={{ marginTop: 0 }}>
             {tr(locale, "Request this vendor", "이 업체에 요청 보내기")}: {vendorContext.businessName}
           </h2>
@@ -708,7 +706,7 @@ export function RequestsPanel({
         </article>
       )}
 
-      {(role === "customer" || role === "org_buyer") && !vendorContext && vendorOptions.length > 0 && (
+      {!vendorContext && vendorOptions.length > 0 && (
         <article className="panel">
           <p className="muted" style={{ margin: 0 }}>
             {tr(
@@ -720,44 +718,42 @@ export function RequestsPanel({
         </article>
       )}
 
-      {(role === "customer" || role === "org_buyer") && (
-        <article className="panel" id="requested-documents">
-          <h2 style={{ marginTop: 0 }}>{tr(locale, "Requested / received documents", "요청/수신 문서")}</h2>
-          {requestedDocs.length === 0 ? (
-            <p className="muted">{tr(locale, "No documents yet.", "문서가 없습니다.")}</p>
-          ) : (
-            <ul className="doc-list">
-              {requestedDocs.map((doc) => (
-                <li key={doc.id}>
-                  <div>
-                    <strong>{doc.fileName}</strong>
-                    <p className="tiny muted">
-                      {doc.vendorName} · {toRequestTypeLabel(locale, doc.type)} ·{" "}
-                      {new Date(doc.createdAt).toLocaleString()}
-                    </p>
-                    <div className="row">
-                      <input
-                        className="input"
-                        onChange={(event) =>
-                          setRenameDrafts((current) => ({ ...current, [doc.id]: event.target.value }))
-                        }
-                        placeholder={tr(locale, "Rename file name", "파일명 변경")}
-                        value={renameDrafts[doc.id] ?? ""}
-                      />
-                      <button className="btn secondary" onClick={() => saveRenamedDocument(doc.id)} type="button">
-                        {tr(locale, "Rename", "이름 변경")}
-                      </button>
-                    </div>
+      <article className="panel" id="requested-documents">
+        <h2 style={{ marginTop: 0 }}>{tr(locale, "Requested / received documents", "요청/수신 문서")}</h2>
+        {requestedDocs.length === 0 ? (
+          <p className="muted">{tr(locale, "No documents yet.", "문서가 없습니다.")}</p>
+        ) : (
+          <ul className="doc-list">
+            {requestedDocs.map((doc) => (
+              <li key={doc.id}>
+                <div>
+                  <strong>{doc.fileName}</strong>
+                  <p className="tiny muted">
+                    {doc.vendorName} · {toRequestTypeLabel(locale, doc.type)} ·{" "}
+                    {new Date(doc.createdAt).toLocaleString()}
+                  </p>
+                  <div className="row">
+                    <input
+                      className="input"
+                      onChange={(event) =>
+                        setRenameDrafts((current) => ({ ...current, [doc.id]: event.target.value }))
+                      }
+                      placeholder={tr(locale, "Rename file name", "파일명 변경")}
+                      value={renameDrafts[doc.id] ?? ""}
+                    />
+                    <button className="btn secondary" onClick={() => saveRenamedDocument(doc.id)} type="button">
+                      {tr(locale, "Rename", "이름 변경")}
+                    </button>
                   </div>
-                  <a className="btn" download={doc.fileName} href={doc.dataUrl}>
-                    {tr(locale, "Download", "다운로드")}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-        </article>
-      )}
+                </div>
+                <a className="btn" download={doc.fileName} href={doc.dataUrl}>
+                  {tr(locale, "Download", "다운로드")}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </article>
 
       <article className="panel">
         <h2 style={{ marginTop: 0 }}>

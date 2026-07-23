@@ -35,7 +35,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
     );
   }
 
-  const canCreateVendorRequests = session.role === "customer" || session.role === "org_buyer";
+  const canCreateVendorRequests = true;
 
   const vendorDirectory = await (
     canCreateVendorRequests
