@@ -91,7 +91,7 @@ export function AppHeader({ session }: AppHeaderProps) {
             ☰
           </button>
           <Link className="headline" href="/">
-            THIS NOT MUZUNGU PRICE
+            <img alt="This not Muzungu Price logo" className="brand-mark" src="/brand-mark.svg" />
           </Link>
           <div className="topbar-actions">
             <Link className="btn browse-btn" href="/?verified=1">
