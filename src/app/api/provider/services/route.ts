@@ -4,11 +4,28 @@ import { fail, ok } from "@/lib/api";
 import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 
+const imageValueSchema = z
+  .string()
+  .refine((value) => {
+    if (value.length === 0) {
+      return true;
+    }
+    if (value.startsWith("data:image/")) {
+      return true;
+    }
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, "Invalid image value");
+
 const schema = z.object({
   categoryId: z.string(),
   title: z.string().min(2),
   description: z.string().optional(),
-  imageUrl: z.string().url().optional().or(z.literal(""))
+  imageUrl: imageValueSchema.optional().or(z.literal(""))
 });
 
 export async function POST(request: NextRequest): Promise<NextResponse> {

@@ -68,6 +68,7 @@ enum PriceUnit {
   per_hour
   per_day
   per_project
+  per_person
 }
 
 model User {

@@ -90,7 +90,8 @@ function unitLabel(locale: "en" | "ko", unit: string): string {
   return normalized
     .replace("per hour", "시간당")
     .replace("per day", "일당")
-    .replace("per project", "프로젝트당");
+    .replace("per project", "프로젝트당")
+    .replace("per person", "인당");
 }
 
 function extractMinimumOrder(locale: "en" | "ko", value: string | null): string | null {

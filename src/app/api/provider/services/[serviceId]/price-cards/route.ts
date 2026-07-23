@@ -8,7 +8,7 @@ const schema = z.object({
   tier: z.enum(["basic", "standard", "premium"]),
   currency: z.string().length(3),
   basePrice: z.coerce.number().positive(),
-  unit: z.enum(["per_hour", "per_day", "per_project"]),
+  unit: z.enum(["per_hour", "per_day", "per_project", "per_person"]),
   inclusions: z.string().optional(),
   exclusions: z.string().optional(),
   isPublic: z.boolean().default(true)

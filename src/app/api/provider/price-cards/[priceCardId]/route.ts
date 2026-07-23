@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
   basePrice: z.coerce.number().positive().optional(),
-  unit: z.enum(["per_hour", "per_day", "per_project"]).optional(),
+  unit: z.enum(["per_hour", "per_day", "per_project", "per_person"]).optional(),
   inclusions: z.string().optional(),
   exclusions: z.string().optional(),
   isPublic: z.boolean().optional()

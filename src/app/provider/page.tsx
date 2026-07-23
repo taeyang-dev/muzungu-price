@@ -37,6 +37,12 @@ export default async function ProviderPage() {
     );
   }
 
+  await prisma.serviceCategory.upsert({
+    where: { slug: "other" },
+    update: { name: "Other Services" },
+    create: { slug: "other", name: "Other Services" }
+  });
+
   const [categories, profile] = await Promise.all([
     prisma.serviceCategory.findMany({ orderBy: { name: "asc" } }),
     prisma.providerProfile.findUnique({
@@ -112,6 +118,7 @@ export default async function ProviderPage() {
       }
       services={profile?.services ?? []}
       verificationCaseId={profile?.verificationCases[0]?.id ?? null}
+      verificationStatus={profile?.verificationCases[0]?.status ?? null}
     />
   );
 }

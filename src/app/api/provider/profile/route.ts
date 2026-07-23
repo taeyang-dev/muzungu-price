@@ -4,13 +4,30 @@ import { fail, ok } from "@/lib/api";
 import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 
+const imageValueSchema = z
+  .string()
+  .refine((value) => {
+    if (value.length === 0) {
+      return true;
+    }
+    if (value.startsWith("data:image/")) {
+      return true;
+    }
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, "Invalid image value");
+
 const createSchema = z.object({
   businessName: z.string().min(2),
   providerType: z.enum(["freelancer", "company"]),
   tagline: z.string().max(140).optional(),
   bio: z.string().optional(),
-  logoUrl: z.string().url().optional().or(z.literal("")),
-  coverImageUrl: z.string().url().optional().or(z.literal("")),
+  logoUrl: imageValueSchema.optional().or(z.literal("")),
+  coverImageUrl: imageValueSchema.optional().or(z.literal("")),
   contactEmail: z.string().email().optional().or(z.literal("")),
   contactPhone: z.string().optional(),
   websiteUrl: z.string().url().optional().or(z.literal("")),

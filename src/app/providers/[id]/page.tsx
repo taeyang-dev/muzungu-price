@@ -223,6 +223,18 @@ function getBillingStatusText(
   };
 }
 
+function unitLabel(locale: "en" | "ko", unit: string): string {
+  const normalized = unit.replace("per_", "per ");
+  if (locale === "en") {
+    return normalized;
+  }
+  return normalized
+    .replace("per hour", "시간당")
+    .replace("per day", "일당")
+    .replace("per project", "프로젝트당")
+    .replace("per person", "인당");
+}
+
 export default async function ProviderDetailPage({
   params
 }: ProviderDetailPageProps) {
@@ -431,9 +443,9 @@ export default async function ProviderDetailPage({
                 <div className="price-row" key={price.id}>
                   <details className="price-breakdown">
                     <summary className="row tiny">
-                      <strong>{price.tier.toUpperCase()}</strong>
+                      <strong>{tr(locale, "Price", "가격")}</strong>
                       <span>{formatRwf(toRwf(decimalToNumber(price.basePrice), price.currency))}</span>
-                      <span>({price.unit.replace("per_", "per ")})</span>
+                      <span>({unitLabel(locale, price.unit)})</span>
                     </summary>
                     <p className="price-breakdown-hint">
                       {tr(

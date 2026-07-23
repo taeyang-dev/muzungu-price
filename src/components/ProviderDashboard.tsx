@@ -42,6 +42,7 @@ interface ProviderDashboardProps {
     | null;
   services: Service[];
   verificationCaseId: string | null;
+  verificationStatus: "pending" | "approved" | "rejected" | "on_hold" | null;
   billing:
     | {
         quotationAvailable: boolean;
@@ -71,12 +72,38 @@ export function ProviderDashboard({
   profile,
   services,
   verificationCaseId,
+  verificationStatus,
   billing
 }: ProviderDashboardProps) {
   const [feedback, setFeedback] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>(
+    billing?.paymentMethods ?? []
+  );
   const router = useRouter();
+  const verificationApproved = verificationStatus === "approved";
+
+  function togglePaymentMethod(method: string, checked: boolean): void {
+    setSelectedPaymentMethods((current) => {
+      const next = new Set(current);
+      if (checked) {
+        next.add(method);
+      } else {
+        next.delete(method);
+      }
+      return Array.from(next);
+    });
+  }
+
+  async function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsDataURL(file);
+    });
+  }
 
   async function submitJson(
     event: FormEvent<HTMLFormElement>,
@@ -85,7 +112,21 @@ export function ProviderDashboard({
   ): Promise<void> {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const payload: Record<string, unknown> = Object.fromEntries(formData.entries());
+    const payloadEntries = Array.from(formData.entries()).filter(([, value]) => !(value instanceof File));
+    const payload: Record<string, unknown> = Object.fromEntries(payloadEntries);
+
+    const logoFile = formData.get("logoFile");
+    const coverFile = formData.get("coverFile");
+    const serviceImageFile = formData.get("serviceImageFile");
+    if (logoFile instanceof File && logoFile.size > 0) {
+      payload.logoUrl = await fileToDataUrl(logoFile);
+    }
+    if (coverFile instanceof File && coverFile.size > 0) {
+      payload.coverImageUrl = await fileToDataUrl(coverFile);
+    }
+    if (serviceImageFile instanceof File && serviceImageFile.size > 0) {
+      payload.imageUrl = await fileToDataUrl(serviceImageFile);
+    }
     if (formData.has("categoryIds")) {
       payload.categoryIds = formData
         .getAll("categoryIds")
@@ -179,12 +220,22 @@ export function ProviderDashboard({
             ? tr(locale, "Update profile", "프로필 수정")
             : tr(locale, "Create provider profile", "업체 프로필 만들기")}
         </h2>
+        <p className="tiny muted">
+          {tr(
+            locale,
+            "Required fields are for verification. Public display fields are optional and recommended after verification is approved.",
+            "필수 항목은 검증용입니다. 사용자 노출용 정보는 선택 항목이며 검증 승인 후 입력을 권장합니다."
+          )}
+        </p>
         <form
           className="grid grid-3"
           onSubmit={(event) =>
             submitJson(event, "/api/provider/profile", profile ? "PATCH" : "POST")
           }
         >
+          <div style={{ gridColumn: "1 / -1" }}>
+            <h3 style={{ margin: "0 0 8px 0" }}>{tr(locale, "Required for verification", "검증용 필수 항목")}</h3>
+          </div>
           <div>
             <label className="tiny">{tr(locale, "Business name", "업체명")}</label>
             <input
@@ -219,38 +270,31 @@ export function ProviderDashboard({
             <input className="input" defaultValue={profile?.city ?? ""} name="city" />
           </div>
           <div>
-            <label className="tiny">{tr(locale, "Country", "국가")}</label>
-            <input className="input" defaultValue={profile?.country ?? ""} name="country" />
+            <label className="tiny">{tr(locale, "Country", "국가")} *</label>
+            <input className="input" defaultValue={profile?.country ?? ""} name="country" required />
           </div>
           <div>
-            <label className="tiny">{tr(locale, "Contact email", "연락 이메일")}</label>
-            <input className="input" defaultValue={profile?.contactEmail ?? ""} name="contactEmail" />
+            <label className="tiny">{tr(locale, "Contact email", "연락 이메일")} *</label>
+            <input className="input" defaultValue={profile?.contactEmail ?? ""} name="contactEmail" required />
           </div>
           <div>
             <label className="tiny">{tr(locale, "Contact phone", "연락처")}</label>
             <input className="input" defaultValue={profile?.contactPhone ?? ""} name="contactPhone" />
           </div>
           <div>
-            <label className="tiny">{tr(locale, "Website", "웹사이트")}</label>
-            <input className="input" defaultValue={profile?.websiteUrl ?? ""} name="websiteUrl" />
+            <label className="tiny">{tr(locale, "Website", "웹사이트")} *</label>
+            <input className="input" defaultValue={profile?.websiteUrl ?? ""} name="websiteUrl" required />
           </div>
           <div>
-            <label className="tiny">{tr(locale, "Years in business", "업력(년)")}</label>
+            <label className="tiny">{tr(locale, "Years in business", "업력(년)")} *</label>
             <input
               className="input"
               defaultValue={profile?.yearsInBusiness ?? ""}
               min={0}
               name="yearsInBusiness"
+              required
               type="number"
             />
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">{tr(locale, "Logo image URL", "로고 이미지 URL")}</label>
-            <input className="input" defaultValue={profile?.logoUrl ?? ""} name="logoUrl" />
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">{tr(locale, "Cover image URL", "커버 이미지 URL")}</label>
-            <input className="input" defaultValue={profile?.coverImageUrl ?? ""} name="coverImageUrl" />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
             <label className="tiny">{tr(locale, "Industry / categories", "업종 / 카테고리")}</label>
@@ -269,10 +313,63 @@ export function ProviderDashboard({
               ))}
             </div>
           </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">{tr(locale, "Bio", "상세 소개")}</label>
-            <textarea className="textarea" defaultValue={profile?.bio ?? ""} name="bio" />
-          </div>
+
+          <fieldset
+            disabled={!verificationApproved}
+            style={{
+              gridColumn: "1 / -1",
+              border: "1px dashed var(--line)",
+              borderRadius: "12px",
+              padding: "12px"
+            }}
+          >
+            <legend className="tiny">{tr(locale, "Optional public profile (after verification)", "선택: 사용자 노출 정보 (검증 승인 후)")}</legend>
+            {!verificationApproved && (
+              <p className="tiny muted" style={{ marginTop: 0 }}>
+                {tr(
+                  locale,
+                  "This section unlocks after verification is approved.",
+                  "검증 승인 후 이 섹션을 입력할 수 있습니다."
+                )}
+              </p>
+            )}
+            <div className="grid grid-3">
+              <div>
+                <label className="tiny">{tr(locale, "One-line intro", "한줄 소개")}</label>
+                <input
+                  className="input"
+                  defaultValue={profile?.tagline ?? ""}
+                  name="tagline"
+                  placeholder={tr(
+                    locale,
+                    "Example: Fast and trusted office electrical support.",
+                    "예시: 사무공간 전기 문제를 빠르고 정확하게 해결합니다."
+                  )}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label className="tiny">{tr(locale, "Detailed description", "상세 소개")}</label>
+                <textarea
+                  className="textarea"
+                  defaultValue={profile?.bio ?? ""}
+                  name="bio"
+                  placeholder={tr(
+                    locale,
+                    "Example: We provide fixed-price installation, maintenance, and emergency support with verified technicians.",
+                    "예시: 검증된 기술진이 정찰제 설치/정비/긴급출동 서비스를 제공합니다."
+                  )}
+                />
+              </div>
+              <div>
+                <label className="tiny">{tr(locale, "Logo image attachment", "로고 이미지 첨부")}</label>
+                <input className="input" accept="image/*" name="logoFile" type="file" />
+              </div>
+              <div>
+                <label className="tiny">{tr(locale, "Cover image attachment", "커버 이미지 첨부")}</label>
+                <input className="input" accept="image/*" name="coverFile" type="file" />
+              </div>
+            </div>
+          </fieldset>
           <button className="btn" disabled={loading} type="submit">
             {loading ? tr(locale, "Saving...", "저장 중...") : tr(locale, "Save profile", "프로필 저장")}
           </button>
@@ -333,15 +430,6 @@ export function ProviderDashboard({
                 />{" "}
                 {tr(locale, "Deposit / partial prepay", "부분 선지급")}
               </label>
-              <label className="category-check">
-                <input
-                  defaultChecked={billing?.paymentTerms.includes("other") ?? false}
-                  name="paymentTerms"
-                  type="checkbox"
-                  value="other"
-                />{" "}
-                {tr(locale, "Other", "기타")}
-              </label>
             </div>
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
@@ -349,8 +437,9 @@ export function ProviderDashboard({
             <div className="category-checkbox-grid">
               <label className="category-check">
                 <input
-                  defaultChecked={billing?.paymentMethods.includes("bank_transfer") ?? false}
+                  checked={selectedPaymentMethods.includes("bank_transfer")}
                   name="paymentMethods"
+                  onChange={(event) => togglePaymentMethod("bank_transfer", event.target.checked)}
                   type="checkbox"
                   value="bank_transfer"
                 />{" "}
@@ -358,8 +447,9 @@ export function ProviderDashboard({
               </label>
               <label className="category-check">
                 <input
-                  defaultChecked={billing?.paymentMethods.includes("momo") ?? false}
+                  checked={selectedPaymentMethods.includes("momo")}
                   name="paymentMethods"
+                  onChange={(event) => togglePaymentMethod("momo", event.target.checked)}
                   type="checkbox"
                   value="momo"
                 />{" "}
@@ -367,8 +457,9 @@ export function ProviderDashboard({
               </label>
               <label className="category-check">
                 <input
-                  defaultChecked={billing?.paymentMethods.includes("cash") ?? false}
+                  checked={selectedPaymentMethods.includes("cash")}
                   name="paymentMethods"
+                  onChange={(event) => togglePaymentMethod("cash", event.target.checked)}
                   type="checkbox"
                   value="cash"
                 />{" "}
@@ -376,8 +467,9 @@ export function ProviderDashboard({
               </label>
               <label className="category-check">
                 <input
-                  defaultChecked={billing?.paymentMethods.includes("card") ?? false}
+                  checked={selectedPaymentMethods.includes("card")}
                   name="paymentMethods"
+                  onChange={(event) => togglePaymentMethod("card", event.target.checked)}
                   type="checkbox"
                   value="card"
                 />{" "}
@@ -385,8 +477,9 @@ export function ProviderDashboard({
               </label>
               <label className="category-check">
                 <input
-                  defaultChecked={billing?.paymentMethods.includes("other") ?? false}
+                  checked={selectedPaymentMethods.includes("other")}
                   name="paymentMethods"
+                  onChange={(event) => togglePaymentMethod("other", event.target.checked)}
                   type="checkbox"
                   value="other"
                 />{" "}
@@ -394,30 +487,38 @@ export function ProviderDashboard({
               </label>
             </div>
           </div>
-          <div>
-            <label className="tiny">{tr(locale, "MoMo account name", "모모 계정 이름")}</label>
-            <input className="input" defaultValue={billing?.momoAccountName ?? ""} name="momoAccountName" />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "MoMo number", "모모 번호")}</label>
-            <input className="input" defaultValue={billing?.momoNumber ?? ""} name="momoNumber" />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Bank name", "은행명")}</label>
-            <input className="input" defaultValue={billing?.bankName ?? ""} name="bankName" />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Bank account name", "은행 계좌명")}</label>
-            <input className="input" defaultValue={billing?.bankAccountName ?? ""} name="bankAccountName" />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Bank account number", "은행 계좌번호")}</label>
-            <input className="input" defaultValue={billing?.bankAccountNumber ?? ""} name="bankAccountNumber" />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Bank SWIFT code", "은행 SWIFT 코드")}</label>
-            <input className="input" defaultValue={billing?.bankSwiftCode ?? ""} name="bankSwiftCode" />
-          </div>
+          {selectedPaymentMethods.includes("momo") && (
+            <>
+              <div>
+                <label className="tiny">{tr(locale, "MoMo account name", "모모 계정 이름")}</label>
+                <input className="input" defaultValue={billing?.momoAccountName ?? ""} name="momoAccountName" />
+              </div>
+              <div>
+                <label className="tiny">{tr(locale, "MoMo number", "모모 번호")}</label>
+                <input className="input" defaultValue={billing?.momoNumber ?? ""} name="momoNumber" />
+              </div>
+            </>
+          )}
+          {selectedPaymentMethods.includes("bank_transfer") && (
+            <>
+              <div>
+                <label className="tiny">{tr(locale, "Bank name", "은행명")}</label>
+                <input className="input" defaultValue={billing?.bankName ?? ""} name="bankName" />
+              </div>
+              <div>
+                <label className="tiny">{tr(locale, "Bank account name", "은행 계좌명")}</label>
+                <input className="input" defaultValue={billing?.bankAccountName ?? ""} name="bankAccountName" />
+              </div>
+              <div>
+                <label className="tiny">{tr(locale, "Bank account number", "은행 계좌번호")}</label>
+                <input className="input" defaultValue={billing?.bankAccountNumber ?? ""} name="bankAccountNumber" />
+              </div>
+              <div>
+                <label className="tiny">{tr(locale, "Bank SWIFT code", "은행 SWIFT 코드")}</label>
+                <input className="input" defaultValue={billing?.bankSwiftCode ?? ""} name="bankSwiftCode" />
+              </div>
+            </>
+          )}
           <div style={{ gridColumn: "1 / -1" }}>
             <label className="tiny">{tr(locale, "EBM notes", "EBM 메모")}</label>
             <textarea className="textarea" defaultValue={billing?.ebmNotes ?? ""} name="ebmNotes" />
@@ -430,7 +531,17 @@ export function ProviderDashboard({
 
       <article className="panel">
         <h2 style={{ marginTop: 0 }}>{tr(locale, "Create service", "서비스 등록")}</h2>
+        <p className="tiny muted">
+          {tr(
+            locale,
+            "Use required fields first. Optional display details can be filled after verification is approved.",
+            "필수 항목으로 먼저 등록하고, 선택 노출 정보는 검증 승인 후 입력하세요."
+          )}
+        </p>
         <form className="grid grid-3" onSubmit={(event) => submitJson(event, "/api/provider/services", "POST")}>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <h3 style={{ margin: "0 0 8px 0" }}>{tr(locale, "Required", "필수")}</h3>
+          </div>
           <div>
             <label className="tiny">{tr(locale, "Category", "카테고리")}</label>
             <select className="select" name="categoryId" required>
@@ -446,14 +557,45 @@ export function ProviderDashboard({
             <label className="tiny">{tr(locale, "Title", "서비스명")}</label>
             <input className="input" name="title" required />
           </div>
-          <div>
-            <label className="tiny">{tr(locale, "Service image URL (optional)", "서비스 이미지 URL (선택)")}</label>
-            <input className="input" name="imageUrl" placeholder="https://..." />
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">{tr(locale, "Description", "설명")}</label>
-            <textarea className="textarea" name="description" />
-          </div>
+
+          <fieldset
+            disabled={!verificationApproved}
+            style={{
+              gridColumn: "1 / -1",
+              border: "1px dashed var(--line)",
+              borderRadius: "12px",
+              padding: "12px"
+            }}
+          >
+            <legend className="tiny">{tr(locale, "Optional (after verification)", "선택 (검증 승인 후)")}</legend>
+            {!verificationApproved && (
+              <p className="tiny muted" style={{ marginTop: 0 }}>
+                {tr(
+                  locale,
+                  "Service optional fields unlock after verification approval.",
+                  "서비스 선택 항목은 검증 승인 후 입력할 수 있습니다."
+                )}
+              </p>
+            )}
+            <div className="grid grid-3">
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label className="tiny">{tr(locale, "Description (optional)", "상세 설명 (선택)")}</label>
+                <textarea
+                  className="textarea"
+                  name="description"
+                  placeholder={tr(
+                    locale,
+                    "Example: Includes on-site setup, safety checklist, and post-service support.",
+                    "예시: 현장 설치, 안전 점검표, 서비스 이후 지원이 포함됩니다."
+                  )}
+                />
+              </div>
+              <div>
+                <label className="tiny">{tr(locale, "Service image attachment", "서비스 이미지 첨부")}</label>
+                <input className="input" accept="image/*" name="serviceImageFile" type="file" />
+              </div>
+            </div>
+          </fieldset>
           <button className="btn" disabled={loading} type="submit">
             {tr(locale, "Add service", "서비스 추가")}
           </button>
@@ -491,12 +633,13 @@ export function ProviderDashboard({
             </select>
           </div>
           <div>
-            <label className="tiny">{tr(locale, "Tier", "티어")}</label>
-            <select className="select" defaultValue="standard" name="tier">
-              <option value="basic">{tr(locale, "Basic", "기본")}</option>
-              <option value="standard">{tr(locale, "Standard", "표준")}</option>
-              <option value="premium">{tr(locale, "Premium", "프리미엄")}</option>
-            </select>
+            <label className="tiny">{tr(locale, "Pricing mode", "가격 모드")}</label>
+            <input
+              className="input"
+              disabled
+              value={tr(locale, "Single price (no tier split)", "단일 가격 (티어 구분 없음)")}
+            />
+            <input name="tier" type="hidden" value="standard" />
           </div>
           <div>
             <label className="tiny">{tr(locale, "Currency", "통화")}</label>
@@ -512,6 +655,7 @@ export function ProviderDashboard({
               <option value="per_hour">{tr(locale, "Per hour", "시간당")}</option>
               <option value="per_day">{tr(locale, "Per day", "일당")}</option>
               <option value="per_project">{tr(locale, "Per project", "프로젝트당")}</option>
+              <option value="per_person">{tr(locale, "Per person", "인당")}</option>
             </select>
           </div>
           <label className="tiny">
@@ -541,6 +685,26 @@ export function ProviderDashboard({
             "검증 케이스를 시작하고 증빙 서류를 업로드하세요."
           )}
         </p>
+        <div className="grid grid-3">
+          <div className="panel" style={{ padding: "12px" }}>
+            <h3 style={{ marginTop: 0 }}>{tr(locale, "Required documents", "필수 서류")}</h3>
+            <ul className="tiny" style={{ margin: 0, paddingLeft: "18px" }}>
+              <li>{tr(locale, "Business registration certificate", "사업자 등록증")}</li>
+              <li>{tr(locale, "Tax/TIN certificate", "세무/TIN 증빙 서류")}</li>
+              <li>{tr(locale, "Owner/representative ID", "대표자 신분증")}</li>
+              <li>{tr(locale, "Bank account ownership proof", "계좌 소유 증빙")}</li>
+            </ul>
+          </div>
+          <div className="panel" style={{ padding: "12px" }}>
+            <h3 style={{ marginTop: 0 }}>{tr(locale, "Optional additional documents", "추가(선택) 서류")}</h3>
+            <ul className="tiny" style={{ margin: 0, paddingLeft: "18px" }}>
+              <li>{tr(locale, "Past quotation sample", "기존 견적서 샘플")}</li>
+              <li>{tr(locale, "EBM sample format", "EBM 발행 샘플")}</li>
+              <li>{tr(locale, "Client references", "고객 추천서/레퍼런스")}</li>
+              <li>{tr(locale, "Insurance or compliance certificate", "보험/컴플라이언스 증빙")}</li>
+            </ul>
+          </div>
+        </div>
         <button className="btn" disabled={loading} onClick={() => void triggerVerification()} type="button">
           {verificationCaseId
             ? tr(locale, "Create another case (if current closed)", "새 검증 케이스 만들기(현재 케이스 종료 시)")
