@@ -171,10 +171,7 @@ export function RequestsPanel({
     vendorContext?.paymentMethods[0] ?? "bank_transfer"
   );
   const [uploadingByRequestId, setUploadingByRequestId] = useState<Record<string, boolean>>({});
-  const availablePaymentTerms =
-    vendorContext && vendorContext.paymentTerms.length > 0
-      ? vendorContext.paymentTerms.filter((term) => ["prepaid", "postpaid", "deposit"].includes(term))
-      : ["prepaid", "postpaid", "deposit"];
+  const availablePaymentTerms = ["prepaid", "postpaid", "deposit"];
   const availablePaymentMethods =
     vendorContext && vendorContext.paymentMethods.length > 0
       ? vendorContext.paymentMethods
