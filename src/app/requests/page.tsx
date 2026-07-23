@@ -89,6 +89,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
 
   return (
     <RequestsPanel
+      key={`requests-${selectedVendorId ?? "none"}-${session.role}`}
       locale={locale}
       requests={requests.map((item) => ({
         id: item.id,
