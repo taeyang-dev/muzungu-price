@@ -35,29 +35,35 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
     );
   }
 
-  const [categories, vendorContext] = await Promise.all([
-    prisma.serviceCategory.findMany({
-      select: { id: true, name: true },
-      orderBy: { name: "asc" }
-    }),
-    vendorId
-      ? prisma.providerProfile.findUnique({
-          where: { id: vendorId },
-          include: {
-            services: {
-              include: {
-                category: true,
-                priceCards: {
-                  where: { isPublic: true },
-                  orderBy: { basePrice: "asc" }
-                }
-              }
-            },
-            billingCapability: true
-          }
+  const canCreateVendorRequests = session.role === "customer" || session.role === "org_buyer";
+
+  const vendorDirectory = await (
+    canCreateVendorRequests
+      ? prisma.providerProfile.findMany({
+          select: { id: true, businessName: true },
+          orderBy: { businessName: "asc" }
         })
-      : Promise.resolve(null)
-  ]);
+      : Promise.resolve([])
+  );
+
+  const selectedVendorId = vendorId ?? vendorDirectory[0]?.id ?? null;
+  const vendorContext = selectedVendorId
+    ? await prisma.providerProfile.findUnique({
+        where: { id: selectedVendorId },
+        include: {
+          services: {
+            include: {
+              category: true,
+              priceCards: {
+                where: { isPublic: true },
+                orderBy: { basePrice: "asc" }
+              }
+            }
+          },
+          billingCapability: true
+        }
+      })
+    : null;
 
   const where: Prisma.ServiceRequestWhereInput =
     session.role === "provider"
@@ -83,7 +89,6 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
 
   return (
     <RequestsPanel
-      categories={categories}
       locale={locale}
       requests={requests.map((item) => ({
         id: item.id,
@@ -132,6 +137,8 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
           : null
       }))}
       role={session.role}
+      selectedVendorId={selectedVendorId}
+      vendorOptions={vendorDirectory}
       vendorContext={
         vendorContext
           ? {

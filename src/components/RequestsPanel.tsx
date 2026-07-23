@@ -12,11 +12,6 @@ import {
 } from "@/lib/request-documents-storage";
 import { getVendorStorageEventName } from "@/lib/vendor-storage";
 
-interface Category {
-  id: string;
-  name: string;
-}
-
 interface Offer {
   id: string;
   providerName: string;
@@ -89,9 +84,10 @@ interface VendorContext {
 
 interface RequestsPanelProps {
   role: "customer" | "provider" | "org_buyer" | "admin";
-  categories: Category[];
   requests: RequestItem[];
   locale: Locale;
+  selectedVendorId: string | null;
+  vendorOptions: Array<{ id: string; businessName: string }>;
   vendorContext: VendorContext | null;
 }
 
@@ -150,9 +146,10 @@ function toRequestTypeLabel(locale: Locale, value: string): string {
 
 export function RequestsPanel({
   role,
-  categories,
   requests,
   locale,
+  selectedVendorId,
+  vendorOptions,
   vendorContext
 }: RequestsPanelProps) {
   const [feedback, setFeedback] = useState("");
@@ -425,6 +422,13 @@ export function RequestsPanel({
     event.currentTarget.reset();
   }
 
+  function changeVendor(vendorId: string): void {
+    if (!vendorId) {
+      return;
+    }
+    router.push(`/requests?vendorId=${vendorId}#vendor-request`);
+  }
+
   return (
     <section className="grid">
       <h1 style={{ marginBottom: 0 }}>{tr(locale, "Requests & Matching", "요청서 & 매칭")}</h1>
@@ -437,6 +441,36 @@ export function RequestsPanel({
       </p>
       {error && <div className="flash error">{error}</div>}
       {feedback && <div className="flash success">{feedback}</div>}
+
+      {(role === "customer" || role === "org_buyer") && (
+        <article className="panel" id="vendor-request">
+          <h2 style={{ marginTop: 0 }}>{tr(locale, "Choose vendor", "업체 선택")}</h2>
+          {vendorOptions.length === 0 ? (
+            <p className="muted">
+              {tr(
+                locale,
+                "No vendors are available yet. Please ask a provider to register services first.",
+                "아직 등록된 업체가 없습니다. 업체가 서비스 등록을 먼저 진행해 주세요."
+              )}
+            </p>
+          ) : (
+            <div>
+              <label className="tiny">{tr(locale, "Vendor", "업체")}</label>
+              <select
+                className="select"
+                onChange={(event) => changeVendor(event.target.value)}
+                value={selectedVendorId ?? ""}
+              >
+                {vendorOptions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.businessName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </article>
+      )}
 
       {(role === "customer" || role === "org_buyer") && vendorContext && (
         <article className="panel">
@@ -674,55 +708,15 @@ export function RequestsPanel({
         </article>
       )}
 
-      {(role === "customer" || role === "org_buyer") && !vendorContext && (
+      {(role === "customer" || role === "org_buyer") && !vendorContext && vendorOptions.length > 0 && (
         <article className="panel">
-          <h2 style={{ marginTop: 0 }}>{tr(locale, "Create a request", "요청서 작성")}</h2>
-          <form className="grid grid-3" onSubmit={(event) => submitJson(event, "/api/requests", "POST")}>
-            <div>
-              <label className="tiny">{tr(locale, "Category", "카테고리")}</label>
-              <select className="select" name="categoryId" required>
-                <option value="">{tr(locale, "Select category", "카테고리 선택")}</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="tiny">{tr(locale, "Title", "제목")}</label>
-              <input className="input" name="title" required />
-            </div>
-            <div>
-              <label className="tiny">{tr(locale, "Location", "위치")}</label>
-              <input className="input" name="locationText" placeholder={tr(locale, "Kigali", "키갈리")} />
-            </div>
-            <div>
-              <label className="tiny">{tr(locale, "Budget min", "최소 예산")}</label>
-              <input className="input" name="budgetMin" type="number" />
-            </div>
-            <div>
-              <label className="tiny">{tr(locale, "Budget max", "최대 예산")}</label>
-              <input className="input" name="budgetMax" type="number" />
-            </div>
-            <div>
-              <label className="tiny">{tr(locale, "Currency", "통화")}</label>
-              <input className="input" defaultValue="RWF" maxLength={3} name="currency" />
-            </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label className="tiny">{tr(locale, "Requirements", "요청 사항")}</label>
-              <textarea className="textarea" name="requirementText" required />
-            </div>
-            <label className="tiny">
-              <input name="needsQuotation" type="checkbox" /> {tr(locale, "Quotation required", "견적서 필요")}
-            </label>
-            <label className="tiny">
-              <input name="needsEbm" type="checkbox" /> {tr(locale, "EBM required", "EBM 필요")}
-            </label>
-            <button className="btn" disabled={loading} type="submit">
-              {tr(locale, "Create request", "요청서 만들기")}
-            </button>
-          </form>
+          <p className="muted" style={{ margin: 0 }}>
+            {tr(
+              locale,
+              "Select a vendor above to open quotation, purchase, and EBM request forms.",
+              "위에서 업체를 선택하면 견적서/구매/EBM 요청 폼이 바로 열립니다."
+            )}
+          </p>
         </article>
       )}
 
