@@ -1187,55 +1187,162 @@ async function main() {
       }
     });
 
-    await prisma.service.upsert({
-      where: { id: "seed-furniture-desk-service" },
-      update: {
-        providerProfileId: furnitureProfile.id,
-        categoryId: furnitureCategory.id,
-        title: bilingual("Office Desk & Chair Package", "사무용 책상·의자 패키지"),
-        description: bilingual(
-          "Custom production for office desks and ergonomic chairs by quantity and finish.",
-          "수량/마감 옵션에 따라 사무용 책상·인체공학 의자를 맞춤 제작합니다."
-        ),
-        imageUrl:
-          "https://images.unsplash.com/photo-1538688423619-a81d3f23454b?auto=format&fit=crop&w=1200&q=80"
-      },
-      create: {
-        id: "seed-furniture-desk-service",
-        providerProfileId: furnitureProfile.id,
-        categoryId: furnitureCategory.id,
-        title: bilingual("Office Desk & Chair Package", "사무용 책상·의자 패키지"),
-        description: bilingual(
-          "Custom production for office desks and ergonomic chairs by quantity and finish.",
-          "수량/마감 옵션에 따라 사무용 책상·인체공학 의자를 맞춤 제작합니다."
-        ),
-        imageUrl:
-          "https://images.unsplash.com/photo-1538688423619-a81d3f23454b?auto=format&fit=crop&w=1200&q=80"
+    // Reset catalog items for this provider so repeated seeding keeps one clean product lineup.
+    await prisma.servicePriceCard.deleteMany({
+      where: {
+        service: {
+          providerProfileId: furnitureProfile.id
+        }
+      }
+    });
+    await prisma.service.deleteMany({
+      where: {
+        providerProfileId: furnitureProfile.id
       }
     });
 
-    await prisma.servicePriceCard.upsert({
-      where: { id: "seed-furniture-package-standard" },
-      update: {
-        serviceId: "seed-furniture-desk-service",
-        tier: "standard",
-        currency: "RWF",
-        basePrice: 1480000,
-        unit: "per_project",
-        inclusions: bilingual("20 desks + 20 chairs + delivery in Kigali", "책상 20개 + 의자 20개 + 키갈리 배송"),
-        exclusions: bilingual("Assembly outside Kigali", "키갈리 외 지역 조립비")
+    const furnitureServices = [
+      {
+        id: "seed-furniture-chair-service",
+        title: bilingual("Ergonomic Task Chair (Type A / Type B)", "인체공학 사무의자 (A형 / B형)"),
+        description: bilingual(
+          "Type-based chair production for offices and schools. Minimum order varies by model and finishing.",
+          "사무실/학교용 의자를 타입별로 제작합니다. 모델과 마감에 따라 최소 주문 수량이 달라집니다."
+        ),
+        imageUrl:
+          "https://images.unsplash.com/photo-1580480055273-228ff5388ef8?auto=format&fit=crop&w=1200&q=80"
       },
-      create: {
-        id: "seed-furniture-package-standard",
+      {
+        id: "seed-furniture-desk-service",
+        title: bilingual("Office Desk (120cm / 160cm / L-shape)", "사무용 책상 (120cm / 160cm / ㄱ자형)"),
+        description: bilingual(
+          "Desk options by size and frame type, suitable for team offices and training rooms.",
+          "사이즈/프레임 타입별 책상 옵션을 제공하며 팀 오피스와 교육장에 적합합니다."
+        ),
+        imageUrl:
+          "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "seed-furniture-custom-service",
+        title: bilingual("Custom Office Furniture Build", "주문 제작 사무 가구"),
+        description: bilingual(
+          "Custom shelving, reception desks, and mixed furniture sets for specific floor plans.",
+          "공간 도면에 맞춘 맞춤 선반, 리셉션 데스크, 혼합 가구 세트를 제작합니다."
+        ),
+        imageUrl:
+          "https://images.unsplash.com/photo-1616627452124-5862042bd2fb?auto=format&fit=crop&w=1200&q=80"
+      }
+    ];
+
+    for (const service of furnitureServices) {
+      await prisma.service.upsert({
+        where: { id: service.id },
+        update: {
+          providerProfileId: furnitureProfile.id,
+          categoryId: furnitureCategory.id,
+          title: service.title,
+          description: service.description,
+          imageUrl: service.imageUrl
+        },
+        create: {
+          id: service.id,
+          providerProfileId: furnitureProfile.id,
+          categoryId: furnitureCategory.id,
+          title: service.title,
+          description: service.description,
+          imageUrl: service.imageUrl
+        }
+      });
+    }
+
+    const furniturePriceCards = [
+      {
+        id: "seed-furniture-chair-basic",
+        serviceId: "seed-furniture-chair-service",
+        tier: "basic",
+        currency: "RWF",
+        basePrice: 520000,
+        unit: "per_project",
+        inclusions: bilingual(
+          "Minimum order: 15 chairs (Type A); fabric finish and Kigali delivery included",
+          "최소 주문: A형 의자 15개; 기본 패브릭 마감과 키갈리 배송 포함"
+        ),
+        exclusions: bilingual("Assembly outside Kigali", "키갈리 외 지역 설치비")
+      },
+      {
+        id: "seed-furniture-chair-premium",
+        serviceId: "seed-furniture-chair-service",
+        tier: "premium",
+        currency: "RWF",
+        basePrice: 980000,
+        unit: "per_project",
+        inclusions: bilingual(
+          "MOQ: 20 chairs (Type B ergonomic); reinforced frame and anti-scratch finish",
+          "최소 주문: B형 인체공학 의자 20개; 보강 프레임/스크래치 방지 마감 포함"
+        ),
+        exclusions: bilingual("Custom logo stitching", "로고 자수 커스텀")
+      },
+      {
+        id: "seed-furniture-desk-standard",
         serviceId: "seed-furniture-desk-service",
         tier: "standard",
         currency: "RWF",
-        basePrice: 1480000,
+        basePrice: 760000,
         unit: "per_project",
-        inclusions: bilingual("20 desks + 20 chairs + delivery in Kigali", "책상 20개 + 의자 20개 + 키갈리 배송"),
-        exclusions: bilingual("Assembly outside Kigali", "키갈리 외 지역 조립비")
+        inclusions: bilingual(
+          "Minimum order: 10 desks (120cm); cable-hole finish included",
+          "최소 주문: 120cm 책상 10개; 케이블 홀 가공 포함"
+        ),
+        exclusions: bilingual("Metal drawer set upgrade", "금속 서랍장 업그레이드")
+      },
+      {
+        id: "seed-furniture-desk-premium",
+        serviceId: "seed-furniture-desk-service",
+        tier: "premium",
+        currency: "RWF",
+        basePrice: 1460000,
+        unit: "per_project",
+        inclusions: bilingual(
+          "MOQ: 8 desks (160cm/L-shape); laminate top and frame reinforcement",
+          "최소 주문: 160cm/ㄱ자형 책상 8개; 라미네이트 상판/프레임 보강 포함"
+        ),
+        exclusions: bilingual("Electrical socket integration", "전원 소켓 매립")
+      },
+      {
+        id: "seed-furniture-custom-start",
+        serviceId: "seed-furniture-custom-service",
+        tier: "basic",
+        currency: "RWF",
+        basePrice: 450000,
+        unit: "per_project",
+        inclusions: bilingual(
+          "Minimum order: 1 custom set; starting estimate for simple custom build",
+          "최소 주문: 맞춤 1세트; 단순 주문 제작 기준 시작 견적"
+        ),
+        exclusions: bilingual("Premium hardwood materials", "고급 원목 자재")
+      },
+      {
+        id: "seed-furniture-custom-premium",
+        serviceId: "seed-furniture-custom-service",
+        tier: "premium",
+        currency: "RWF",
+        basePrice: 1800000,
+        unit: "per_project",
+        inclusions: bilingual(
+          "MOQ: 1 project; full custom production with 3D mockup",
+          "최소 주문: 프로젝트 1건; 3D 목업 포함 풀 커스텀 제작"
+        ),
+        exclusions: bilingual("Architectural redesign service", "건축 구조 재설계")
       }
-    });
+    ];
+
+    for (const card of furniturePriceCards) {
+      await prisma.servicePriceCard.upsert({
+        where: { id: card.id },
+        update: card,
+        create: card
+      });
+    }
 
     await prisma.providerBillingCapability.upsert({
       where: { providerProfileId: furnitureProfile.id },
@@ -1274,11 +1381,12 @@ async function main() {
       update: {
         requesterUserId: sampleReviewers[2].id,
         categoryId: furnitureCategory.id,
-        title: "New office desks and chairs",
-        requirementText: "Need package for 20 people workspace.",
+        title: "Office chairs/desks plus custom reception furniture",
+        requirementText:
+          "Need 20 ergonomic chairs, 10 desks, and one custom reception unit with clear MOQ-based pricing.",
         locationText: "Kigali Heights",
         budgetMin: 1200000,
-        budgetMax: 1800000,
+        budgetMax: 2500000,
         currency: "RWF",
         needsQuotation: true,
         needsEbm: true,
@@ -1288,11 +1396,12 @@ async function main() {
         id: "seed-request-furniture-office",
         requesterUserId: sampleReviewers[2].id,
         categoryId: furnitureCategory.id,
-        title: "New office desks and chairs",
-        requirementText: "Need package for 20 people workspace.",
+        title: "Office chairs/desks plus custom reception furniture",
+        requirementText:
+          "Need 20 ergonomic chairs, 10 desks, and one custom reception unit with clear MOQ-based pricing.",
         locationText: "Kigali Heights",
         budgetMin: 1200000,
-        budgetMax: 1800000,
+        budgetMax: 2500000,
         currency: "RWF",
         needsQuotation: true,
         needsEbm: true,
@@ -1306,7 +1415,7 @@ async function main() {
         requestId: "seed-request-furniture-office",
         providerProfileId: furnitureProfile.id,
         customerUserId: sampleReviewers[2].id,
-        finalPrice: 1520000,
+        finalPrice: 2140000,
         currency: "RWF",
         status: "completed",
         completedAt: new Date("2026-07-12T08:00:00.000Z")
@@ -1316,7 +1425,7 @@ async function main() {
         requestId: "seed-request-furniture-office",
         providerProfileId: furnitureProfile.id,
         customerUserId: sampleReviewers[2].id,
-        finalPrice: 1520000,
+        finalPrice: 2140000,
         currency: "RWF",
         status: "completed",
         completedAt: new Date("2026-07-12T08:00:00.000Z")
@@ -1333,8 +1442,8 @@ async function main() {
         ratingTimeliness: 4,
         ratingQuality: 4,
         comment: bilingual(
-          "Desk and chair quality is solid, and the quotation breakdown was very transparent.",
-          "책상과 의자 품질이 좋고 견적서 항목이 매우 투명하게 제시되었습니다."
+          "The chair/desk type prices were clear, and custom-build starting costs were explained well.",
+          "의자/책상 타입별 가격이 명확했고 주문제작 시작가 설명도 이해하기 쉬웠습니다."
         )
       },
       create: {
@@ -1346,8 +1455,8 @@ async function main() {
         ratingTimeliness: 4,
         ratingQuality: 4,
         comment: bilingual(
-          "Desk and chair quality is solid, and the quotation breakdown was very transparent.",
-          "책상과 의자 품질이 좋고 견적서 항목이 매우 투명하게 제시되었습니다."
+          "The chair/desk type prices were clear, and custom-build starting costs were explained well.",
+          "의자/책상 타입별 가격이 명확했고 주문제작 시작가 설명도 이해하기 쉬웠습니다."
         )
       }
     });

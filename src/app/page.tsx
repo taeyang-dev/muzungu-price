@@ -92,6 +92,24 @@ function unitLabel(locale: "en" | "ko", unit: string): string {
     .replace("per project", "프로젝트당");
 }
 
+function extractMinimumOrder(locale: "en" | "ko", value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const text = localizeCopy(locale, value);
+  const match = text.match(/(?:MOQ|Minimum order|최소 주문)\s*[:：]\s*([^;|]+)/i);
+  if (!match) {
+    return null;
+  }
+  return match[1]?.trim() || null;
+}
+
+function isCustomOrderService(locale: "en" | "ko", title: string): boolean {
+  const normalized = localizeCopy(locale, title).toLowerCase();
+  return normalized.includes("custom") || normalized.includes("맞춤");
+}
+
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
   const locale = await getLocaleFromCookies();
@@ -253,6 +271,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           const representative = provider.services
             .flatMap((service) => service.priceCards)
             .sort((a, b) => a.basePrice.comparedTo(b.basePrice))[0];
+          const representativeMinOrder = extractMinimumOrder(locale, representative?.inclusions ?? null);
+          const hasCustomService = provider.services.some((service) =>
+            isCustomOrderService(locale, service.title)
+          );
           const serviceWithImage = provider.services.find((service) => service.imageUrl);
           const serviceImage = serviceWithImage?.imageUrl
             ? serviceWithImage.imageUrl
@@ -264,7 +286,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               : null;
 
           return (
-            <article className="card vendor-card" key={provider.id}>
+            <Link className="card vendor-card vendor-card-link" href={`/providers/${provider.id}`} key={provider.id}>
               <img
                 alt={`${provider.businessName} service`}
                 className="vendor-service-thumb"
@@ -333,10 +355,21 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   .map((entry) => categoryLabel(locale, entry.category.slug, entry.category.name))
                   .join(", ")}
               </p>
-              <Link className="btn" href={`/providers/${provider.id}`}>
+              {representativeMinOrder && (
+                <p className="tiny vendor-min-order-line">
+                  {tr(locale, "Minimum order", "최소 주문")}: {representativeMinOrder}
+                </p>
+              )}
+              {hasCustomService && representative && (
+                <p className="tiny vendor-starting-line">
+                  {tr(locale, "Custom order starts from", "주문 제작 시작가")}:{" "}
+                  {formatPrice(decimalToNumber(representative.basePrice), representative.currency)}
+                </p>
+              )}
+              <span className="btn vendor-card-cta">
                 {tr(locale, "View profile", "업체 상세 보기")}
-              </Link>
-            </article>
+              </span>
+            </Link>
           );
         })}
       </section>

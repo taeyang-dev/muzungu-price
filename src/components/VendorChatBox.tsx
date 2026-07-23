@@ -150,6 +150,7 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
   );
   const [translatingMessageId, setTranslatingMessageId] = useState<string | null>(null);
   const [isBulkTranslating, setIsBulkTranslating] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const [attachmentNotice, setAttachmentNotice] = useState("");
 
@@ -355,97 +356,115 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
   }
 
   return (
-    <article className="panel">
-      <h2 style={{ marginTop: 0 }}>{tr(locale, "Chat with vendor", "업체와 채팅")}</h2>
-      <p className="tiny muted chat-helper">
-        {tr(
-          locale,
-          "Switch language to instantly translate both your messages and vendor replies.",
-          "언어 버튼을 누르면 내 메시지와 업체 답변을 즉시 번역해서 볼 수 있습니다."
-        )}
-        {isBulkTranslating ? ` ${tr(locale, "Translating...", "번역 중...")}` : ""}
-      </p>
-      <div className="chat-translate-tabs">
-        {(Object.keys(languageLabels) as DisplayLang[]).map((lang) => (
-          <button
-            className={`chat-tab ${displayLanguage === lang ? "active" : ""}`}
-            key={lang}
-            onClick={() => void changeDisplayLanguage(lang)}
-            type="button"
-          >
-            {locale === "ko" ? languageLabels[lang].ko : languageLabels[lang].en}
-          </button>
-        ))}
-      </div>
-      <div className="chat-box">
-        {messages.map((message) => (
-          <div className={`chat-message ${message.sender}`} key={message.id}>
-            {message.text ? <p>{visibleText(message)}</p> : <p>{tr(locale, "(Attachment)", "(첨부파일)")}</p>}
-            {message.attachments && message.attachments.length > 0 && (
-              <ul className="chat-attachment-list">
-                {message.attachments.map((attachment) => (
-                  <li key={attachment.id}>
-                    <a download={attachment.name} href={attachment.dataUrl}>
-                      {attachment.name}
-                    </a>
-                    <span>{formatFileSize(attachment.sizeBytes)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="chat-inline-actions">
+    <div className={`chat-widget ${isOpen ? "open" : "closed"}`}>
+      {!isOpen ? (
+        <button className="chat-widget-launch" onClick={() => setIsOpen(true)} type="button">
+          💬 {tr(locale, "Chat with vendor", "업체와 채팅")}
+        </button>
+      ) : (
+        <article className="chat-widget-panel">
+          <div className="chat-widget-header">
+            <div>
+              <strong>{vendorName}</strong>
+              <p>{tr(locale, "Messenger-style quick chat", "메신저형 빠른 채팅")}</p>
+            </div>
+            <button aria-label="Minimize chat" onClick={() => setIsOpen(false)} type="button">
+              −
+            </button>
+          </div>
+          <div className="chat-widget-body">
+            <p className="tiny muted chat-helper">
+              {tr(
+                locale,
+                "Switch language to instantly translate both your messages and vendor replies.",
+                "언어 버튼을 누르면 내 메시지와 업체 답변을 즉시 번역해서 볼 수 있습니다."
+              )}
+              {isBulkTranslating ? ` ${tr(locale, "Translating...", "번역 중...")}` : ""}
+            </p>
+            <div className="chat-translate-tabs">
               {(Object.keys(languageLabels) as DisplayLang[]).map((lang) => (
                 <button
-                  className="chat-inline-btn"
-                  key={`${message.id}-${lang}`}
-                  onClick={() => void ensureTranslation(message.id, lang)}
+                  className={`chat-tab ${displayLanguage === lang ? "active" : ""}`}
+                  key={lang}
+                  onClick={() => void changeDisplayLanguage(lang)}
                   type="button"
                 >
                   {locale === "ko" ? languageLabels[lang].ko : languageLabels[lang].en}
                 </button>
               ))}
             </div>
-            <span>
-              {new Date(message.timestamp).toLocaleTimeString()}{" "}
-              {translatingMessageId === message.id
-                ? tr(locale, "· translating...", "· 번역 중...")
-                : ""}
-            </span>
-          </div>
-        ))}
-      </div>
-      <form className="chat-form" onSubmit={(event) => void sendMessage(event)}>
-        <input
-          className="input"
-          onChange={(event) => setInput(event.target.value)}
-          placeholder={tr(locale, "Write a message...", "메시지를 입력하세요...")}
-          value={input}
-        />
-        <div className="chat-upload-row">
-          <label className="chat-upload-label">
-            <span>{tr(locale, "Attach file", "파일 첨부")}</span>
-            <input multiple onChange={(event) => void onPickFiles(event)} type="file" />
-          </label>
-          <button className="btn" type="submit">
-            {tr(locale, "Send", "보내기")}
-          </button>
-        </div>
-        {pendingAttachments.length > 0 && (
-          <ul className="chat-pending-list">
-            {pendingAttachments.map((attachment) => (
-              <li key={attachment.id}>
-                <span>
-                  {attachment.name} ({formatFileSize(attachment.sizeBytes)})
-                </span>
-                <button onClick={() => removePendingAttachment(attachment.id)} type="button">
-                  {tr(locale, "Remove", "삭제")}
+            <div className="chat-box">
+              {messages.map((message) => (
+                <div className={`chat-message ${message.sender}`} key={message.id}>
+                  {message.text ? <p>{visibleText(message)}</p> : <p>{tr(locale, "(Attachment)", "(첨부파일)")}</p>}
+                  {message.attachments && message.attachments.length > 0 && (
+                    <ul className="chat-attachment-list">
+                      {message.attachments.map((attachment) => (
+                        <li key={attachment.id}>
+                          <a download={attachment.name} href={attachment.dataUrl}>
+                            {attachment.name}
+                          </a>
+                          <span>{formatFileSize(attachment.sizeBytes)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="chat-inline-actions">
+                    {(Object.keys(languageLabels) as DisplayLang[]).map((lang) => (
+                      <button
+                        className="chat-inline-btn"
+                        key={`${message.id}-${lang}`}
+                        onClick={() => void ensureTranslation(message.id, lang)}
+                        type="button"
+                      >
+                        {locale === "ko" ? languageLabels[lang].ko : languageLabels[lang].en}
+                      </button>
+                    ))}
+                  </div>
+                  <span>
+                    {new Date(message.timestamp).toLocaleTimeString()}{" "}
+                    {translatingMessageId === message.id
+                      ? tr(locale, "· translating...", "· 번역 중...")
+                      : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <form className="chat-form" onSubmit={(event) => void sendMessage(event)}>
+              <input
+                className="input"
+                onChange={(event) => setInput(event.target.value)}
+                placeholder={tr(locale, "Write a message...", "메시지를 입력하세요...")}
+                value={input}
+              />
+              <div className="chat-upload-row">
+                <label className="chat-upload-label">
+                  <span>{tr(locale, "Attach file", "파일 첨부")}</span>
+                  <input multiple onChange={(event) => void onPickFiles(event)} type="file" />
+                </label>
+                <button className="btn" type="submit">
+                  {tr(locale, "Send", "보내기")}
                 </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {attachmentNotice && <p className="tiny muted">{attachmentNotice}</p>}
-      </form>
-    </article>
+              </div>
+              {pendingAttachments.length > 0 && (
+                <ul className="chat-pending-list">
+                  {pendingAttachments.map((attachment) => (
+                    <li key={attachment.id}>
+                      <span>
+                        {attachment.name} ({formatFileSize(attachment.sizeBytes)})
+                      </span>
+                      <button onClick={() => removePendingAttachment(attachment.id)} type="button">
+                        {tr(locale, "Remove", "삭제")}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {attachmentNotice && <p className="tiny muted">{attachmentNotice}</p>}
+            </form>
+          </div>
+        </article>
+      )}
+    </div>
   );
 }

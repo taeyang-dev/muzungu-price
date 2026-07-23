@@ -174,6 +174,23 @@ function getBreakdown(
   ];
 }
 
+function extractMinimumOrder(locale: "en" | "ko", value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+  const localized = localizeCopy(locale, value);
+  const match = localized.match(/(?:MOQ|Minimum order|최소 주문)\s*[:：]\s*([^;|]+)/i);
+  if (!match) {
+    return null;
+  }
+  return match[1]?.trim() ?? null;
+}
+
+function isCustomOrderService(locale: "en" | "ko", title: string): boolean {
+  const normalized = localizeCopy(locale, title).toLowerCase();
+  return normalized.includes("custom") || normalized.includes("맞춤");
+}
+
 export default async function ProviderDetailPage({
   params
 }: ProviderDetailPageProps) {
@@ -358,6 +375,12 @@ export default async function ProviderDetailPage({
                 src={service.imageUrl ?? getDefaultServiceImage(service.category.slug)}
               />
               <h3 style={{ marginTop: 0 }}>{localizeCopy(locale, service.title)}</h3>
+              {isCustomOrderService(locale, service.title) && service.priceCards[0] && (
+                <p className="tiny service-starting-price">
+                  {tr(locale, "Starting from", "기본 시작가")}:{" "}
+                  {formatRwf(toRwf(decimalToNumber(service.priceCards[0].basePrice), service.priceCards[0].currency))}
+                </p>
+              )}
               <p className="tiny muted">
                 {service.description
                   ? localizeCopy(locale, service.description)
@@ -399,6 +422,12 @@ export default async function ProviderDetailPage({
                     {tr(locale, "Excludes", "미포함")}:{" "}
                     {price.exclusions ? localizeCopy(locale, price.exclusions) : tr(locale, "Not specified", "미기재")}
                   </div>
+                  {extractMinimumOrder(locale, price.inclusions) && (
+                    <p className="tiny service-min-order-line">
+                      <strong>{tr(locale, "Minimum order unit", "최소 주문 단위")}:</strong>{" "}
+                      {extractMinimumOrder(locale, price.inclusions)}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

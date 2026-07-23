@@ -355,6 +355,21 @@ a {
   position: relative;
 }
 
+.vendor-card-link {
+  color: inherit;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.vendor-card-link:hover {
+  border-color: #eab308;
+  transform: translateY(-1px);
+}
+
+.vendor-card-cta {
+  display: inline-flex;
+  justify-content: center;
+}
+
 .badge.compact {
   margin-right: 0;
   padding: 3px 8px;
@@ -423,6 +438,12 @@ a {
 .vendor-price-line,
 .vendor-category-line {
   margin: 0;
+}
+
+.vendor-min-order-line,
+.vendor-starting-line {
+  margin: 0;
+  color: #fef3c7;
 }
 
 .vendor-emoji {
@@ -561,6 +582,12 @@ a {
   gap: 10px;
 }
 
+.service-starting-price {
+  margin: -2px 0 0 0;
+  color: #fde68a;
+  font-weight: 700;
+}
+
 .service-image {
   width: 100%;
   height: 170px;
@@ -636,6 +663,11 @@ a {
   padding-top: 6px;
 }
 
+.service-min-order-line {
+  margin: 6px 0 0 0;
+  color: #fef3c7;
+}
+
 .category-checkbox-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -651,7 +683,7 @@ a {
 }
 
 .chat-box {
-  max-height: 280px;
+  max-height: 220px;
   overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -664,6 +696,67 @@ a {
 .chat-helper {
   margin-top: -2px;
   margin-bottom: 10px;
+}
+
+.chat-widget {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 55;
+  width: min(360px, calc(100vw - 20px));
+}
+
+.chat-widget-panel {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #0e1218;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.chat-widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #151b25;
+  border-bottom: 1px solid var(--line);
+}
+
+.chat-widget-header strong {
+  display: block;
+  font-size: 0.92rem;
+}
+
+.chat-widget-header p {
+  margin: 2px 0 0 0;
+  color: var(--muted);
+  font-size: 0.73rem;
+}
+
+.chat-widget-header button {
+  border: 1px solid var(--line);
+  background: #0f141d;
+  color: #f8fafc;
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+}
+
+.chat-widget-body {
+  padding: 10px;
+}
+
+.chat-widget-launch {
+  border: 1px solid #eab308;
+  background: #facc15;
+  color: #18181b;
+  border-radius: 999px;
+  font-weight: 700;
+  padding: 10px 14px;
+  cursor: pointer;
 }
 
 .chat-translate-tabs {
@@ -852,5 +945,11 @@ a {
   .locale-btn {
     padding: 6px 8px;
     font-size: 0.7rem;
+  }
+
+  .chat-widget {
+    right: 10px;
+    bottom: 10px;
+    width: calc(100vw - 20px);
   }
 }
