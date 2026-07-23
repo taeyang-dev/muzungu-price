@@ -580,6 +580,10 @@ a {
   list-style: none;
   cursor: pointer;
   padding: 2px 0;
+  border: 1px solid #7c6a00;
+  border-radius: 8px;
+  background: #2c2406;
+  padding: 8px 10px;
 }
 
 .price-breakdown summary::-webkit-details-marker {
@@ -593,6 +597,12 @@ a {
   display: grid;
   gap: 4px;
   font-size: 0.83rem;
+}
+
+.price-breakdown-hint {
+  margin: 8px 0 4px 0;
+  color: #fde68a;
+  font-size: 0.75rem;
 }
 
 .price-breakdown li {

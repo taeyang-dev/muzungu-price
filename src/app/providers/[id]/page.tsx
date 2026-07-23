@@ -368,12 +368,19 @@ export default async function ProviderDetailPage({
               )}
               {service.priceCards.map((price) => (
                 <div className="price-row" key={price.id}>
-                  <details className="price-breakdown">
+                  <details className="price-breakdown" open>
                     <summary className="row tiny">
                       <strong>{price.tier.toUpperCase()}</strong>
                       <span>{formatRwf(toRwf(decimalToNumber(price.basePrice), price.currency))}</span>
                       <span>({price.unit.replace("per_", "per ")})</span>
                     </summary>
+                    <p className="price-breakdown-hint">
+                      {tr(
+                        locale,
+                        "Detailed quote breakdown (click again to collapse)",
+                        "상세 견적 내역 (다시 클릭하면 접힘)"
+                      )}
+                    </p>
                     <ul>
                       {getBreakdown(toRwf(decimalToNumber(price.basePrice), price.currency), locale).map((item) => (
                         <li
