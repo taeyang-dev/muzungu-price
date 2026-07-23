@@ -53,7 +53,13 @@ export default async function ProviderPage() {
               providerType: profile.providerType,
               city: profile.city,
               country: profile.country,
-              bio: profile.bio
+              bio: profile.bio,
+              logoUrl: profile.logoUrl,
+              coverImageUrl: profile.coverImageUrl,
+              contactEmail: profile.contactEmail,
+              contactPhone: profile.contactPhone,
+              websiteUrl: profile.websiteUrl,
+              yearsInBusiness: profile.yearsInBusiness
             }
           : null
       }

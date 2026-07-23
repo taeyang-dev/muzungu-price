@@ -24,6 +24,12 @@ interface ProviderDashboardProps {
         city: string | null;
         country: string | null;
         bio: string | null;
+        logoUrl: string | null;
+        coverImageUrl: string | null;
+        contactEmail: string | null;
+        contactPhone: string | null;
+        websiteUrl: string | null;
+        yearsInBusiness: number | null;
       }
     | null;
   services: Service[];
@@ -157,6 +163,36 @@ export function ProviderDashboard({
           <div>
             <label className="tiny">Country</label>
             <input className="input" defaultValue={profile?.country ?? ""} name="country" />
+          </div>
+          <div>
+            <label className="tiny">Contact email</label>
+            <input className="input" defaultValue={profile?.contactEmail ?? ""} name="contactEmail" />
+          </div>
+          <div>
+            <label className="tiny">Contact phone</label>
+            <input className="input" defaultValue={profile?.contactPhone ?? ""} name="contactPhone" />
+          </div>
+          <div>
+            <label className="tiny">Website</label>
+            <input className="input" defaultValue={profile?.websiteUrl ?? ""} name="websiteUrl" />
+          </div>
+          <div>
+            <label className="tiny">Years in business</label>
+            <input
+              className="input"
+              defaultValue={profile?.yearsInBusiness ?? ""}
+              min={0}
+              name="yearsInBusiness"
+              type="number"
+            />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label className="tiny">Logo image URL</label>
+            <input className="input" defaultValue={profile?.logoUrl ?? ""} name="logoUrl" />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label className="tiny">Cover image URL</label>
+            <input className="input" defaultValue={profile?.coverImageUrl ?? ""} name="coverImageUrl" />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
             <label className="tiny">Bio</label>

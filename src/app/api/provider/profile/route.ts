@@ -8,6 +8,12 @@ const createSchema = z.object({
   businessName: z.string().min(2),
   providerType: z.enum(["freelancer", "company"]),
   bio: z.string().optional(),
+  logoUrl: z.string().url().optional().or(z.literal("")),
+  coverImageUrl: z.string().url().optional().or(z.literal("")),
+  contactEmail: z.string().email().optional().or(z.literal("")),
+  contactPhone: z.string().optional(),
+  websiteUrl: z.string().url().optional().or(z.literal("")),
+  yearsInBusiness: z.coerce.number().int().min(0).max(80).optional(),
   country: z.string().optional(),
   city: z.string().optional(),
   categoryIds: z.array(z.string()).optional()
@@ -36,6 +42,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         businessName: payload.businessName,
         providerType: payload.providerType,
         bio: payload.bio,
+        logoUrl: payload.logoUrl || null,
+        coverImageUrl: payload.coverImageUrl || null,
+        contactEmail: payload.contactEmail || null,
+        contactPhone: payload.contactPhone || null,
+        websiteUrl: payload.websiteUrl || null,
+        yearsInBusiness: payload.yearsInBusiness,
         country: payload.country,
         city: payload.city,
         categories: payload.categoryIds
@@ -81,6 +93,15 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         businessName: payload.businessName ?? undefined,
         providerType: payload.providerType ?? undefined,
         bio: payload.bio ?? undefined,
+        logoUrl: payload.logoUrl === undefined ? undefined : payload.logoUrl || null,
+        coverImageUrl:
+          payload.coverImageUrl === undefined ? undefined : payload.coverImageUrl || null,
+        contactEmail:
+          payload.contactEmail === undefined ? undefined : payload.contactEmail || null,
+        contactPhone:
+          payload.contactPhone === undefined ? undefined : payload.contactPhone || null,
+        websiteUrl: payload.websiteUrl === undefined ? undefined : payload.websiteUrl || null,
+        yearsInBusiness: payload.yearsInBusiness ?? undefined,
         country: payload.country ?? undefined,
         city: payload.city ?? undefined
       }

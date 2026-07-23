@@ -62,7 +62,15 @@ async function main() {
       providerType: "company",
       city: "Kampala",
       country: "Uganda",
-      bio: "Certified electrical contractor for offices and compounds."
+      bio: "Certified electrical contractor for offices and compounds.",
+      logoUrl:
+        "https://images.unsplash.com/photo-1560472355-536de3962603?auto=format&fit=crop&w=300&q=80",
+      coverImageUrl:
+        "https://images.unsplash.com/photo-1581090700227-1e8a5d22f6f0?auto=format&fit=crop&w=1200&q=80",
+      contactEmail: "quotes@kampalaelectricpro.ug",
+      contactPhone: "+256 700 000 100",
+      websiteUrl: "https://kampalaelectricpro.example.com",
+      yearsInBusiness: 9
     },
     create: {
       userId: providerUser.id,
@@ -70,7 +78,15 @@ async function main() {
       providerType: "company",
       city: "Kampala",
       country: "Uganda",
-      bio: "Certified electrical contractor for offices and compounds."
+      bio: "Certified electrical contractor for offices and compounds.",
+      logoUrl:
+        "https://images.unsplash.com/photo-1560472355-536de3962603?auto=format&fit=crop&w=300&q=80",
+      coverImageUrl:
+        "https://images.unsplash.com/photo-1581090700227-1e8a5d22f6f0?auto=format&fit=crop&w=1200&q=80",
+      contactEmail: "quotes@kampalaelectricpro.ug",
+      contactPhone: "+256 700 000 100",
+      websiteUrl: "https://kampalaelectricpro.example.com",
+      yearsInBusiness: 9
     }
   });
 

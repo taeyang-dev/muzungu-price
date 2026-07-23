@@ -15,6 +15,14 @@ const visualByCategory: Record<string, { emoji: string; background: string }> = 
   safari: { emoji: "🦁", background: "linear-gradient(140deg, #ecfccb, #d9f99d)" }
 };
 
+const searchKeywordGroups: Record<string, string[]> = {
+  electrical: ["electrical", "electric", "electricity", "electrician", "power"],
+  events: ["event", "events", "wedding", "conference", "planner"],
+  "language-lessons": ["language", "lessons", "teacher", "translator", "english"],
+  "real-estate": ["real estate", "property", "housing", "rent", "apartment", "broker"],
+  safari: ["safari", "tour", "travel", "guide", "trip"]
+};
+
 function getInitials(name: string): string {
   return name
     .split(" ")
@@ -28,6 +36,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
 
   const q = typeof params.q === "string" ? params.q.trim() : "";
+  const normalizedQ = q.toLowerCase();
+  const derivedTerms = Object.entries(searchKeywordGroups)
+    .filter(([, keywords]) => keywords.some((keyword) => normalizedQ.includes(keyword)))
+    .flatMap(([slug, keywords]) => [slug, ...keywords]);
+  const searchTerms = Array.from(new Set([q, ...derivedTerms])).filter(Boolean);
   const verifiedOnly = params.verified === "1";
   const quotationOnly = params.quotation === "1";
   const ebmOnly = params.ebm === "1";
@@ -36,7 +49,33 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const where: Prisma.ProviderProfileWhereInput = {
     isActive: true,
-    ...(q ? { businessName: { contains: q } } : {}),
+    ...(searchTerms.length > 0
+      ? {
+          OR: searchTerms.flatMap((term) => [
+            { businessName: { contains: term } },
+            { bio: { contains: term } },
+            { services: { some: { title: { contains: term } } } },
+            {
+              categories: {
+                some: {
+                  category: {
+                    name: { contains: term }
+                  }
+                }
+              }
+            },
+            {
+              categories: {
+                some: {
+                  category: {
+                    slug: { contains: term }
+                  }
+                }
+              }
+            }
+          ])
+        }
+      : {}),
     ...(city ? { city: { contains: city } } : {}),
     ...(category
       ? {
@@ -110,7 +149,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               className="input"
               defaultValue={q}
               name="q"
-              placeholder="Search by vendor name"
+              placeholder="Search by vendor or category (e.g. electricity)"
             />
           </div>
           <div>
@@ -173,8 +212,18 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <article className="card" key={provider.id}>
               <div className="vendor-head">
                 <div className="vendor-visual" style={{ background: visual.background }}>
-                  <span className="vendor-initials">{getInitials(provider.businessName)}</span>
-                  <span className="vendor-emoji">{visual.emoji}</span>
+                  {provider.logoUrl ? (
+                    <img
+                      alt={`${provider.businessName} logo`}
+                      className="vendor-logo-image"
+                      src={provider.logoUrl}
+                    />
+                  ) : (
+                    <>
+                      <span className="vendor-initials">{getInitials(provider.businessName)}</span>
+                      <span className="vendor-emoji">{visual.emoji}</span>
+                    </>
+                  )}
                 </div>
                 <div>
                   <h3 style={{ margin: "0 0 6px 0" }}>{provider.businessName}</h3>

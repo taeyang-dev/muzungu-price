@@ -57,6 +57,8 @@ a {
   font-size: 1.2rem;
   line-height: 1;
   cursor: pointer;
+  position: relative;
+  z-index: 45;
 }
 
 .headline {
@@ -316,6 +318,12 @@ a {
   overflow: hidden;
 }
 
+.vendor-logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .vendor-emoji {
   position: absolute;
   right: 5px;
@@ -354,6 +362,99 @@ a {
 .flash.success {
   background: #dcfce7;
   color: #166534;
+}
+
+.provider-detail-page {
+  gap: 18px;
+}
+
+.provider-hero {
+  padding: 0;
+  overflow: hidden;
+}
+
+.provider-cover-wrap {
+  width: 100%;
+  height: 210px;
+  background: #f1f5f9;
+}
+
+.provider-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.provider-cover-placeholder {
+  background: linear-gradient(125deg, #dbeafe, #c7d2fe);
+}
+
+.provider-identity {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 18px 18px 0 18px;
+}
+
+.provider-logo {
+  width: 80px;
+  height: 80px;
+  border-radius: 16px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+}
+
+.provider-logo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  color: #1e3a8a;
+  font-weight: 700;
+}
+
+.provider-meta-line {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.provider-hero > p {
+  margin: 14px 18px 8px 18px;
+}
+
+.provider-chip-row {
+  padding: 0 18px 18px 18px;
+}
+
+.provider-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.provider-list {
+  margin: 0 0 14px 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  color: #1f2937;
+}
+
+.provider-list a {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.service-detail-card {
+  display: grid;
+  gap: 10px;
+}
+
+.price-row {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  background: #f8fafc;
 }
 
 @media (max-width: 900px) {

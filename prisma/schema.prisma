@@ -117,6 +117,12 @@ model ProviderProfile {
   businessName          String
   providerType          ProviderType
   bio                   String?
+  logoUrl               String?
+  coverImageUrl         String?
+  contactEmail          String?
+  contactPhone          String?
+  websiteUrl            String?
+  yearsInBusiness       Int?
   country               String?
   city                  String?
   isActive              Boolean                   @default(true)

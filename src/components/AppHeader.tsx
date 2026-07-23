@@ -60,6 +60,24 @@ export function AppHeader({ session }: AppHeaderProps) {
     };
   }, []);
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
   return (
     <>
       <header className="topbar">
@@ -67,7 +85,7 @@ export function AppHeader({ session }: AppHeaderProps) {
           <button
             aria-label="Open navigation menu"
             className="menu-toggle"
-            onClick={() => setMenuOpen(true)}
+            onClick={() => setMenuOpen((prev) => !prev)}
             type="button"
           >
             ☰
