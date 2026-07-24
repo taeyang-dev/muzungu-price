@@ -63,6 +63,12 @@ enum BookingStatus {
   disputed
 }
 
+enum VerificationChannel {
+  email
+  sms
+  whatsapp
+}
+
 enum PriceTier {
   basic
   standard
@@ -92,6 +98,7 @@ model User {
   requests            ServiceRequest[]       @relation("Requester")
   bookings            Booking[]              @relation("CustomerBookings")
   reviews             Review[]               @relation("ReviewerReviews")
+  verificationCodes   AuthVerificationCode[]
 }
 
 model Organization {
@@ -335,4 +342,19 @@ model Review {
   booking                 Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   reviewer                User            @relation("ReviewerReviews", fields: [reviewerUserId], references: [id], onDelete: Cascade)
   providerProfile         ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+}
+
+model AuthVerificationCode {
+  id          String              @id @default(cuid())
+  userId      String
+  channel     VerificationChannel
+  destination String
+  codeHash    String
+  attempts    Int                 @default(0)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime            @default(now())
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

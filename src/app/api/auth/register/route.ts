@@ -8,7 +8,8 @@ import { prisma } from "@/lib/prisma";
 const schema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
-  password: z.string().min(8)
+  password: z.string().min(8),
+  phone: z.string().min(8).max(30).optional().or(z.literal(""))
 });
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -16,6 +17,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const payload = schema.parse(await request.json());
     const normalizedEmail = payload.email.trim().toLowerCase();
     const normalizedName = payload.name.trim();
+    const normalizedPhone = payload.phone ? payload.phone.trim() : null;
     const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
     if (existing) {
@@ -28,6 +30,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         name: normalizedName,
         email: normalizedEmail,
         role: "customer",
+        phone: normalizedPhone || null,
         passwordHash
       }
     });

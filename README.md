@@ -18,6 +18,8 @@
 ## Features included
 
 - Auth (register/login/logout)
+  - Password login
+  - Verification-code login via Email / SMS / WhatsApp
 - Marketplace listing with filters:
   - Verified providers only
   - Quotation-ready providers
@@ -79,3 +81,13 @@ Main endpoints are under `/api`:
 - `/api/bookings/:bookingId/status`
 - `/api/bookings/:bookingId/review`
 - `/api/admin/verification-cases*`
+
+### Verification-code auth delivery configuration
+
+Login verification codes can be delivered by channel-specific webhooks.
+
+- `AUTH_EMAIL_WEBHOOK_URL` (+ optional `AUTH_EMAIL_WEBHOOK_TOKEN`)
+- `AUTH_SMS_WEBHOOK_URL` (+ optional `AUTH_SMS_WEBHOOK_TOKEN`)
+- `AUTH_WHATSAPP_WEBHOOK_URL` (+ optional `AUTH_WHATSAPP_WEBHOOK_TOKEN`)
+
+If a webhook is not configured, the app falls back to a safe mock delivery mode and logs the code on the server (and exposes a `debugCode` only outside production).
