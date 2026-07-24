@@ -9,6 +9,8 @@ interface AuthResult {
   data?: {
     destinationMasked?: string;
     debugCode?: string;
+    mocked?: boolean;
+    provider?: string;
   };
 }
 
@@ -95,8 +97,12 @@ export function AuthPanel({ locale }: AuthPanelProps) {
       data.data?.destinationMasked
         ? tr(
             locale,
-            `Verification code sent to ${data.data.destinationMasked}.`,
-            `${data.data.destinationMasked}로 인증번호를 보냈습니다.`
+            data.data?.mocked
+              ? `Test mode only: code was not actually delivered. (${data.data.destinationMasked})`
+              : `Verification code sent to ${data.data.destinationMasked}.`,
+            data.data?.mocked
+              ? `테스트 모드입니다. 실제 발송되지 않았어요. (${data.data.destinationMasked})`
+              : `${data.data.destinationMasked}로 인증번호를 보냈습니다.`
           )
         : tr(locale, "Verification code sent.", "인증번호를 보냈습니다.")
     );

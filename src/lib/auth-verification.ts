@@ -42,7 +42,7 @@ function shouldAllowMockDelivery(): boolean {
   if (override === "false") {
     return false;
   }
-  return process.env.NODE_ENV !== "production";
+  return false;
 }
 
 async function sendEmailViaResend(destination: string, code: string, message: string): Promise<void> {

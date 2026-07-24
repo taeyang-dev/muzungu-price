@@ -104,6 +104,6 @@ Optional webhook fallbacks are still supported:
 
 Mock behavior:
 
-- in development, mock delivery is allowed by default if no real provider is configured
-- in production, mock delivery is blocked by default
-- you can force behavior with `AUTH_ALLOW_MOCK_VERIFICATION=true|false`
+- mock delivery is **disabled by default** in every environment
+- if no real provider is configured, API returns an explicit error
+- enable mock only when needed via `AUTH_ALLOW_MOCK_VERIFICATION=true`
