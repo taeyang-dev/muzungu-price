@@ -126,6 +126,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (error instanceof z.ZodError) {
       return fail(error.issues[0]?.message ?? "Invalid payload", 400, "VAL_001");
     }
+    if (error instanceof Error) {
+      return fail(error.message, 500, "AUTH_VERIFY_500");
+    }
     return fail("Failed to send verification code", 500, "AUTH_VERIFY_500");
   }
 }

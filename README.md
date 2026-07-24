@@ -82,12 +82,28 @@ Main endpoints are under `/api`:
 - `/api/bookings/:bookingId/review`
 - `/api/admin/verification-cases*`
 
-### Verification-code auth delivery configuration
+### Verification-code delivery configuration (real sending)
 
-Login verification codes can be delivered by channel-specific webhooks.
+Signup verification codes support direct provider delivery:
+
+- **Email (Resend API)**
+  - `AUTH_RESEND_API_KEY`
+  - `AUTH_RESEND_FROM`
+- **SMS / WhatsApp (Twilio API)**
+  - `AUTH_TWILIO_ACCOUNT_SID`
+  - `AUTH_TWILIO_AUTH_TOKEN`
+  - `AUTH_TWILIO_SMS_FROM` (for SMS)
+  - `AUTH_TWILIO_WHATSAPP_FROM` (for WhatsApp, e.g. `whatsapp:+14155238886`)
+  - optional `AUTH_DEFAULT_COUNTRY_CODE` (default: `250`) for local numbers without `+`
+
+Optional webhook fallbacks are still supported:
 
 - `AUTH_EMAIL_WEBHOOK_URL` (+ optional `AUTH_EMAIL_WEBHOOK_TOKEN`)
 - `AUTH_SMS_WEBHOOK_URL` (+ optional `AUTH_SMS_WEBHOOK_TOKEN`)
 - `AUTH_WHATSAPP_WEBHOOK_URL` (+ optional `AUTH_WHATSAPP_WEBHOOK_TOKEN`)
 
-If a webhook is not configured, the app falls back to a safe mock delivery mode and logs the code on the server (and exposes a `debugCode` only outside production).
+Mock behavior:
+
+- in development, mock delivery is allowed by default if no real provider is configured
+- in production, mock delivery is blocked by default
+- you can force behavior with `AUTH_ALLOW_MOCK_VERIFICATION=true|false`
