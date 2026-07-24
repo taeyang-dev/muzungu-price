@@ -1,11 +1,14 @@
 import Link from "next/link";
-import { Prisma } from "@prisma/client";
 import { decimalToNumber } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RequestsPanel } from "@/components/RequestsPanel";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { tr } from "@/lib/i18n";
+
+type ServiceRequestWhereInput = NonNullable<
+  Parameters<typeof prisma.serviceRequest.findMany>[0]
+>["where"];
 
 interface RequestsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -68,9 +71,9 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
       })
     : null;
 
-  const where: Prisma.ServiceRequestWhereInput =
+  const where: ServiceRequestWhereInput =
     session.role === "provider"
-      ? { status: { in: ["open", "negotiating"] } }
+      ? { OR: [{ status: "open" }, { status: "negotiating" }] }
       : { requesterUserId: session.userId };
 
   const requests = await prisma.serviceRequest.findMany({

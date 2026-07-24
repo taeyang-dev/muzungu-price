@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { VerificationStatus } from "@prisma/client";
 import { fail, ok } from "@/lib/api";
 import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
+
+const VERIFICATION_STATUS_VALUES = ["pending", "approved", "rejected", "on_hold"] as const;
+type VerificationStatus = (typeof VERIFICATION_STATUS_VALUES)[number];
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const auth = await requireRole(request, ["admin"]);
@@ -11,8 +13,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   const status = request.nextUrl.searchParams.get("status");
+  const isVerificationStatus = (value: string): value is VerificationStatus =>
+    VERIFICATION_STATUS_VALUES.includes(value as VerificationStatus);
   const where =
-    status && Object.values(VerificationStatus).includes(status as VerificationStatus)
+    status && isVerificationStatus(status)
       ? { status: status as VerificationStatus }
       : {};
 

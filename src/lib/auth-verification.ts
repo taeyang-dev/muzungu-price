@@ -1,4 +1,4 @@
-import { VerificationChannel } from "@prisma/client";
+type VerificationChannel = "email" | "sms" | "whatsapp";
 
 export const VERIFICATION_CODE_TTL_SECONDS = 5 * 60;
 export const VERIFICATION_REQUEST_COOLDOWN_SECONDS = 30;

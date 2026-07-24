@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { decimalToNumber } from "@/lib/api";
 import { getDefaultServiceImage } from "@/lib/default-images";
@@ -136,7 +135,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const city = typeof params.city === "string" ? params.city : undefined;
   const viewMode = params.view === "list" ? "list" : "gallery";
 
-  const where: Prisma.ProviderProfileWhereInput = {
+  const where = {
     isActive: true,
     ...(searchTerms.length > 0
       ? {

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { decimalToNumber, ok } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+
+type ProviderProfileWhereInput = NonNullable<
+  Parameters<typeof prisma.providerProfile.findMany>[0]
+>["where"];
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const search = request.nextUrl.searchParams;
@@ -11,34 +14,30 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const category = search.get("category");
   const city = search.get("city");
 
-  const where: Prisma.ProviderProfileWhereInput = {
-    isActive: true,
-    ...(city ? { city: { contains: city } } : {}),
-    ...(category
-      ? {
-          categories: {
-            some: {
-              category: { slug: category }
-            }
-          }
-        }
-      : {}),
-    ...(verifiedOnly
-      ? {
-          verificationCases: {
-            some: { status: "approved" }
-          }
-        }
-      : {}),
-    ...(quotationAvailable || ebmAvailable
-      ? {
-          billingCapability: {
-            ...(quotationAvailable ? { quotationAvailable: true } : {}),
-            ...(ebmAvailable ? { ebmAvailable: true } : {})
-          }
-        }
-      : {})
+  const where: ProviderProfileWhereInput = {
+    isActive: true
   };
+  if (city) {
+    where.city = { contains: city };
+  }
+  if (category) {
+    where.categories = {
+      some: {
+        category: { slug: category }
+      }
+    };
+  }
+  if (verifiedOnly) {
+    where.verificationCases = {
+      some: { status: "approved" }
+    };
+  }
+  if (quotationAvailable || ebmAvailable) {
+    where.billingCapability = {
+      ...(quotationAvailable ? { quotationAvailable: true } : {}),
+      ...(ebmAvailable ? { ebmAvailable: true } : {})
+    };
+  }
 
   const providers = await prisma.providerProfile.findMany({
     where,
