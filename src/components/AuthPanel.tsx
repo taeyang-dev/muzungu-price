@@ -60,14 +60,6 @@ export function AuthPanel({ locale }: AuthPanelProps) {
               <label className="tiny">{tr(locale, "Name", "이름")}</label>
               <input className="input" name="name" required />
             </div>
-            <div>
-              <label className="tiny">{tr(locale, "Role", "역할")}</label>
-              <select className="select" defaultValue="customer" name="role" required>
-                <option value="customer">{tr(locale, "Customer", "고객")}</option>
-                <option value="provider">{tr(locale, "Provider", "업체/프리랜서")}</option>
-                <option value="org_buyer">{tr(locale, "Institution Buyer", "기관 구매자")}</option>
-              </select>
-            </div>
           </>
         )}
         <div>

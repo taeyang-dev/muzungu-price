@@ -8,8 +8,7 @@ import { prisma } from "@/lib/prisma";
 const schema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
-  password: z.string().min(8),
-  role: z.enum(["customer", "provider", "org_buyer"])
+  password: z.string().min(8)
 });
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -28,7 +27,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       data: {
         name: normalizedName,
         email: normalizedEmail,
-        role: payload.role,
+        role: "customer",
         passwordHash
       }
     });
