@@ -24,6 +24,9 @@ export async function GET(_request: NextRequest, { params }: RouteParams): Promi
   }
 
   type ProviderCategoryItem = (typeof provider.categories)[number];
+  type ProviderServiceItem = (typeof provider.services)[number];
+  type ProviderPriceItem = (typeof provider.services)[number]["priceCards"][number];
+  type ProviderReviewItem = (typeof provider.reviews)[number];
 
   return ok({
     id: provider.id,
@@ -67,12 +70,12 @@ export async function GET(_request: NextRequest, { params }: RouteParams): Promi
           bank_swift_code: provider.billingCapability.bankSwiftCode
         }
       : null,
-    services: provider.services.map((service) => ({
+    services: provider.services.map((service: ProviderServiceItem) => ({
       id: service.id,
       title: service.title,
       description: service.description,
       image_url: service.imageUrl,
-      prices: service.priceCards.map((price) => ({
+      prices: service.priceCards.map((price: ProviderPriceItem) => ({
         id: price.id,
         tier: price.tier,
         currency: price.currency,
@@ -86,7 +89,10 @@ export async function GET(_request: NextRequest, { params }: RouteParams): Promi
       count: provider.reviews.length,
       average:
         provider.reviews.length > 0
-          ? provider.reviews.reduce((sum, review) => sum + review.ratingOverall, 0) / provider.reviews.length
+          ? provider.reviews.reduce(
+              (sum: number, review: ProviderReviewItem) => sum + review.ratingOverall,
+              0
+            ) / provider.reviews.length
           : null
     }
   });
