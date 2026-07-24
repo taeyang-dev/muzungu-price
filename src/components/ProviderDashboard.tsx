@@ -152,6 +152,10 @@ export function ProviderDashboard({
     { value: "tour_operations", labelEn: "Tour operations", labelKo: "투어 운영" },
     { value: "other", labelEn: "Other", labelKo: "기타" }
   ] as const;
+  const serviceCategoryOptions = [
+    ...categories.filter((category) => category.slug !== "other"),
+    ...categories.filter((category) => category.slug === "other")
+  ];
 
   function togglePaymentMethod(method: string, checked: boolean): void {
     setSelectedPaymentMethods((current) => {
@@ -770,7 +774,7 @@ export function ProviderDashboard({
             <label className="tiny">{tr(locale, "Category", "카테고리")}</label>
             <select className="select" name="categoryId" required>
               <option value="">{tr(locale, "Choose category", "카테고리 선택")}</option>
-              {categories.map((category) => (
+              {serviceCategoryOptions.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.slug === "other" ? tr(locale, "Other", "기타") : category.name}
                 </option>
