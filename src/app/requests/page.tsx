@@ -93,11 +93,14 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
     orderBy: { createdAt: "desc" }
   });
 
+  type ServiceRequestListItem = (typeof requests)[number];
+  type ServiceRequestOffer = ServiceRequestListItem["offers"][number];
+
   return (
     <RequestsPanel
       key={`requests-${selectedVendorId ?? "none"}-${session.role}`}
       locale={locale}
-      requests={requests.map((item) => ({
+      requests={requests.map((item: ServiceRequestListItem) => ({
         id: item.id,
         title: item.title,
         requirementText: item.requirementText,
@@ -125,7 +128,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
         category: {
           name: item.category.name
         },
-        offers: item.offers.map((offer) => ({
+        offers: item.offers.map((offer: ServiceRequestOffer) => ({
           id: offer.id,
           providerName: offer.providerProfile.businessName,
           quotedPrice: decimalToNumber(offer.quotedPrice) ?? 0,

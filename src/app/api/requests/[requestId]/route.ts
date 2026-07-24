@@ -46,6 +46,8 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
     return fail("Insufficient permissions", 403, "AUTH_002");
   }
 
+  type ServiceRequestOffer = (typeof serviceRequest.offers)[number];
+
   return ok({
     id: serviceRequest.id,
     title: serviceRequest.title,
@@ -58,7 +60,7 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
     needsQuotation: serviceRequest.needsQuotation,
     needsEbm: serviceRequest.needsEbm,
     category: serviceRequest.category,
-    offers: serviceRequest.offers.map((offer) => ({
+    offers: serviceRequest.offers.map((offer: ServiceRequestOffer) => ({
       id: offer.id,
       quotedPrice: decimalToNumber(offer.quotedPrice),
       currency: offer.currency,
