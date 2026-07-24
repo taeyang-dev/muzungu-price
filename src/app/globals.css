@@ -353,6 +353,7 @@ a {
 
 .vendor-card {
   position: relative;
+  text-align: left;
 }
 
 .vendor-card-link {
@@ -379,7 +380,7 @@ a {
 .vendor-head {
   display: flex;
   gap: 12px;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .vendor-visual {
@@ -414,6 +415,14 @@ a {
   font-size: 1.1rem;
   line-height: 1.3;
   color: #f8fafc;
+}
+
+.vendor-name-prominent {
+  font-family: "Avenir Next Demi Bold", "Segoe UI Semibold", "Avenir Next", Inter, sans-serif;
+  font-size: 1.24rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-align: left;
 }
 
 .vendor-tagline {
@@ -858,8 +867,9 @@ a {
 .vendor-title-row {
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: flex-start;
   flex-wrap: wrap;
+  justify-content: flex-start;
 }
 
 .vendor-inline-badges {
@@ -867,6 +877,18 @@ a {
   gap: 6px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.vendor-results--gallery {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.vendor-results--list {
+  grid-template-columns: 1fr;
+}
+
+.vendor-card-list .vendor-service-thumb {
+  height: 190px;
 }
 
 .chat-form {

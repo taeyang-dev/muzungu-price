@@ -11,17 +11,6 @@ interface HomePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-const visualByCategory: Record<string, { emoji: string; background: string }> = {
-  electrical: { emoji: "⚡", background: "linear-gradient(140deg, #fff7ed, #fde68a)" },
-  events: { emoji: "🎉", background: "linear-gradient(140deg, #f5f3ff, #ddd6fe)" },
-  "language-lessons": { emoji: "🗣️", background: "linear-gradient(140deg, #eff6ff, #bfdbfe)" },
-  "real-estate": { emoji: "🏠", background: "linear-gradient(140deg, #ecfeff, #bae6fd)" },
-  safari: { emoji: "🦁", background: "linear-gradient(140deg, #ecfccb, #d9f99d)" },
-  furniture: { emoji: "🪑", background: "linear-gradient(140deg, #f5f3ff, #ddd6fe)" },
-  electronics: { emoji: "💻", background: "linear-gradient(140deg, #e0f2fe, #bae6fd)" },
-  "art-experience": { emoji: "🎨", background: "linear-gradient(140deg, #fae8ff, #f5d0fe)" }
-};
-
 const searchKeywordGroups: Record<string, string[]> = {
   electrical: ["electrical", "electric", "electricity", "electrician", "power"],
   events: ["event", "events", "wedding", "conference", "planner"],
@@ -32,15 +21,6 @@ const searchKeywordGroups: Record<string, string[]> = {
   electronics: ["electronics", "laptop", "printer", "monitor", "equipment", "tech"],
   "art-experience": ["art", "gallery", "workshop", "painting", "craft"]
 };
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((item) => item[0]?.toUpperCase() ?? "")
-    .join("");
-}
 
 function formatPrice(amount: number | null, currency: string | null): string {
   if (amount === null || amount === undefined) {
@@ -154,6 +134,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const ebmOnly = params.ebm === "1";
   const category = typeof params.category === "string" ? params.category : undefined;
   const city = typeof params.city === "string" ? params.city : undefined;
+  const viewMode = params.view === "list" ? "list" : "gallery";
 
   const where: Prisma.ProviderProfileWhereInput = {
     isActive: true,
@@ -282,22 +263,33 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </label>
             </div>
           </div>
+          <div>
+            <label className="tiny">{tr(locale, "View type", "보기 유형")}</label>
+            <div className="row tiny" style={{ marginTop: "8px" }}>
+              <label>
+                <input
+                  defaultChecked={viewMode === "gallery"}
+                  name="view"
+                  type="radio"
+                  value="gallery"
+                />{" "}
+                {tr(locale, "Gallery", "갤러리형")}
+              </label>
+              <label>
+                <input defaultChecked={viewMode === "list"} name="view" type="radio" value="list" />{" "}
+                {tr(locale, "List", "리스트형")}
+              </label>
+            </div>
+          </div>
           <button className="btn" type="submit">
             {tr(locale, "Apply filters", "필터 적용")}
           </button>
         </form>
       </section>
 
-      <section className="cards section">
+      <section className={`cards section vendor-results vendor-results--${viewMode}`}>
         {providers.map((provider) => {
           const approved = provider.verificationCases[0];
-          const primaryCategory = provider.categories[0]?.category;
-          const visual = primaryCategory
-            ? visualByCategory[primaryCategory.slug] ?? {
-                emoji: "🧰",
-                background: "linear-gradient(140deg, #f1f5f9, #e2e8f0)"
-              }
-            : { emoji: "🧰", background: "linear-gradient(140deg, #f1f5f9, #e2e8f0)" };
           const representative = provider.services
             .flatMap((service) => service.priceCards)
             .sort((a, b) => a.basePrice.comparedTo(b.basePrice))[0];
@@ -316,7 +308,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               : null;
 
           return (
-            <Link className="card vendor-card vendor-card-link" href={`/providers/${provider.id}`} key={provider.id}>
+            <Link
+              className={`card vendor-card vendor-card-link ${
+                viewMode === "list" ? "vendor-card-list" : "vendor-card-gallery"
+              }`}
+              href={`/providers/${provider.id}`}
+              key={provider.id}
+            >
               <FallbackImage
                 alt={`${provider.businessName} service`}
                 className="vendor-service-thumb"
@@ -324,24 +322,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 src={serviceImage}
               />
               <div className="vendor-head">
-                <div className="vendor-visual" style={{ background: visual.background }}>
-                  {provider.logoUrl ? (
-                    <FallbackImage
-                      alt={`${provider.businessName} logo`}
-                      className="vendor-logo-image"
-                      fallbackSrc="/image-fallback.svg"
-                      src={provider.logoUrl}
-                    />
-                  ) : (
-                    <>
-                      <span className="vendor-initials">{getInitials(provider.businessName)}</span>
-                      <span className="vendor-emoji">{visual.emoji}</span>
-                    </>
-                  )}
-                </div>
                 <div>
                   <div className="vendor-title-row">
-                    <h3 className="vendor-name">{provider.businessName}</h3>
+                    <h3 className="vendor-name vendor-name-prominent">{provider.businessName}</h3>
                     <div className="vendor-inline-badges">
                       {approved && (
                         <span className="badge good compact">
