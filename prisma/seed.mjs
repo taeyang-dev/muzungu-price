@@ -1,9 +1,16 @@
 import bcrypt from "bcryptjs";
 import prismaClientPkg from "@prisma/client";
+import adapterPgPkg from "@prisma/adapter-pg";
 
 const { PrismaClient } = prismaClientPkg;
+const { PrismaPg } = adapterPgPkg;
+const connectionString =
+  process.env.DIRECT_URL ??
+  process.env.DATABASE_URL ??
+  "postgresql://postgres:postgres@localhost:5432/muzungu_price?schema=public";
+const adapter = new PrismaPg({ connectionString });
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ adapter });
 
 function bilingual(en, ko) {
   return `${en}|||${ko}`;

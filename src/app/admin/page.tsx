@@ -1,9 +1,21 @@
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminVerificationPanel } from "@/components/AdminVerificationPanel";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { tr } from "@/lib/i18n";
+
+type VerificationCaseWithRelations = Prisma.VerificationCaseGetPayload<{
+  include: {
+    providerProfile: {
+      include: {
+        user: true;
+      };
+    };
+    documents: true;
+  };
+}>;
 
 export default async function AdminPage() {
   const session = await getSession();
@@ -31,7 +43,7 @@ export default async function AdminPage() {
     );
   }
 
-  const cases = await prisma.verificationCase.findMany({
+  const cases: VerificationCaseWithRelations[] = await prisma.verificationCase.findMany({
     include: {
       providerProfile: {
         include: {
