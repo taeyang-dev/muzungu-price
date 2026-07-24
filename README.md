@@ -12,7 +12,7 @@
 
 - Next.js (App Router, TypeScript)
 - Prisma ORM
-- SQLite (local MVP database)
+- Supabase Postgres
 - JWT cookie sessions
 
 ## Features included
@@ -45,6 +45,14 @@
   - Assign decision, score, level, and notes
 
 ## Quick start
+
+Create a Supabase project first, then set these env vars in `.env`:
+
+```bash
+DATABASE_URL="postgresql://...pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require"
+DIRECT_URL="postgresql://...db.<project-ref>.supabase.co:5432/postgres?sslmode=require"
+AUTH_SECRET="change-this-secret"
+```
 
 1. Install dependencies:
 
@@ -81,6 +89,28 @@ Main endpoints are under `/api`:
 - `/api/bookings/:bookingId/status`
 - `/api/bookings/:bookingId/review`
 - `/api/admin/verification-cases*`
+
+## Deploy (Supabase + Vercel)
+
+1. Create a Supabase project.
+2. Copy:
+   - pooled connection string -> `DATABASE_URL`
+   - direct connection string -> `DIRECT_URL`
+3. Push schema once from local:
+
+```bash
+npm run db:push
+npm run db:seed
+```
+
+4. Push your branch to GitHub.
+5. In Vercel, import this GitHub repo and deploy.
+6. In Vercel Project Settings -> Environment Variables, add:
+   - `DATABASE_URL`
+   - `DIRECT_URL`
+   - `AUTH_SECRET`
+   - verification delivery vars (Resend/Twilio) listed below
+7. Redeploy from Vercel after env vars are saved.
 
 ### Verification-code delivery configuration (real sending)
 

@@ -7,6 +7,9 @@ export default defineConfig({
     path: "prisma/migrations"
   },
   datasource: {
-    url: process.env.DATABASE_URL ?? "file:./prisma/dev.db"
+    url:
+      process.env.DIRECT_URL ??
+      process.env.DATABASE_URL ??
+      "postgresql://postgres:postgres@localhost:5432/muzungu_price?schema=public"
   }
 });
