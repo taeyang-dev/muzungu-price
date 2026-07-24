@@ -23,6 +23,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams): Promi
     return fail("Provider not found", 404, "NOT_FOUND");
   }
 
+  type ProviderCategoryItem = (typeof provider.categories)[number];
+
   return ok({
     id: provider.id,
     business_name: provider.businessName,
@@ -36,7 +38,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams): Promi
     years_in_business: provider.yearsInBusiness,
     city: provider.city,
     country: provider.country,
-    categories: provider.categories.map((entry) => ({
+    categories: provider.categories.map((entry: ProviderCategoryItem) => ({
       slug: entry.category.slug,
       name: entry.category.name
     })),
