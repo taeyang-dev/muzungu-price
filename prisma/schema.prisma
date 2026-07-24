@@ -1,0 +1,368 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  customer
+  provider
+  org_buyer
+  admin
+}
+
+enum ProviderType {
+  freelancer
+  company
+  sole_proprietor
+  partnership
+  cooperative
+  ngo
+  other
+}
+
+enum VerificationStatus {
+  pending
+  approved
+  rejected
+  on_hold
+}
+
+enum VerificationLevel {
+  verified
+  pro_verified
+  premium_verified
+}
+
+enum DocumentStatus {
+  submitted
+  accepted
+  rejected
+}
+
+enum OfferStatus {
+  sent
+  accepted
+  rejected
+}
+
+enum RequestStatus {
+  open
+  negotiating
+  booked
+  completed
+  cancelled
+}
+
+enum BookingStatus {
+  confirmed
+  in_progress
+  completed
+  disputed
+}
+
+enum VerificationChannel {
+  email
+  sms
+  whatsapp
+}
+
+enum VerificationPurpose {
+  register
+  login
+}
+
+enum PriceTier {
+  basic
+  standard
+  premium
+}
+
+enum PriceUnit {
+  per_hour
+  per_day
+  per_project
+  per_person
+}
+
+model User {
+  id                  String                 @id @default(cuid())
+  role                UserRole
+  name                String
+  email               String                 @unique
+  passwordHash        String
+  phone               String?
+  locale              String                 @default("en")
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  providerProfile     ProviderProfile?
+  memberships         OrganizationMember[]
+  verificationReviews VerificationCase[]     @relation("Reviewer")
+  requests            ServiceRequest[]       @relation("Requester")
+  bookings            Booking[]              @relation("CustomerBookings")
+  reviews             Review[]               @relation("ReviewerReviews")
+  verificationCodes   AuthVerificationCode[]
+}
+
+model Organization {
+  id           String               @id @default(cuid())
+  name         String
+  type         String
+  country      String?
+  billingEmail String?
+  createdAt    DateTime             @default(now())
+  members      OrganizationMember[]
+  requests     ServiceRequest[]
+}
+
+model OrganizationMember {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  role           String
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+}
+
+model ProviderProfile {
+  id                    String                    @id @default(cuid())
+  userId                String                    @unique
+  businessName          String
+  providerType          ProviderType
+  providerTypeOther     String?
+  businessActivitySector String?
+  businessActivityCode  String?
+  businessActivityDetail String?
+  businessActivityOther String?
+  officialBusinessAddress String?
+  representativeName    String?
+  representativeNationality String?
+  representativeIdType  String?
+  representativeIdTypeOther String?
+  representativeIdNumber String?
+  representativeLocalAddress String?
+  representativeEmail   String?
+  representativePhone   String?
+  tagline               String?
+  bio                   String?
+  logoUrl               String?
+  coverImageUrl         String?
+  contactEmail          String?
+  contactPhone          String?
+  websiteUrl            String?
+  yearsInBusiness       Int?
+  country               String?
+  city                  String?
+  isActive              Boolean                   @default(true)
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  user                  User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories            ProviderCategory[]
+  verificationCases     VerificationCase[]
+  services              Service[]
+  requestsReceived      ServiceRequest[]
+  billingCapability     ProviderBillingCapability?
+  offers                RequestOffer[]
+  bookings              Booking[]
+  reviews               Review[]
+}
+
+model ServiceCategory {
+  id        String             @id @default(cuid())
+  slug      String             @unique
+  name      String
+  providers ProviderCategory[]
+  services  Service[]
+  requests  ServiceRequest[]
+}
+
+model ProviderCategory {
+  id                String          @id @default(cuid())
+  providerProfileId String
+  categoryId        String
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  category          ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([providerProfileId, categoryId])
+}
+
+model VerificationCase {
+  id                String                @id @default(cuid())
+  providerProfileId String
+  status            VerificationStatus    @default(pending)
+  score             Int                   @default(0)
+  level             VerificationLevel?
+  reviewerUserId    String?
+  reviewedAt        DateTime?
+  notes             String?
+  createdAt         DateTime              @default(now())
+  providerProfile   ProviderProfile       @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  reviewer          User?                 @relation("Reviewer", fields: [reviewerUserId], references: [id], onDelete: SetNull)
+  documents         VerificationDocument[]
+}
+
+model VerificationDocument {
+  id                 String           @id @default(cuid())
+  verificationCaseId String
+  docType            String
+  fileUrl            String
+  status             DocumentStatus   @default(submitted)
+  createdAt          DateTime         @default(now())
+  verificationCase   VerificationCase @relation(fields: [verificationCaseId], references: [id], onDelete: Cascade)
+}
+
+model Service {
+  id                String          @id @default(cuid())
+  providerProfileId String
+  categoryId        String
+  title             String
+  description       String?
+  imageUrl          String?
+  isActive          Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  category          ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  priceCards        ServicePriceCard[]
+  requests          ServiceRequest[]
+}
+
+model ServicePriceCard {
+  id         String    @id @default(cuid())
+  serviceId  String
+  tier       PriceTier
+  currency   String
+  basePrice  Decimal
+  unit       PriceUnit
+  inclusions String?
+  exclusions String?
+  isPublic   Boolean   @default(true)
+  updatedAt  DateTime  @updatedAt
+  service    Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+}
+
+model ProviderBillingCapability {
+  id                     String          @id @default(cuid())
+  providerProfileId      String          @unique
+  quotationAvailable     Boolean         @default(false)
+  ebmAvailable           Boolean         @default(false)
+  quotationLeadTimeHours Int?
+  ebmNotes               String?
+  vendorTinNumber        String?
+  paymentTermsCsv        String?
+  paymentMethodsCsv      String?
+  paymentMethodOtherDetail String?
+  momoAccountName        String?
+  momoNumber             String?
+  bankName               String?
+  bankAccountName        String?
+  bankAccountNumber      String?
+  bankSwiftCode          String?
+  updatedAt              DateTime        @updatedAt
+  providerProfile        ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+}
+
+model ServiceRequest {
+  id              String          @id @default(cuid())
+  requesterUserId String
+  organizationId  String?
+  categoryId      String
+  requestType     String          @default("general")
+  providerProfileId String?
+  serviceId       String?
+  organizationName String?
+  organizationTinNumber String?
+  purchaseCode    String?
+  paymentTerm     String?
+  paymentMethod   String?
+  paymentNote     String?
+  paymentDueAt    DateTime?
+  documentFileName String?
+  requestedAmount Decimal?
+  title           String
+  requirementText String
+  locationText    String?
+  budgetMin       Decimal?
+  budgetMax       Decimal?
+  currency        String?
+  needsQuotation  Boolean         @default(false)
+  needsEbm        Boolean         @default(false)
+  status          RequestStatus   @default(open)
+  createdAt       DateTime        @default(now())
+  requester       User            @relation("Requester", fields: [requesterUserId], references: [id], onDelete: Cascade)
+  organization    Organization?   @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  category        ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  providerProfile ProviderProfile? @relation(fields: [providerProfileId], references: [id], onDelete: SetNull)
+  service         Service?        @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  offers          RequestOffer[]
+  booking         Booking?
+}
+
+model RequestOffer {
+  id                String          @id @default(cuid())
+  requestId         String
+  providerProfileId String
+  quotedPrice       Decimal
+  currency          String
+  scopeText         String?
+  canIssueQuotation Boolean
+  canIssueEbm       Boolean
+  status            OfferStatus     @default(sent)
+  createdAt         DateTime        @default(now())
+  request           ServiceRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+}
+
+model Booking {
+  id                String          @id @default(cuid())
+  requestId         String          @unique
+  providerProfileId String
+  customerUserId    String
+  finalPrice        Decimal
+  currency          String
+  status            BookingStatus   @default(confirmed)
+  completedAt       DateTime?
+  request           ServiceRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  customer          User            @relation("CustomerBookings", fields: [customerUserId], references: [id], onDelete: Cascade)
+  review            Review?
+}
+
+model Review {
+  id                      String          @id @default(cuid())
+  bookingId               String          @unique
+  reviewerUserId          String
+  providerProfileId       String
+  ratingOverall           Int
+  ratingPriceTransparency Int?
+  ratingTimeliness        Int?
+  ratingQuality           Int?
+  comment                 String?
+  createdAt               DateTime        @default(now())
+  booking                 Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  reviewer                User            @relation("ReviewerReviews", fields: [reviewerUserId], references: [id], onDelete: Cascade)
+  providerProfile         ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+}
+
+model AuthVerificationCode {
+  id          String              @id @default(cuid())
+  userId      String?
+  email       String
+  purpose     VerificationPurpose
+  channel     VerificationChannel
+  destination String
+  codeHash    String
+  attempts    Int                 @default(0)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime            @default(now())
+  user        User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email, purpose, createdAt])
+  @@index([userId, createdAt])
+}
