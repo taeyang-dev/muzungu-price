@@ -105,16 +105,16 @@ export function ProviderDashboard({
   );
   const router = useRouter();
   const hasActiveReview = verificationStatus === "pending" || verificationStatus === "on_hold";
-  const [selectedProviderType, setSelectedProviderType] = useState(
+  const [selectedProviderType, setSelectedProviderType] = useState<string>(
     profile?.providerType ?? "company"
   );
-  const [selectedBusinessSector, setSelectedBusinessSector] = useState(
+  const [selectedBusinessSector, setSelectedBusinessSector] = useState<string>(
     profile?.businessActivitySector ?? "services"
   );
-  const [selectedBusinessDetail, setSelectedBusinessDetail] = useState(
+  const [selectedBusinessDetail, setSelectedBusinessDetail] = useState<string>(
     profile?.businessActivityDetail ?? "general_services"
   );
-  const [selectedRepresentativeIdType, setSelectedRepresentativeIdType] = useState(
+  const [selectedRepresentativeIdType, setSelectedRepresentativeIdType] = useState<string>(
     profile?.representativeIdType ?? "national_id"
   );
   const [selectedDocumentType, setSelectedDocumentType] = useState("rdb_certificate");
