@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { decimalToNumber, fail, ok } from "@/lib/api";
 import { requireSession } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
+
+type ServiceRequestWhereInput = NonNullable<
+  Parameters<typeof prisma.serviceRequest.findMany>[0]
+>["where"];
 
 const schema = z.object({
   categoryId: z.string().optional(),
@@ -129,9 +132,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return auth.error as NextResponse;
   }
 
-  const where: Prisma.ServiceRequestWhereInput =
+  const where: ServiceRequestWhereInput =
     auth.session.role === "provider"
-      ? { status: { in: ["open", "negotiating"] } }
+      ? { OR: [{ status: "open" }, { status: "negotiating" }] }
       : { requesterUserId: auth.session.userId };
 
   const requests = await prisma.serviceRequest.findMany({
