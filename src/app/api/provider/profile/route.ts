@@ -47,7 +47,7 @@ const businessActivitySectorSchema = z.enum([
 
 const representativeIdTypeSchema = z.enum(["passport", "national_id", "other"]);
 
-const createSchema = z.object({
+const profileSchemaBase = z.object({
   businessName: z.string().min(2),
   providerType: providerTypeSchema,
   providerTypeOther: z.string().max(120).optional(),
@@ -81,7 +81,12 @@ const createSchema = z.object({
   country: z.string().optional(),
   city: z.string().optional(),
   categoryIds: z.array(z.string()).optional()
-}).superRefine((payload, ctx) => {
+});
+
+function validateConditionalOtherFields(
+  payload: Partial<z.infer<typeof profileSchemaBase>>,
+  ctx: z.RefinementCtx
+): void {
   if (payload.providerType === "other" && !payload.providerTypeOther?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -108,9 +113,15 @@ const createSchema = z.object({
       path: ["representativeIdTypeOther"]
     });
   }
+}
+
+const createSchema = profileSchemaBase.superRefine((payload, ctx) => {
+  validateConditionalOtherFields(payload, ctx);
 });
 
-const updateSchema = createSchema.partial();
+const updateSchema = profileSchemaBase.partial().superRefine((payload, ctx) => {
+  validateConditionalOtherFields(payload, ctx);
+});
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const auth = await requireRole(request, ["provider"]);
