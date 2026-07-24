@@ -13,7 +13,9 @@ import {
 
 const schema = z.object({
   email: z.string().email(),
-  channel: z.enum(["email", "sms", "whatsapp"])
+  channel: z.enum(["email", "sms", "whatsapp"]),
+  purpose: z.enum(["register", "login"]).default("register"),
+  phone: z.string().min(8).max(30).optional().or(z.literal(""))
 });
 
 function maskDestination(channel: "email" | "sms" | "whatsapp", destination: string): string {
@@ -36,22 +38,39 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const payload = schema.parse(await request.json());
     const normalizedEmail = payload.email.trim().toLowerCase();
+    const normalizedPhone = normalizePhone(payload.phone);
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail }
     });
 
-    if (!user) {
-      return fail("Account not found for this email", 404, "AUTH_404");
-    }
+    let destination: string | null = null;
+    let userId: string | null = null;
 
-    const destination =
-      payload.channel === "email" ? user.email : normalizePhone(user.phone);
-    if (!destination) {
-      return fail(
-        "This account does not have a verified phone number. Use email verification or add phone first.",
-        400,
-        "AUTH_PHONE_REQUIRED"
-      );
+    if (payload.purpose === "login") {
+      if (!user) {
+        return fail("Account not found for this email", 404, "AUTH_404");
+      }
+      userId = user.id;
+      destination = payload.channel === "email" ? user.email : normalizePhone(user.phone);
+      if (!destination) {
+        return fail(
+          "This account does not have a verified phone number. Use email verification or add phone first.",
+          400,
+          "AUTH_PHONE_REQUIRED"
+        );
+      }
+    } else {
+      if (user) {
+        return fail("Email already exists", 409, "AUTH_003");
+      }
+      destination = payload.channel === "email" ? normalizedEmail : normalizedPhone;
+      if (!destination) {
+        return fail(
+          "Phone number is required for SMS or WhatsApp verification.",
+          400,
+          "AUTH_PHONE_REQUIRED"
+        );
+      }
     }
 
     const cooldownThreshold = new Date(
@@ -59,7 +78,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
     const recentCode = await prisma.authVerificationCode.findFirst({
       where: {
-        userId: user.id,
+        email: normalizedEmail,
+        purpose: payload.purpose,
         consumedAt: null,
         createdAt: { gte: cooldownThreshold }
       },
@@ -79,7 +99,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     await prisma.authVerificationCode.create({
       data: {
-        userId: user.id,
+        userId,
+        email: normalizedEmail,
+        purpose: payload.purpose,
         channel: payload.channel,
         destination,
         codeHash,

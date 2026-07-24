@@ -18,8 +18,8 @@
 ## Features included
 
 - Auth (register/login/logout)
-  - Password login
-  - Verification-code login via Email / SMS / WhatsApp
+  - Login with email + password
+  - Signup verification options: Email / SMS / WhatsApp
 - Marketplace listing with filters:
   - Verified providers only
   - Quotation-ready providers

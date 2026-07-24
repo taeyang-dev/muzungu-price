@@ -69,6 +69,11 @@ enum VerificationChannel {
   whatsapp
 }
 
+enum VerificationPurpose {
+  register
+  login
+}
+
 enum PriceTier {
   basic
   standard
@@ -346,7 +351,9 @@ model Review {
 
 model AuthVerificationCode {
   id          String              @id @default(cuid())
-  userId      String
+  userId      String?
+  email       String
+  purpose     VerificationPurpose
   channel     VerificationChannel
   destination String
   codeHash    String
@@ -354,7 +361,8 @@ model AuthVerificationCode {
   expiresAt   DateTime
   consumedAt  DateTime?
   createdAt   DateTime            @default(now())
-  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([email, purpose, createdAt])
   @@index([userId, createdAt])
 }
