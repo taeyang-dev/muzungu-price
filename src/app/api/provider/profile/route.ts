@@ -21,9 +21,49 @@ const imageValueSchema = z
     }
   }, "Invalid image value");
 
+const providerTypeSchema = z.enum([
+  "freelancer",
+  "company",
+  "sole_proprietor",
+  "partnership",
+  "cooperative",
+  "ngo",
+  "other"
+]);
+
+const businessActivitySectorSchema = z.enum([
+  "ict",
+  "trade",
+  "services",
+  "construction",
+  "manufacturing",
+  "tourism",
+  "agriculture",
+  "logistics",
+  "education",
+  "health",
+  "other"
+]);
+
+const representativeIdTypeSchema = z.enum(["passport", "national_id", "other"]);
+
 const createSchema = z.object({
   businessName: z.string().min(2),
-  providerType: z.enum(["freelancer", "company"]),
+  providerType: providerTypeSchema,
+  providerTypeOther: z.string().max(120).optional(),
+  businessActivitySector: businessActivitySectorSchema,
+  businessActivityCode: z.string().min(2).max(32),
+  businessActivityDetail: z.string().min(2).max(140),
+  businessActivityOther: z.string().max(200).optional(),
+  officialBusinessAddress: z.string().min(8),
+  representativeName: z.string().min(2),
+  representativeNationality: z.string().min(2),
+  representativeIdType: representativeIdTypeSchema,
+  representativeIdTypeOther: z.string().max(120).optional(),
+  representativeIdNumber: z.string().min(4).max(80),
+  representativeLocalAddress: z.string().min(5),
+  representativeEmail: z.string().email(),
+  representativePhone: z.string().min(6).max(40),
   tagline: z.string().max(140).optional(),
   bio: z.string().optional(),
   logoUrl: imageValueSchema.optional().or(z.literal("")),
@@ -31,10 +71,40 @@ const createSchema = z.object({
   contactEmail: z.string().email().optional().or(z.literal("")),
   contactPhone: z.string().optional(),
   websiteUrl: z.string().url().optional().or(z.literal("")),
-  yearsInBusiness: z.coerce.number().int().min(0).max(80).optional(),
+  yearsInBusiness: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.coerce.number().int().min(0).max(80).optional()
+  ),
   country: z.string().optional(),
   city: z.string().optional(),
   categoryIds: z.array(z.string()).optional()
+}).superRefine((payload, ctx) => {
+  if (payload.providerType === "other" && !payload.providerTypeOther?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Business type detail is required when selecting Other",
+      path: ["providerTypeOther"]
+    });
+  }
+
+  if (
+    (payload.businessActivitySector === "other" || payload.businessActivityDetail?.toLowerCase() === "other") &&
+    !payload.businessActivityOther?.trim()
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Business activity detail is required when selecting Other",
+      path: ["businessActivityOther"]
+    });
+  }
+
+  if (payload.representativeIdType === "other" && !payload.representativeIdTypeOther?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Representative ID type detail is required when selecting Other",
+      path: ["representativeIdTypeOther"]
+    });
+  }
 });
 
 const updateSchema = createSchema.partial();
@@ -60,16 +130,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         userId: auth.session.userId,
         businessName: payload.businessName,
         providerType: payload.providerType,
+        providerTypeOther: payload.providerTypeOther?.trim() || null,
+        businessActivitySector: payload.businessActivitySector,
+        businessActivityCode: payload.businessActivityCode.trim(),
+        businessActivityDetail: payload.businessActivityDetail.trim(),
+        businessActivityOther: payload.businessActivityOther?.trim() || null,
+        officialBusinessAddress: payload.officialBusinessAddress.trim(),
+        representativeName: payload.representativeName.trim(),
+        representativeNationality: payload.representativeNationality.trim(),
+        representativeIdType: payload.representativeIdType,
+        representativeIdTypeOther: payload.representativeIdTypeOther?.trim() || null,
+        representativeIdNumber: payload.representativeIdNumber.trim(),
+        representativeLocalAddress: payload.representativeLocalAddress.trim(),
+        representativeEmail: payload.representativeEmail.trim(),
+        representativePhone: payload.representativePhone.trim(),
         tagline: payload.tagline,
         bio: payload.bio,
         logoUrl: payload.logoUrl || null,
         coverImageUrl: payload.coverImageUrl || null,
-        contactEmail: payload.contactEmail || null,
-        contactPhone: payload.contactPhone || null,
+        contactEmail: payload.contactEmail || payload.representativeEmail || null,
+        contactPhone: payload.contactPhone || payload.representativePhone || null,
         websiteUrl: payload.websiteUrl || null,
         yearsInBusiness: payload.yearsInBusiness,
-        country: payload.country,
-        city: payload.city,
+        country: payload.country?.trim() || null,
+        city: payload.city?.trim() || null,
         categories: categoryIds.length > 0
           ? {
               createMany: {
@@ -113,15 +197,57 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       data: {
         businessName: payload.businessName ?? undefined,
         providerType: payload.providerType ?? undefined,
+        providerTypeOther:
+          payload.providerTypeOther === undefined ? undefined : payload.providerTypeOther.trim() || null,
+        businessActivitySector: payload.businessActivitySector ?? undefined,
+        businessActivityCode:
+          payload.businessActivityCode === undefined ? undefined : payload.businessActivityCode.trim() || null,
+        businessActivityDetail:
+          payload.businessActivityDetail === undefined ? undefined : payload.businessActivityDetail.trim() || null,
+        businessActivityOther:
+          payload.businessActivityOther === undefined ? undefined : payload.businessActivityOther.trim() || null,
+        officialBusinessAddress:
+          payload.officialBusinessAddress === undefined
+            ? undefined
+            : payload.officialBusinessAddress.trim() || null,
+        representativeName:
+          payload.representativeName === undefined ? undefined : payload.representativeName.trim() || null,
+        representativeNationality:
+          payload.representativeNationality === undefined
+            ? undefined
+            : payload.representativeNationality.trim() || null,
+        representativeIdType: payload.representativeIdType ?? undefined,
+        representativeIdTypeOther:
+          payload.representativeIdTypeOther === undefined
+            ? undefined
+            : payload.representativeIdTypeOther.trim() || null,
+        representativeIdNumber:
+          payload.representativeIdNumber === undefined ? undefined : payload.representativeIdNumber.trim() || null,
+        representativeLocalAddress:
+          payload.representativeLocalAddress === undefined
+            ? undefined
+            : payload.representativeLocalAddress.trim() || null,
+        representativeEmail:
+          payload.representativeEmail === undefined ? undefined : payload.representativeEmail.trim() || null,
+        representativePhone:
+          payload.representativePhone === undefined ? undefined : payload.representativePhone.trim() || null,
         tagline: payload.tagline ?? undefined,
         bio: payload.bio ?? undefined,
         logoUrl: payload.logoUrl === undefined ? undefined : payload.logoUrl || null,
         coverImageUrl:
           payload.coverImageUrl === undefined ? undefined : payload.coverImageUrl || null,
         contactEmail:
-          payload.contactEmail === undefined ? undefined : payload.contactEmail || null,
+          payload.contactEmail === undefined
+            ? payload.representativeEmail === undefined
+              ? undefined
+              : payload.representativeEmail || null
+            : payload.contactEmail || null,
         contactPhone:
-          payload.contactPhone === undefined ? undefined : payload.contactPhone || null,
+          payload.contactPhone === undefined
+            ? payload.representativePhone === undefined
+              ? undefined
+              : payload.representativePhone || null
+            : payload.contactPhone || null,
         websiteUrl: payload.websiteUrl === undefined ? undefined : payload.websiteUrl || null,
         yearsInBusiness: payload.yearsInBusiness ?? undefined,
         country: payload.country ?? undefined,

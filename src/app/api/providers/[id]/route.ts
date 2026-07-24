@@ -56,6 +56,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams): Promi
           vendor_tin_number: provider.billingCapability.vendorTinNumber,
           payment_terms_csv: provider.billingCapability.paymentTermsCsv,
           payment_methods_csv: provider.billingCapability.paymentMethodsCsv,
+          payment_method_other_detail: provider.billingCapability.paymentMethodOtherDetail,
           momo_account_name: provider.billingCapability.momoAccountName,
           momo_number: provider.billingCapability.momoNumber,
           bank_name: provider.billingCapability.bankName,

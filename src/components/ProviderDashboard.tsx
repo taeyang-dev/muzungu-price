@@ -26,7 +26,28 @@ interface ProviderDashboardProps {
     | {
         id: string;
         businessName: string;
-        providerType: "freelancer" | "company";
+        providerType:
+          | "freelancer"
+          | "company"
+          | "sole_proprietor"
+          | "partnership"
+          | "cooperative"
+          | "ngo"
+          | "other";
+        providerTypeOther: string | null;
+        businessActivitySector: string | null;
+        businessActivityCode: string | null;
+        businessActivityDetail: string | null;
+        businessActivityOther: string | null;
+        officialBusinessAddress: string | null;
+        representativeName: string | null;
+        representativeNationality: string | null;
+        representativeIdType: string | null;
+        representativeIdTypeOther: string | null;
+        representativeIdNumber: string | null;
+        representativeLocalAddress: string | null;
+        representativeEmail: string | null;
+        representativePhone: string | null;
         tagline: string | null;
         city: string | null;
         country: string | null;
@@ -52,6 +73,7 @@ interface ProviderDashboardProps {
         vendorTinNumber: string | null;
         paymentTerms: string[];
         paymentMethods: string[];
+        paymentMethodOtherDetail: string | null;
         momoAccountName: string | null;
         momoNumber: string | null;
         bankName: string | null;
@@ -83,6 +105,53 @@ export function ProviderDashboard({
   );
   const router = useRouter();
   const hasActiveReview = verificationStatus === "pending" || verificationStatus === "on_hold";
+  const [selectedProviderType, setSelectedProviderType] = useState(
+    profile?.providerType ?? "company"
+  );
+  const [selectedBusinessSector, setSelectedBusinessSector] = useState(
+    profile?.businessActivitySector ?? "services"
+  );
+  const [selectedBusinessDetail, setSelectedBusinessDetail] = useState(
+    profile?.businessActivityDetail ?? "general_services"
+  );
+  const [selectedRepresentativeIdType, setSelectedRepresentativeIdType] = useState(
+    profile?.representativeIdType ?? "national_id"
+  );
+  const [selectedDocumentType, setSelectedDocumentType] = useState("rdb_certificate");
+
+  const providerTypeOptions = [
+    { value: "company", labelEn: "Company", labelKo: "법인 업체" },
+    { value: "sole_proprietor", labelEn: "Sole proprietor", labelKo: "개인사업자" },
+    { value: "partnership", labelEn: "Partnership", labelKo: "합자/파트너십" },
+    { value: "cooperative", labelEn: "Cooperative", labelKo: "협동조합" },
+    { value: "ngo", labelEn: "NGO / Institution", labelKo: "NGO / 기관" },
+    { value: "freelancer", labelEn: "Freelancer", labelKo: "프리랜서" },
+    { value: "other", labelEn: "Other", labelKo: "기타" }
+  ] as const;
+
+  const businessSectorOptions = [
+    { value: "ict", labelEn: "ICT (ISIC J62/J63)", labelKo: "ICT (ISIC J62/J63)" },
+    { value: "trade", labelEn: "Trade (ISIC G46/G47)", labelKo: "무역 (ISIC G46/G47)" },
+    { value: "services", labelEn: "Services (ISIC N)", labelKo: "서비스업 (ISIC N)" },
+    { value: "construction", labelEn: "Construction (ISIC F)", labelKo: "건설업 (ISIC F)" },
+    { value: "manufacturing", labelEn: "Manufacturing (ISIC C)", labelKo: "제조업 (ISIC C)" },
+    { value: "tourism", labelEn: "Tourism & Hospitality (ISIC I)", labelKo: "관광/숙박 (ISIC I)" },
+    { value: "agriculture", labelEn: "Agriculture (ISIC A)", labelKo: "농업 (ISIC A)" },
+    { value: "logistics", labelEn: "Transport/Logistics (ISIC H)", labelKo: "운송/물류 (ISIC H)" },
+    { value: "education", labelEn: "Education (ISIC P)", labelKo: "교육업 (ISIC P)" },
+    { value: "health", labelEn: "Health (ISIC Q)", labelKo: "보건업 (ISIC Q)" },
+    { value: "other", labelEn: "Other", labelKo: "기타" }
+  ] as const;
+
+  const businessDetailOptions = [
+    { value: "software_services", labelEn: "Software services", labelKo: "소프트웨어 서비스" },
+    { value: "general_trading", labelEn: "General trading", labelKo: "일반 무역" },
+    { value: "facility_services", labelEn: "Facility services", labelKo: "시설/운영 서비스" },
+    { value: "engineering_works", labelEn: "Engineering works", labelKo: "엔지니어링 공사" },
+    { value: "equipment_supply", labelEn: "Equipment supply", labelKo: "장비 공급" },
+    { value: "tour_operations", labelEn: "Tour operations", labelKo: "투어 운영" },
+    { value: "other", labelEn: "Other", labelKo: "기타" }
+  ] as const;
 
   function togglePaymentMethod(method: string, checked: boolean): void {
     setSelectedPaymentMethods((current) => {
@@ -136,6 +205,29 @@ export function ProviderDashboard({
         .getAll("categoryIds")
         .filter((item): item is string => typeof item === "string" && item.length > 0);
     }
+    if (typeof payload.providerType === "string" && payload.providerType !== "other") {
+      payload.providerTypeOther = "";
+    }
+    if (
+      typeof payload.businessActivitySector === "string" &&
+      payload.businessActivitySector !== "other" &&
+      typeof payload.businessActivityDetail === "string" &&
+      payload.businessActivityDetail !== "other"
+    ) {
+      payload.businessActivityOther = "";
+    }
+    if (typeof payload.representativeIdType === "string" && payload.representativeIdType !== "other") {
+      payload.representativeIdTypeOther = "";
+    }
+    if (typeof payload.docType === "string" && payload.docType === "other") {
+      const customDocType = String(payload.docTypeOther ?? "").trim();
+      if (customDocType.length > 0) {
+        payload.docType = customDocType;
+      }
+    }
+    if (typeof payload.docTypeOther === "string") {
+      delete payload.docTypeOther;
+    }
 
     if ("quotationAvailable" in payload) {
       payload.quotationAvailable = payload.quotationAvailable === "on";
@@ -165,6 +257,9 @@ export function ProviderDashboard({
         .filter((item): item is string => typeof item === "string" && item.length > 0);
     } else {
       payload.paymentMethods = [];
+    }
+    if (!selectedPaymentMethods.includes("other")) {
+      payload.paymentMethodOtherDetail = "";
     }
 
     setLoading(true);
@@ -241,7 +336,7 @@ export function ProviderDashboard({
             <h3 style={{ margin: "0 0 8px 0" }}>{tr(locale, "Required for verification", "검증용 필수 항목")}</h3>
           </div>
           <div>
-            <label className="tiny">{tr(locale, "Business name", "업체명")}</label>
+            <label className="tiny">{tr(locale, "Company name (as registered in RDB)", "회사명 (RDB 등록명)")}</label>
             <input
               className="input"
               defaultValue={profile?.businessName ?? ""}
@@ -250,45 +345,142 @@ export function ProviderDashboard({
             />
           </div>
           <div>
-            <label className="tiny">{tr(locale, "Type", "유형")}</label>
-            <select className="select" defaultValue={profile?.providerType ?? "freelancer"} name="providerType">
-              <option value="freelancer">{tr(locale, "Freelancer", "프리랜서")}</option>
-              <option value="company">{tr(locale, "Company", "업체")}</option>
+            <label className="tiny">{tr(locale, "Business type", "사업 유형")}</label>
+            <select
+              className="select"
+              defaultValue={profile?.providerType ?? "company"}
+              name="providerType"
+              onChange={(event) => setSelectedProviderType(event.target.value)}
+            >
+              {providerTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {tr(locale, option.labelEn, option.labelKo)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {selectedProviderType === "other" && (
+            <div>
+              <label className="tiny">{tr(locale, "Business type detail (Other)", "사업 유형 상세 (기타)")}</label>
+              <input className="input" defaultValue={profile?.providerTypeOther ?? ""} name="providerTypeOther" required />
+            </div>
+          )}
+          <div>
+            <label className="tiny">{tr(locale, "Business activity sector (ISIC)", "주요 사업 업종 (ISIC)")}</label>
+            <select
+              className="select"
+              defaultValue={profile?.businessActivitySector ?? "services"}
+              name="businessActivitySector"
+              onChange={(event) => setSelectedBusinessSector(event.target.value)}
+            >
+              {businessSectorOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {tr(locale, option.labelEn, option.labelKo)}
+                </option>
+              ))}
             </select>
           </div>
           <div>
-            <label className="tiny">{tr(locale, "City", "도시")}</label>
-            <input className="input" defaultValue={profile?.city ?? ""} name="city" />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Country", "국가")} *</label>
-            <input className="input" defaultValue={profile?.country ?? ""} name="country" required />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Contact email", "연락 이메일")} *</label>
-            <input className="input" defaultValue={profile?.contactEmail ?? ""} name="contactEmail" required />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Contact phone", "연락처")}</label>
-            <input className="input" defaultValue={profile?.contactPhone ?? ""} name="contactPhone" />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Website", "웹사이트")} *</label>
-            <input className="input" defaultValue={profile?.websiteUrl ?? ""} name="websiteUrl" required />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Years in business", "업력(년)")} *</label>
+            <label className="tiny">{tr(locale, "Business activity ISIC code", "주요 사업 ISIC 코드")}</label>
             <input
               className="input"
-              defaultValue={profile?.yearsInBusiness ?? ""}
-              min={0}
-              name="yearsInBusiness"
+              defaultValue={profile?.businessActivityCode ?? ""}
+              name="businessActivityCode"
+              placeholder="e.g. J6201"
               required
-              type="number"
+            />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Business activity detail", "주요 사업 상세")}</label>
+            <select
+              className="select"
+              defaultValue={profile?.businessActivityDetail ?? "general_services"}
+              name="businessActivityDetail"
+              onChange={(event) => setSelectedBusinessDetail(event.target.value)}
+            >
+              {businessDetailOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {tr(locale, option.labelEn, option.labelKo)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {(selectedBusinessSector === "other" || selectedBusinessDetail === "other") && (
+            <div>
+              <label className="tiny">{tr(locale, "Business activity detail (Other)", "주요 사업 상세 (기타)")}</label>
+              <input className="input" defaultValue={profile?.businessActivityOther ?? ""} name="businessActivityOther" required />
+            </div>
+          )}
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label className="tiny">{tr(locale, "Official business address", "공식 사업 주소지")}</label>
+            <textarea
+              className="textarea"
+              defaultValue={profile?.officialBusinessAddress ?? ""}
+              name="officialBusinessAddress"
+              required
+            />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Representative full name", "대표자 성명")}</label>
+            <input className="input" defaultValue={profile?.representativeName ?? ""} name="representativeName" required />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Representative nationality", "대표자 국적")}</label>
+            <input className="input" defaultValue={profile?.representativeNationality ?? ""} name="representativeNationality" required />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "ID type", "신분증 유형")}</label>
+            <select
+              className="select"
+              defaultValue={profile?.representativeIdType ?? "national_id"}
+              name="representativeIdType"
+              onChange={(event) => setSelectedRepresentativeIdType(event.target.value)}
+            >
+              <option value="passport">{tr(locale, "Passport (for foreign representative)", "여권 (외국인)")}</option>
+              <option value="national_id">{tr(locale, "National ID", "국가 신분증")}</option>
+              <option value="other">{tr(locale, "Other", "기타")}</option>
+            </select>
+          </div>
+          {selectedRepresentativeIdType === "other" && (
+            <div>
+              <label className="tiny">{tr(locale, "ID type detail (Other)", "신분증 유형 상세 (기타)")}</label>
+              <input
+                className="input"
+                defaultValue={profile?.representativeIdTypeOther ?? ""}
+                name="representativeIdTypeOther"
+                required
+              />
+            </div>
+          )}
+          <div>
+            <label className="tiny">{tr(locale, "Passport / National ID number", "여권번호 / National ID")}</label>
+            <input className="input" defaultValue={profile?.representativeIdNumber ?? ""} name="representativeIdNumber" required />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Representative local address", "대표자 현지 주소")}</label>
+            <input className="input" defaultValue={profile?.representativeLocalAddress ?? ""} name="representativeLocalAddress" required />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Representative email", "대표자 이메일")}</label>
+            <input
+              className="input"
+              defaultValue={profile?.representativeEmail ?? profile?.contactEmail ?? ""}
+              name="representativeEmail"
+              required
+              type="email"
+            />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Representative phone", "대표자 전화번호")}</label>
+            <input
+              className="input"
+              defaultValue={profile?.representativePhone ?? profile?.contactPhone ?? ""}
+              name="representativePhone"
+              required
             />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">{tr(locale, "Industry / categories", "업종 / 카테고리")}</label>
+            <label className="tiny">{tr(locale, "Marketplace categories", "마켓플레이스 카테고리")}</label>
             <div className="category-checkbox-grid">
               <input name="categoryIds" type="hidden" value="" />
               {categories.map((category) => (
@@ -429,9 +621,26 @@ export function ProviderDashboard({
               </div>
               <div>
                 <label className="tiny">{tr(locale, "MoMo number", "모모 번호")}</label>
-                <input className="input" defaultValue={billing?.momoNumber ?? ""} name="momoNumber" />
+                <input
+                  className="input"
+                  defaultValue={billing?.momoNumber ?? ""}
+                  name="momoNumber"
+                  placeholder="*182*8*1*123456#"
+                />
               </div>
             </>
+          )}
+          {selectedPaymentMethods.includes("other") && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label className="tiny">{tr(locale, "Other payment method detail", "기타 결제 수단 상세")}</label>
+              <input
+                className="input"
+                defaultValue={billing?.paymentMethodOtherDetail ?? ""}
+                name="paymentMethodOtherDetail"
+                placeholder={tr(locale, "Describe the method", "결제 방식을 직접 입력")}
+                required
+              />
+            </div>
           )}
           {selectedPaymentMethods.includes("bank_transfer") && (
             <>
@@ -505,6 +714,25 @@ export function ProviderDashboard({
                   "Example: Fast and trusted office electrical support.",
                   "예시: 사무공간 전기 문제를 빠르고 정확하게 해결합니다."
                 )}
+              />
+            </div>
+            <div>
+              <label className="tiny">{tr(locale, "Website", "웹사이트 주소")}</label>
+              <input
+                className="input"
+                defaultValue={profile.websiteUrl ?? ""}
+                name="websiteUrl"
+                placeholder="https://"
+              />
+            </div>
+            <div>
+              <label className="tiny">{tr(locale, "Years in business", "업력(년)")}</label>
+              <input
+                className="input"
+                defaultValue={profile.yearsInBusiness ?? ""}
+                min={0}
+                name="yearsInBusiness"
+                type="number"
               />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
@@ -622,21 +850,13 @@ export function ProviderDashboard({
               ))}
             </select>
           </div>
-          <div>
-            <label className="tiny">{tr(locale, "Pricing mode", "가격 모드")}</label>
-            <input
-              className="input"
-              disabled
-              value={tr(locale, "Single price (no tier split)", "단일 가격 (티어 구분 없음)")}
-            />
-            <input name="tier" type="hidden" value="standard" />
-          </div>
+          <input name="tier" type="hidden" value="standard" />
           <div>
             <label className="tiny">{tr(locale, "Currency", "통화")}</label>
             <input className="input" defaultValue="RWF" maxLength={3} name="currency" required />
           </div>
           <div>
-            <label className="tiny">{tr(locale, "Base price", "기본 가격")}</label>
+            <label className="tiny">{tr(locale, "Price", "가격")}</label>
             <input className="input" min={1} name="basePrice" required type="number" />
           </div>
           <div>
@@ -679,19 +899,27 @@ export function ProviderDashboard({
           <div className="panel" style={{ padding: "12px" }}>
             <h3 style={{ marginTop: 0 }}>{tr(locale, "Required documents", "필수 서류")}</h3>
             <ul className="tiny" style={{ margin: 0, paddingLeft: "18px" }}>
-              <li>{tr(locale, "Business registration certificate", "사업자 등록증")}</li>
-              <li>{tr(locale, "Tax/TIN certificate", "세무/TIN 증빙 서류")}</li>
-              <li>{tr(locale, "Owner/representative ID", "대표자 신분증")}</li>
-              <li>{tr(locale, "Bank account ownership proof", "계좌 소유 증빙")}</li>
+              <li>{tr(locale, "RDB business registration certificate", "RDB 사업자등록증")}</li>
+              <li>{tr(locale, "TIN registration certificate", "TIN 등록증")}</li>
+              <li>{tr(locale, "Representative ID document", "대표자 신분증")}</li>
             </ul>
           </div>
           <div className="panel" style={{ padding: "12px" }}>
             <h3 style={{ marginTop: 0 }}>{tr(locale, "Optional additional documents", "추가(선택) 서류")}</h3>
+            <p className="tiny muted" style={{ marginTop: 0 }}>
+              {tr(
+                locale,
+                "Additional documents proving business legitimacy",
+                "Additional documents proving business legitimacy"
+              )}
+            </p>
             <ul className="tiny" style={{ margin: 0, paddingLeft: "18px" }}>
               <li>{tr(locale, "Past quotation sample", "기존 견적서 샘플")}</li>
               <li>{tr(locale, "EBM sample format", "EBM 발행 샘플")}</li>
               <li>{tr(locale, "Client references", "고객 추천서/레퍼런스")}</li>
               <li>{tr(locale, "Insurance or compliance certificate", "보험/컴플라이언스 증빙")}</li>
+              <li>{tr(locale, "RRA tax clearance certificate", "RRA 세금 완납 증명서")}</li>
+              <li>{tr(locale, "VAT registration certificate", "VAT 등록증")}</li>
             </ul>
           </div>
         </div>
@@ -723,15 +951,31 @@ export function ProviderDashboard({
           >
             <div>
               <label className="tiny">{tr(locale, "Document type", "서류 종류")}</label>
-              <select className="select" defaultValue="business_license" name="docType" required>
-                <option value="business_license">{tr(locale, "Business registration certificate", "사업자 등록증")}</option>
-                <option value="tin_certificate">{tr(locale, "Tax/TIN certificate", "세무/TIN 증빙")}</option>
-                <option value="owner_id">{tr(locale, "Owner/representative ID", "대표자 신분증")}</option>
-                <option value="bank_proof">{tr(locale, "Bank account ownership proof", "계좌 소유 증빙")}</option>
+              <select
+                className="select"
+                defaultValue="rdb_certificate"
+                name="docType"
+                onChange={(event) => setSelectedDocumentType(event.target.value)}
+                required
+              >
+                <option value="rdb_certificate">{tr(locale, "RDB business registration certificate", "RDB 사업자등록증")}</option>
+                <option value="tin_certificate">{tr(locale, "TIN registration certificate", "TIN 등록증")}</option>
+                <option value="owner_id">{tr(locale, "Representative ID document", "대표자 신분증")}</option>
                 <option value="quotation_sample">{tr(locale, "Past quotation sample", "기존 견적서 샘플")}</option>
                 <option value="ebm_sample">{tr(locale, "EBM sample format", "EBM 발행 샘플")}</option>
+                <option value="tax_clearance">{tr(locale, "RRA tax clearance certificate", "RRA 세금 완납 증명서")}</option>
+                <option value="vat_certificate">{tr(locale, "VAT registration certificate", "VAT 등록증")}</option>
                 <option value="other">{tr(locale, "Other", "기타")}</option>
               </select>
+              {selectedDocumentType === "other" && (
+                <input
+                  className="input"
+                  name="docTypeOther"
+                  placeholder={tr(locale, "Enter document type", "서류 종류를 직접 입력")}
+                  required
+                  style={{ marginTop: "8px" }}
+                />
+              )}
             </div>
             <div>
               <label className="tiny">{tr(locale, "File attachment", "파일 첨부")}</label>

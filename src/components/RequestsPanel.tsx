@@ -67,6 +67,7 @@ interface VendorContext {
   tinNumber: string | null;
   paymentTerms: string[];
   paymentMethods: string[];
+  paymentMethodOtherDetail: string | null;
   momoAccountName: string | null;
   momoNumber: string | null;
   bankName: string | null;
@@ -768,6 +769,12 @@ export function RequestsPanel({
                       <strong>SWIFT:</strong> {vendorContext.bankSwiftCode ?? "-"}
                     </p>
                   </div>
+                )}
+                {effectivePaymentMethod === "other" && (
+                  <p className="tiny">
+                    <strong>{tr(locale, "Other payment method", "기타 결제 수단")}:</strong>{" "}
+                    {vendorContext.paymentMethodOtherDetail ?? "-"}
+                  </p>
                 )}
               </div>
               <button className="btn" disabled={loading} type="submit">

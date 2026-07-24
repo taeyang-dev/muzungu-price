@@ -160,6 +160,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
                     .map((item) => item.trim())
                     .filter(Boolean)
                 : [],
+              paymentMethodOtherDetail: vendorContext.billingCapability?.paymentMethodOtherDetail ?? null,
               momoAccountName: vendorContext.billingCapability?.momoAccountName ?? null,
               momoNumber: vendorContext.billingCapability?.momoNumber ?? null,
               bankName: vendorContext.billingCapability?.bankName ?? null,

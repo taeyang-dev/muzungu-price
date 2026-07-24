@@ -16,6 +16,11 @@ enum UserRole {
 enum ProviderType {
   freelancer
   company
+  sole_proprietor
+  partnership
+  cooperative
+  ngo
+  other
 }
 
 enum VerificationStatus {
@@ -117,6 +122,20 @@ model ProviderProfile {
   userId                String                    @unique
   businessName          String
   providerType          ProviderType
+  providerTypeOther     String?
+  businessActivitySector String?
+  businessActivityCode  String?
+  businessActivityDetail String?
+  businessActivityOther String?
+  officialBusinessAddress String?
+  representativeName    String?
+  representativeNationality String?
+  representativeIdType  String?
+  representativeIdTypeOther String?
+  representativeIdNumber String?
+  representativeLocalAddress String?
+  representativeEmail   String?
+  representativePhone   String?
   tagline               String?
   bio                   String?
   logoUrl               String?
@@ -225,6 +244,7 @@ model ProviderBillingCapability {
   vendorTinNumber        String?
   paymentTermsCsv        String?
   paymentMethodsCsv      String?
+  paymentMethodOtherDetail String?
   momoAccountName        String?
   momoNumber             String?
   bankName               String?

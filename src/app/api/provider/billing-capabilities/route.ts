@@ -12,6 +12,7 @@ const schema = z.object({
   vendorTinNumber: z.string().optional(),
   paymentTerms: z.array(z.string()).optional(),
   paymentMethods: z.array(z.string()).optional(),
+  paymentMethodOtherDetail: z.string().optional(),
   momoAccountName: z.string().optional(),
   momoNumber: z.string().optional(),
   bankName: z.string().optional(),
@@ -40,6 +41,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         payload.paymentMethods && payload.paymentMethods.length > 0
           ? payload.paymentMethods.join(",")
           : null,
+      paymentMethodOtherDetail: payload.paymentMethodOtherDetail || null,
       momoAccountName: payload.momoAccountName || null,
       momoNumber: payload.momoNumber || null,
       bankName: payload.bankName || null,
