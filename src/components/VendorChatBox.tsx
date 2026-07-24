@@ -44,11 +44,11 @@ interface TranslateResult {
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
 const MAX_ATTACHMENT_COUNT = 3;
 
-const languageLabels: Record<DisplayLang, { en: string; ko: string; fr: string }> = {
-  original: { en: "Original", ko: "원문", fr: "Original" },
-  en: { en: "English", ko: "영어", fr: "Anglais" },
-  ko: { en: "Korean", ko: "한국어", fr: "Coréen" },
-  rw: { en: "Kinyarwanda", ko: "키냐르완다어", fr: "Kinyarwanda" }
+const languageLabels: Record<DisplayLang, { en: string; ko: string; fr: string; rw: string }> = {
+  original: { en: "Original", ko: "원문", fr: "Original", rw: "Umwimerere" },
+  en: { en: "English", ko: "영어", fr: "Anglais", rw: "Icyongereza" },
+  ko: { en: "Korean", ko: "한국어", fr: "Coréen", rw: "Igikoreya" },
+  rw: { en: "Kinyarwanda", ko: "키냐르완다어", fr: "Kinyarwanda", rw: "Ikinyarwanda" }
 };
 
 function getStorageKey(vendorId: string): string {
@@ -100,7 +100,13 @@ function hasHangul(text: string): boolean {
 }
 
 function defaultDisplayLanguage(locale: Locale): DisplayLang {
-  return locale === "ko" ? "ko" : "en";
+  if (locale === "ko") {
+    return "ko";
+  }
+  if (locale === "rw") {
+    return "rw";
+  }
+  return "en";
 }
 
 async function translateText(text: string, targetLanguage: StoredLang): Promise<string> {
@@ -152,6 +158,8 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
             ? `안녕하세요, ${vendorName}입니다. 요청 내용을 남겨주시면 가격 정보를 포함해 빠르게 답변드릴게요.`
             : locale === "fr"
               ? `Bonjour, ici ${vendorName}. Partagez votre demande et nous répondrons rapidement avec les informations de prix.`
+              : locale === "rw"
+                ? `Muraho, aha ni ${vendorName}. Tanga ubusabe bwawe tugusubize vuba hamwe n'ibiciro.`
             : `Hi, this is ${vendorName}. Share your request and we will respond quickly with pricing details.`,
         timestamp: "welcome"
       }
@@ -487,6 +495,8 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
                     ? languageLabels[lang].ko
                     : locale === "fr"
                       ? languageLabels[lang].fr
+                      : locale === "rw"
+                        ? languageLabels[lang].rw
                       : languageLabels[lang].en}
                 </button>
               ))}
@@ -531,6 +541,8 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
                           ? languageLabels[lang].ko
                           : locale === "fr"
                             ? languageLabels[lang].fr
+                            : locale === "rw"
+                              ? languageLabels[lang].rw
                             : languageLabels[lang].en}
                       </button>
                     ))}

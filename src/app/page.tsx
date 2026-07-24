@@ -64,16 +64,21 @@ function formatPrice(amount: number | null, currency: string | null): string {
 }
 
 function categoryLabel(locale: Locale, slug: string, fallback: string): string {
-  const known: Record<string, { en: string; ko: string; fr: string }> = {
-    electrical: { en: "Electrical Services", ko: "전기 서비스", fr: "Services électriques" },
-    events: { en: "Event Services", ko: "이벤트 서비스", fr: "Services événementiels" },
-    "language-lessons": { en: "Language Lessons", ko: "언어 수업", fr: "Cours de langue" },
-    "real-estate": { en: "Real Estate", ko: "부동산", fr: "Immobilier" },
-    safari: { en: "Safari Tours", ko: "사파리 투어", fr: "Safaris" },
-    furniture: { en: "Furniture Making", ko: "가구 제작", fr: "Fabrication de meubles" },
-    electronics: { en: "Electronics Sales", ko: "전자제품 판매", fr: "Vente d'électronique" },
-    "art-experience": { en: "Art Experience", ko: "아트 체험", fr: "Expérience artistique" },
-    other: { en: "Other Services", ko: "기타 서비스", fr: "Autres services" }
+  const known: Record<string, { en: string; ko: string; fr: string; rw: string }> = {
+    electrical: {
+      en: "Electrical Services",
+      ko: "전기 서비스",
+      fr: "Services électriques",
+      rw: "Serivisi z'amashanyarazi"
+    },
+    events: { en: "Event Services", ko: "이벤트 서비스", fr: "Services événementiels", rw: "Serivisi z'ibirori" },
+    "language-lessons": { en: "Language Lessons", ko: "언어 수업", fr: "Cours de langue", rw: "Amasomo y'indimi" },
+    "real-estate": { en: "Real Estate", ko: "부동산", fr: "Immobilier", rw: "Imitungo itimukanwa" },
+    safari: { en: "Safari Tours", ko: "사파리 투어", fr: "Safaris", rw: "Ingendo za safari" },
+    furniture: { en: "Furniture Making", ko: "가구 제작", fr: "Fabrication de meubles", rw: "Gukora ibikoresho" },
+    electronics: { en: "Electronics Sales", ko: "전자제품 판매", fr: "Vente d'électronique", rw: "Igurisha ry'ibikoresho by'ikoranabuhanga" },
+    "art-experience": { en: "Art Experience", ko: "아트 체험", fr: "Expérience artistique", rw: "Ubunararibonye bw'ubugeni" },
+    other: { en: "Other Services", ko: "기타 서비스", fr: "Autres services", rw: "Izindi serivisi" }
   };
   const label = known[slug];
   if (!label) {
@@ -84,6 +89,9 @@ function categoryLabel(locale: Locale, slug: string, fallback: string): string {
   }
   if (locale === "fr") {
     return label.fr;
+  }
+  if (locale === "rw") {
+    return label.rw;
   }
   return label.en;
 }
@@ -96,6 +104,13 @@ function unitLabel(locale: Locale, unit: string): string {
       .replace("per day", "par jour")
       .replace("per project", "par projet")
       .replace("per person", "par personne");
+  }
+  if (locale === "rw") {
+    return normalized
+      .replace("per hour", "ku isaha")
+      .replace("per day", "ku munsi")
+      .replace("per project", "ku mushinga")
+      .replace("per person", "ku muntu");
   }
   if (locale !== "ko") {
     return normalized;

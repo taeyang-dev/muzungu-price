@@ -102,10 +102,15 @@ interface ApiResult {
 type VendorRequestType = "quotation" | "purchase" | "ebm";
 
 function toTermLabel(locale: Locale, value: string): string {
-  const map: Record<string, { en: string; ko: string; fr: string }> = {
-    prepaid: { en: "Prepaid", ko: "선불", fr: "Prépayé" },
-    postpaid: { en: "Postpaid", ko: "후불", fr: "Postpayé" },
-    deposit: { en: "Deposit / partial prepay", ko: "부분 선지급", fr: "Acompte / prépaiement partiel" }
+  const map: Record<string, { en: string; ko: string; fr: string; rw: string }> = {
+    prepaid: { en: "Prepaid", ko: "선불", fr: "Prépayé", rw: "Yishyurwa mbere" },
+    postpaid: { en: "Postpaid", ko: "후불", fr: "Postpayé", rw: "Yishyurwa nyuma" },
+    deposit: {
+      en: "Deposit / partial prepay",
+      ko: "부분 선지급",
+      fr: "Acompte / prépaiement partiel",
+      rw: "Avansi / kwishyura igice mbere"
+    }
   };
   const found = map[value];
   if (!found) {
@@ -116,17 +121,20 @@ function toTermLabel(locale: Locale, value: string): string {
   }
   if (locale === "fr") {
     return found.fr;
+  }
+  if (locale === "rw") {
+    return found.rw;
   }
   return found.en;
 }
 
 function toMethodLabel(locale: Locale, value: string): string {
-  const map: Record<string, { en: string; ko: string; fr: string }> = {
-    bank_transfer: { en: "Bank transfer", ko: "은행 이체", fr: "Virement bancaire" },
-    momo: { en: "MoMo transfer", ko: "모모 이체", fr: "Transfert MoMo" },
-    cash: { en: "Cash", ko: "현금", fr: "Espèces" },
-    card: { en: "Card", ko: "카드", fr: "Carte" },
-    other: { en: "Other", ko: "기타", fr: "Autre" }
+  const map: Record<string, { en: string; ko: string; fr: string; rw: string }> = {
+    bank_transfer: { en: "Bank transfer", ko: "은행 이체", fr: "Virement bancaire", rw: "Kohereza kuri banki" },
+    momo: { en: "MoMo transfer", ko: "모모 이체", fr: "Transfert MoMo", rw: "Kohereza kuri MoMo" },
+    cash: { en: "Cash", ko: "현금", fr: "Espèces", rw: "Amafaranga mu ntoki" },
+    card: { en: "Card", ko: "카드", fr: "Carte", rw: "Ikarita" },
+    other: { en: "Other", ko: "기타", fr: "Autre", rw: "Ibindi" }
   };
   const found = map[value];
   if (!found) {
@@ -137,16 +145,19 @@ function toMethodLabel(locale: Locale, value: string): string {
   }
   if (locale === "fr") {
     return found.fr;
+  }
+  if (locale === "rw") {
+    return found.rw;
   }
   return found.en;
 }
 
 function toRequestTypeLabel(locale: Locale, value: string): string {
-  const map: Record<string, { en: string; ko: string; fr: string }> = {
-    general: { en: "General", ko: "일반 요청", fr: "Général" },
-    quotation: { en: "Quotation", ko: "견적서 요청", fr: "Devis" },
-    purchase: { en: "Purchase", ko: "구매/진행 요청", fr: "Achat" },
-    ebm: { en: "EBM", ko: "EBM 요청", fr: "EBM" }
+  const map: Record<string, { en: string; ko: string; fr: string; rw: string }> = {
+    general: { en: "General", ko: "일반 요청", fr: "Général", rw: "Rusange" },
+    quotation: { en: "Quotation", ko: "견적서 요청", fr: "Devis", rw: "Quotation" },
+    purchase: { en: "Purchase", ko: "구매/진행 요청", fr: "Achat", rw: "Kugura" },
+    ebm: { en: "EBM", ko: "EBM 요청", fr: "EBM", rw: "EBM" }
   };
   const found = map[value];
   if (!found) {
@@ -157,6 +168,9 @@ function toRequestTypeLabel(locale: Locale, value: string): string {
   }
   if (locale === "fr") {
     return found.fr;
+  }
+  if (locale === "rw") {
+    return found.rw;
   }
   return found.en;
 }

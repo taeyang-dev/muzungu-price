@@ -52,6 +52,13 @@ export function LocaleSwitcher({ locale }: LocaleSwitcherProps) {
       >
         FR
       </button>
+      <button
+        className={`locale-btn ${locale === "rw" ? "active" : ""}`}
+        onClick={() => void updateLocale("rw")}
+        type="button"
+      >
+        RW
+      </button>
     </div>
   );
 }

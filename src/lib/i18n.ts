@@ -1,4 +1,4 @@
-export type Locale = "en" | "ko" | "fr";
+export type Locale = "en" | "ko" | "fr" | "rw";
 const BILINGUAL_DELIMITER = "|||";
 const FRENCH_FALLBACK_TRANSLATIONS: Record<string, string> = {
   "Browse vendors": "Parcourir les vendeurs",
@@ -127,6 +127,133 @@ const FRENCH_FALLBACK_TRANSLATIONS: Record<string, string> = {
   Korean: "Coréen",
   Kinyarwanda: "Kinyarwanda"
 };
+const KINYARWANDA_FALLBACK_TRANSLATIONS: Record<string, string> = {
+  "Browse vendors": "Reba abacuruzi",
+  "Sign in": "Injira",
+  "Quick Menu": "Ibikubiyemo byihuse",
+  "My page": "Urupapuro rwanjye",
+  Home: "Ahabanza",
+  "Vendor registration": "Kwiyandikisha nk'umucuruzi",
+  "Register as vendor": "Iyandikishe nk'umucuruzi",
+  Requests: "Ubusabe",
+  "Messages with vendors": "Ubutumwa n'abacuruzi",
+  "No active chats yet.": "Nta kiganiro kiratangira.",
+  "Request documents": "Inyandiko z'ubusabe",
+  "Requested quotations": "Devis zasabwe",
+  "Requested EBM": "EBM zasabwe",
+  "Favorite vendors": "Abacuruzi ukunzwe",
+  "Recently viewed": "Ibyo uheruka kureba",
+  "No favorites yet.": "Nta bacuruzi ukunzwe barimo.",
+  "No recent views yet.": "Nta byo uheruka kureba.",
+  "Sign in / register": "Injira / Iyandikishe",
+  "Sign in to save vendors and view history.":
+    "Injira kugira ngo ubike abacuruzi no kureba amateka.",
+  "Please sign in first.": "Banza winjire.",
+  "Go to Sign in": "Jya kwinjira",
+  "Create provider profile": "Kora umwirondoro w'umucuruzi",
+  "Update profile": "Hindura umwirondoro",
+  "Save profile": "Bika umwirondoro",
+  "Saving...": "Birabikwa...",
+  "Quotation / EBM settings": "Igenamiterere rya Quotation / EBM",
+  "Quotation available": "Quotation iraboneka",
+  "EBM available": "EBM iraboneka",
+  "Save billing settings": "Bika igenamiterere ry'ubwishyu",
+  "Optional sections (you can fill later)": "Ibice bidakenewe ako kanya (wuzuza nyuma)",
+  "Optional public profile": "Umwirondoro rusange w'inyongera",
+  "Save optional profile": "Bika umwirondoro w'inyongera",
+  "Create service": "Andika serivisi",
+  "Add service": "Ongeraho serivisi",
+  "Add price card to a service": "Ongeraho ikarita y'igiciro kuri serivisi",
+  "Add price card": "Ongeraho ikarita y'igiciro",
+  "Business verification documents": "Inyandiko zo kwemeza ubucuruzi",
+  "Start document review": "Tangira isuzuma ry'inyandiko",
+  "Upload document": "Ohereza inyandiko",
+  Service: "Serivisi",
+  "Request this vendor": "Saba uyu mucuruzi",
+  "Request type": "Ubwoko bw'ubusabe",
+  "Quotation request": "Gusaba quotation",
+  "Purchase request": "Gusaba kugura",
+  "EBM request": "Gusaba EBM",
+  "Send quotation request": "Ohereza ubusabe bwa quotation",
+  "Send purchase request": "Ohereza ubusabe bwo kugura",
+  "Send EBM request": "Ohereza ubusabe bwa EBM",
+  "Payment term": "Ibisabwa mu kwishyura",
+  "Payment method": "Uburyo bwo kwishyura",
+  Amount: "Amafaranga",
+  Vendor: "Umucuruzi",
+  Phone: "Telefone",
+  "Not provided": "Ntabwo byatanzwe",
+  Bank: "Banki",
+  "Account name": "Izina rya konti",
+  "Account number": "Nimero ya konti",
+  "Purchase code": "Kode yo kugura",
+  "Enter later": "Andika nyuma",
+  "Enter now": "Andika ubu",
+  "Request details": "Ibisobanuro by'ubusabe",
+  "Requested / received documents": "Inyandiko zasabwe / zakiriwe",
+  Rename: "Hindura izina",
+  Download: "Manura",
+  Notifications: "Amamenyesha",
+  "No documents yet.": "Nta nyandiko zirimo.",
+  "My requests": "Ubusabe bwanjye",
+  "Open requests": "Ubusabe bufunguye",
+  "No requests yet.": "Nta busabe burimo.",
+  Status: "Imiterere",
+  Organization: "Ikigo",
+  "Organization name": "Izina ry'ikigo",
+  "Organization TIN": "TIN y'ikigo",
+  "Organization TIN number": "Nimero ya TIN y'ikigo",
+  Payment: "Ubwishyu",
+  "Payment due by": "Ntarengwa yo kwishyura",
+  Budget: "Ingengo y'imari",
+  "Quotation required": "Quotation irakenewe",
+  "EBM required": "EBM irakenewe",
+  "Submit offer": "Ohereza offer",
+  "Upload quotation document": "Ohereza inyandiko ya quotation",
+  "Upload EBM document": "Ohereza inyandiko ya EBM",
+  "Uploading...": "Birimo koherezwa...",
+  Offers: "Offers",
+  "Accept offer": "Emera offer",
+  Booking: "Booking",
+  "In Progress": "Birimo gukorwa",
+  "Mark completed": "Shyira kuri byarangiye",
+  "Submit review": "Ohereza isubiramo",
+  "Search vendor": "Shakisha umucuruzi",
+  "All categories": "Ibyiciro byose",
+  Filters: "Filiteri",
+  "Apply filters": "Koresha filiteri",
+  "No ratings yet": "Nta manota arimo",
+  reviews: "isubiramo",
+  From: "Uhereye",
+  "No public price card yet": "Nta karita y'igiciro rusange irimo",
+  Categories: "Ibyiciro",
+  "Minimum order": "Ntarengwa nto y'itegeko",
+  "Custom order starts from": "Itegeko ryihariye ritangirira ku",
+  "View profile": "Reba umwirondoro",
+  "Services and pricing": "Serivisi n'ibiciro",
+  "Recent Reviews": "Isubiramo rishya",
+  "No reviews yet.": "Nta bisubiramo birimo.",
+  "Reviewed by": "Byasubiwemo na",
+  "Price transparency": "Gusobanuka kw'igiciro",
+  Timeliness: "Kubahiriza igihe",
+  Quality: "Ubwiza",
+  "Chat with vendor": "Ganira n'umucuruzi",
+  "Messenger-style quick chat": "Ikiganiro cyihuse nka messenger",
+  "Minimize chat": "Gabanya ikiganiro",
+  Minimize: "Gabanya",
+  "Translating...": "Birimo guhindurwa...",
+  "Write a message...": "Andika ubutumwa...",
+  "Attach file": "Ongeraho dosiye",
+  Send: "Ohereza",
+  Remove: "Kuraho",
+  "Save as Quotation": "Bika nka Quotation",
+  "Save as EBM": "Bika nka EBM",
+  "(Attachment)": "(Dosiye yometseho)",
+  Original: "Umwimerere",
+  English: "Icyongereza",
+  Korean: "Igikoreya",
+  Kinyarwanda: "Ikinyarwanda"
+};
 
 export function normalizeLocale(value: string | null | undefined): Locale {
   if (value === "ko") {
@@ -135,15 +262,27 @@ export function normalizeLocale(value: string | null | undefined): Locale {
   if (value === "fr") {
     return "fr";
   }
+  if (value === "rw") {
+    return "rw";
+  }
   return "en";
 }
 
-export function tr(locale: Locale, english: string, korean: string, french?: string): string {
+export function tr(
+  locale: Locale,
+  english: string,
+  korean: string,
+  french?: string,
+  kinyarwanda?: string
+): string {
   if (locale === "ko") {
     return korean;
   }
   if (locale === "fr") {
     return french ?? FRENCH_FALLBACK_TRANSLATIONS[english] ?? english;
+  }
+  if (locale === "rw") {
+    return kinyarwanda ?? KINYARWANDA_FALLBACK_TRANSLATIONS[english] ?? english;
   }
   return english;
 }

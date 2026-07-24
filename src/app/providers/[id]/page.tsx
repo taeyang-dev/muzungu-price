@@ -232,6 +232,13 @@ function unitLabel(locale: Locale, unit: string): string {
       .replace("per project", "par projet")
       .replace("per person", "par personne");
   }
+  if (locale === "rw") {
+    return normalized
+      .replace("per hour", "ku isaha")
+      .replace("per day", "ku munsi")
+      .replace("per project", "ku mushinga")
+      .replace("per person", "ku muntu");
+  }
   if (locale !== "ko") {
     return normalized;
   }
