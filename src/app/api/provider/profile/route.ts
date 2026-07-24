@@ -52,7 +52,10 @@ const createSchema = z.object({
   providerType: providerTypeSchema,
   providerTypeOther: z.string().max(120).optional(),
   businessActivitySector: businessActivitySectorSchema,
-  businessActivityCode: z.string().min(2).max(32),
+  businessActivityCode: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(2).max(32).optional()
+  ),
   businessActivityDetail: z.string().min(2).max(140),
   businessActivityOther: z.string().max(200).optional(),
   officialBusinessAddress: z.string().min(8),
@@ -132,7 +135,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         providerType: payload.providerType,
         providerTypeOther: payload.providerTypeOther?.trim() || null,
         businessActivitySector: payload.businessActivitySector,
-        businessActivityCode: payload.businessActivityCode.trim(),
+        businessActivityCode: payload.businessActivityCode?.trim() || null,
         businessActivityDetail: payload.businessActivityDetail.trim(),
         businessActivityOther: payload.businessActivityOther?.trim() || null,
         officialBusinessAddress: payload.officialBusinessAddress.trim(),

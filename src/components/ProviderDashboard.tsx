@@ -387,7 +387,6 @@ export function ProviderDashboard({
               defaultValue={profile?.businessActivityCode ?? ""}
               name="businessActivityCode"
               placeholder="e.g. J6201"
-              required
             />
           </div>
           <div>
@@ -516,15 +515,6 @@ export function ProviderDashboard({
           <div>
             <label className="tiny">{tr(locale, "Vendor TIN number", "업체 TIN 번호")}</label>
             <input className="input" defaultValue={billing?.vendorTinNumber ?? ""} name="vendorTinNumber" />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Quotation lead time (hours)", "견적서 발행 리드타임(시간)")}</label>
-            <input
-              className="input"
-              defaultValue={billing?.quotationLeadTimeHours ?? ""}
-              name="quotationLeadTimeHours"
-              type="number"
-            />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
             <label className="tiny">{tr(locale, "Available payment terms", "가능한 결제 조건")}</label>
@@ -782,10 +772,17 @@ export function ProviderDashboard({
               <option value="">{tr(locale, "Choose category", "카테고리 선택")}</option>
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
-                  {category.name}
+                  {category.slug === "other" ? tr(locale, "Other", "기타") : category.name}
                 </option>
               ))}
             </select>
+            <p className="tiny muted" style={{ marginTop: "6px", marginBottom: 0 }}>
+              {tr(
+                locale,
+                "If you choose Other, write the exact service type in Service name.",
+                "기타를 선택한 경우 서비스명에 구체적인 유형을 직접 입력해 주세요."
+              )}
+            </p>
           </div>
           <div>
             <label className="tiny">{tr(locale, "Title", "서비스명")}</label>
