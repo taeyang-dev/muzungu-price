@@ -55,12 +55,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     orderBy: { createdAt: "desc" }
   });
 
-  const mapped = providers.map((provider) => {
-    const allPrices = provider.services.flatMap((service) => service.priceCards);
-    const representative = allPrices.sort((a, b) => a.basePrice.comparedTo(b.basePrice))[0];
+  type ProviderItem = (typeof providers)[number];
+  type ProviderServiceItem = ProviderItem["services"][number];
+  type ProviderPriceItem = ProviderServiceItem["priceCards"][number];
+  type ProviderReviewItem = ProviderItem["reviews"][number];
+  type ProviderCategoryItem = ProviderItem["categories"][number];
+
+  const mapped = providers.map((provider: ProviderItem) => {
+    const allPrices = provider.services.flatMap((service: ProviderServiceItem) => service.priceCards);
+    const representative = allPrices.sort((a: ProviderPriceItem, b: ProviderPriceItem) =>
+      a.basePrice.comparedTo(b.basePrice)
+    )[0];
     const rating =
       provider.reviews.length > 0
-        ? provider.reviews.reduce((sum, review) => sum + review.ratingOverall, 0) / provider.reviews.length
+        ? provider.reviews.reduce(
+            (sum: number, review: ProviderReviewItem) => sum + review.ratingOverall,
+            0
+          ) / provider.reviews.length
         : null;
 
     return {
@@ -70,7 +81,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       logo_url: provider.logoUrl,
       city: provider.city,
       country: provider.country,
-      categories: provider.categories.map((entry) => entry.category.name),
+      categories: provider.categories.map((entry: ProviderCategoryItem) => entry.category.name),
       representative_price: representative
         ? {
             currency: representative.currency,
