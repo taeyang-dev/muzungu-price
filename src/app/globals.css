@@ -891,6 +891,46 @@ a {
   height: 190px;
 }
 
+.vendor-card-list-simple {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+}
+
+.vendor-list-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.vendor-card-list-simple .vendor-name {
+  margin: 0;
+}
+
+.vendor-card-list-simple .vendor-location {
+  margin: 0;
+}
+
+.vendor-list-status {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 680px) {
+  .vendor-card-list-simple {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .vendor-list-status {
+    justify-content: flex-start;
+  }
+}
+
 .chat-form {
   margin-top: 10px;
   display: grid;

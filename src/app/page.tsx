@@ -306,12 +306,42 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               ? provider.reviews.reduce((sum, review) => sum + review.ratingOverall, 0) /
                 provider.reviews.length
               : null;
+          const quotationStatus = provider.billingCapability?.quotationAvailable
+            ? tr(locale, "Quotation available", "견적서 가능")
+            : tr(locale, "Quotation unavailable", "견적서 불가");
+          const ebmStatus = provider.billingCapability?.ebmAvailable
+            ? tr(locale, "EBM available", "EBM 가능")
+            : tr(locale, "EBM unavailable", "EBM 불가");
+
+          if (viewMode === "list") {
+            return (
+              <Link
+                className="card vendor-card vendor-card-link vendor-card-list vendor-card-list-simple"
+                href={`/providers/${provider.id}`}
+                key={provider.id}
+              >
+                <div className="vendor-list-main">
+                  <h3 className="vendor-name vendor-name-prominent">{provider.businessName}</h3>
+                  <p className="muted tiny vendor-location">
+                    📍 {provider.city ?? tr(locale, "City not listed", "도시 미등록")},{" "}
+                    {provider.country ?? tr(locale, "Country not listed", "국가 미등록")}
+                  </p>
+                </div>
+                <div className="vendor-list-status">
+                  <span className={`badge compact ${provider.billingCapability?.quotationAvailable ? "good" : ""}`}>
+                    {quotationStatus}
+                  </span>
+                  <span className={`badge compact ${provider.billingCapability?.ebmAvailable ? "good" : ""}`}>
+                    {ebmStatus}
+                  </span>
+                </div>
+              </Link>
+            );
+          }
 
           return (
             <Link
-              className={`card vendor-card vendor-card-link ${
-                viewMode === "list" ? "vendor-card-list" : "vendor-card-gallery"
-              }`}
+              className="card vendor-card vendor-card-link vendor-card-gallery"
               href={`/providers/${provider.id}`}
               key={provider.id}
             >
