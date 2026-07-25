@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Locale, tr } from "@/lib/i18n";
 import { normalizeCityInput, normalizeCountryInput } from "@/lib/location";
@@ -80,7 +80,7 @@ interface ApiResult {
   error?: { message: string };
 }
 
-type SaveAction = "profile" | "billing" | "publicProfile" | "servicePrice";
+type SaveAction = "profile" | "billing";
 
 interface DocumentUploadRow {
   id: string;
@@ -107,13 +107,20 @@ export function ProviderDashboard({
     billing?.paymentMethods ?? []
   );
   const router = useRouter();
-  const hasActiveReview = verificationStatus === "pending" || verificationStatus === "on_hold";
-  const isDraftReview = verificationStatus === "draft";
-  const reviewSubmitted =
-    verificationStatus === "pending" || verificationStatus === "on_hold" || verificationStatus === "approved";
-  const canUploadDocuments = Boolean(profile && verificationStatus !== "approved");
-  const canRequestReview = Boolean(profile && isDraftReview && verificationDocumentCount > 0);
-  const canSetupProfileAndServices = Boolean(profile && reviewSubmitted);
+  const formRef = useRef<HTMLFormElement>(null);
+  const isDraftReview = verificationStatus === "draft" || verificationStatus === null;
+  const canUploadDocuments = verificationStatus !== "approved";
+  const profileSectionComplete = Boolean(
+    profile?.businessName &&
+      profile.businessName !== "임시 저장" &&
+      profile.city &&
+      profile.country &&
+      profile.representativeName &&
+      (profile.categoryIds.length ?? 0) > 0
+  );
+  const billingSectionComplete = Boolean(
+    billing && (billing.quotationAvailable || billing.ebmAvailable || billing.vendorTinNumber)
+  );
   const [selectedProviderType, setSelectedProviderType] = useState<string>(
     profile?.providerType ?? "company"
   );
@@ -132,7 +139,8 @@ export function ProviderDashboard({
   const [documentRows, setDocumentRows] = useState<DocumentUploadRow[]>([createDocumentRow()]);
   const [uploadedDocumentRowIds, setUploadedDocumentRowIds] = useState<Set<string>>(new Set());
   const [uploadingDocumentRowId, setUploadingDocumentRowId] = useState<string | null>(null);
-  const verificationApproved = verificationStatus === "approved";
+  const documentsSectionComplete = verificationDocumentCount > 0 || uploadedDocumentRowIds.size > 0;
+  const allSectionsComplete = profileSectionComplete && billingSectionComplete && documentsSectionComplete;
 
   const providerTypeOptions = [
     { value: "company", labelEn: "Company", labelKo: "법인 업체" },
@@ -168,22 +176,6 @@ export function ProviderDashboard({
     { value: "other", labelEn: "Other", labelKo: "기타" }
   ] as const;
   const marketplaceCategories = categories.filter((category) => category.slug !== "other");
-  const serviceCategoryOptions = marketplaceCategories;
-
-  function getSaveButtonLabel(
-    action: SaveAction,
-    isLoading: boolean,
-    pendingEn: string,
-    pendingKo: string
-  ): string {
-    if (isLoading) {
-      return tr(locale, "Saving...", "저장 중...");
-    }
-    if (completedActions[action]) {
-      return tr(locale, "Save complete", "저장 완료");
-    }
-    return tr(locale, pendingEn, pendingKo);
-  }
 
   function getUploadButtonLabel(rowId: string): string {
     if (uploadingDocumentRowId === rowId) {
@@ -215,6 +207,196 @@ export function ProviderDashboard({
     });
   }
 
+  async function buildRegistrationPayload(
+    form: HTMLFormElement,
+    draft: boolean
+  ): Promise<{ profilePayload: Record<string, unknown>; billingPayload: Record<string, unknown> }> {
+    const formData = new FormData(form);
+    const profilePayload: Record<string, unknown> = Object.fromEntries(
+      Array.from(formData.entries()).filter(([, value]) => !(value instanceof File))
+    );
+
+    if (formData.has("categoryIds")) {
+      profilePayload.categoryIds = formData
+        .getAll("categoryIds")
+        .filter((item): item is string => typeof item === "string" && item.length > 0);
+    }
+
+    if (typeof profilePayload.providerType === "string" && profilePayload.providerType !== "other") {
+      profilePayload.providerTypeOther = "";
+    }
+    if (
+      typeof profilePayload.businessActivitySector === "string" &&
+      profilePayload.businessActivitySector !== "other" &&
+      typeof profilePayload.businessActivityDetail === "string" &&
+      profilePayload.businessActivityDetail !== "other"
+    ) {
+      profilePayload.businessActivityOther = "";
+    }
+    if (typeof profilePayload.representativeIdType === "string" && profilePayload.representativeIdType !== "other") {
+      profilePayload.representativeIdTypeOther = "";
+    }
+    if (typeof profilePayload.city === "string") {
+      profilePayload.city = normalizeCityInput(profilePayload.city) ?? "";
+    }
+    if (typeof profilePayload.country === "string") {
+      profilePayload.country = normalizeCountryInput(profilePayload.country) ?? "";
+    }
+
+    profilePayload.quotationAvailable = profilePayload.quotationAvailable === "on";
+    profilePayload.ebmAvailable = profilePayload.ebmAvailable === "on";
+
+    const billingPayload: Record<string, unknown> = {
+      quotationAvailable: profilePayload.quotationAvailable === true,
+      ebmAvailable: profilePayload.ebmAvailable === true,
+      vendorTinNumber: profilePayload.vendorTinNumber,
+      ebmNotes: profilePayload.ebmNotes,
+      paymentTerms: formData.has("paymentTerms")
+        ? formData
+            .getAll("paymentTerms")
+            .filter((item): item is string => typeof item === "string" && item.length > 0)
+        : [],
+      paymentMethods: formData.has("paymentMethods")
+        ? formData
+            .getAll("paymentMethods")
+            .filter((item): item is string => typeof item === "string" && item.length > 0)
+        : [],
+      paymentMethodOtherDetail: selectedPaymentMethods.includes("other") ? profilePayload.paymentMethodOtherDetail : "",
+      momoAccountName: profilePayload.momoAccountName,
+      momoNumber: profilePayload.momoNumber,
+      bankName: profilePayload.bankName,
+      bankAccountName: profilePayload.bankAccountName,
+      bankAccountNumber: profilePayload.bankAccountNumber,
+      bankSwiftCode: profilePayload.bankSwiftCode
+    };
+
+    delete profilePayload.quotationAvailable;
+    delete profilePayload.ebmAvailable;
+    delete profilePayload.vendorTinNumber;
+    delete profilePayload.ebmNotes;
+    delete profilePayload.paymentTerms;
+    delete profilePayload.paymentMethods;
+    delete profilePayload.paymentMethodOtherDetail;
+    delete profilePayload.momoAccountName;
+    delete profilePayload.momoNumber;
+    delete profilePayload.bankName;
+    delete profilePayload.bankAccountName;
+    delete profilePayload.bankAccountNumber;
+    delete profilePayload.bankSwiftCode;
+
+    if (draft) {
+      profilePayload.draft = true;
+    }
+
+    return { profilePayload, billingPayload };
+  }
+
+  async function saveRegistration(draft: boolean): Promise<boolean> {
+    const form = formRef.current;
+    if (!form) {
+      setError(tr(locale, "Form not found", "양식을 찾을 수 없습니다."));
+      return false;
+    }
+
+    if (!draft && !form.reportValidity()) {
+      return false;
+    }
+
+    const { profilePayload, billingPayload } = await buildRegistrationPayload(form, draft);
+
+    setLoading(true);
+    setError("");
+    setFeedback("");
+
+    const profileResponse = await fetch("/api/provider/profile", {
+      method: profile ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(profilePayload)
+    });
+    const profileData = (await profileResponse.json()) as ApiResult;
+    if (!profileResponse.ok) {
+      setLoading(false);
+      setError(profileData.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
+      return false;
+    }
+
+    const billingResponse = await fetch("/api/provider/billing-capabilities", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(billingPayload)
+    });
+    const billingData = (await billingResponse.json()) as ApiResult;
+    setLoading(false);
+
+    if (!billingResponse.ok) {
+      setError(billingData.error?.message ?? tr(locale, "Failed to save billing settings", "발행 설정 저장에 실패했습니다."));
+      router.refresh();
+      return false;
+    }
+
+    setCompletedActions((current) => ({ ...current, profile: true, billing: true }));
+    setFeedback(
+      draft
+        ? tr(locale, "Draft saved.", "임시 저장되었습니다.")
+        : tr(locale, "Saved successfully", "저장되었습니다.")
+    );
+    router.refresh();
+    return true;
+  }
+
+  async function submitForReview(): Promise<void> {
+    if (!allSectionsComplete) {
+      setError(
+        tr(
+          locale,
+          "Complete all three sections (profile, billing, documents) before requesting review.",
+          "프로필, Quotation/EBM 설정, 업체 확인 서류를 모두 완료한 뒤 심사를 요청해 주세요."
+        )
+      );
+      return;
+    }
+
+    const saved = await saveRegistration(false);
+    if (!saved) {
+      return;
+    }
+
+    let caseId = verificationCaseId;
+    if (!caseId) {
+      const ensureResponse = await fetch("/api/provider/verification-cases", { method: "POST" });
+      const ensureData = (await ensureResponse.json()) as ApiResult & { data?: { id: string } };
+      if (!ensureResponse.ok || !ensureData.data?.id) {
+        setError(ensureData.error?.message ?? tr(locale, "Failed to prepare review case", "심사 케이스 준비에 실패했습니다."));
+        return;
+      }
+      caseId = ensureData.data.id;
+    }
+
+    setLoading(true);
+    setError("");
+    setFeedback("");
+
+    const response = await fetch(`/api/provider/verification-cases/${caseId}/submit`, {
+      method: "POST"
+    });
+    const data = (await response.json()) as ApiResult;
+    setLoading(false);
+
+    if (!response.ok) {
+      setError(data.error?.message ?? tr(locale, "Failed to submit review request", "심사 요청에 실패했습니다."));
+      return;
+    }
+
+    router.push("/provider/setup");
+    router.refresh();
+  }
+
+  function renderSectionBadge(complete: boolean): string {
+    return complete
+      ? tr(locale, "Complete", "완료")
+      : tr(locale, "Incomplete", "미완료");
+  }
+
   async function fileToDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -222,225 +404,6 @@ export function ProviderDashboard({
       reader.onerror = () => reject(new Error("Failed to read file"));
       reader.readAsDataURL(file);
     });
-  }
-
-  async function submitJson(
-    event: FormEvent<HTMLFormElement> | { currentTarget: HTMLFormElement; preventDefault?: () => void },
-    url: string,
-    method: "POST" | "PATCH" | "PUT",
-    saveAction?: SaveAction,
-    options?: { draft?: boolean }
-  ): Promise<void> {
-    event.preventDefault?.();
-    const formData = new FormData(event.currentTarget);
-    const payloadEntries = Array.from(formData.entries()).filter(([, value]) => !(value instanceof File));
-    const payload: Record<string, unknown> = Object.fromEntries(payloadEntries);
-
-    const logoFile = formData.get("logoFile");
-    const coverFile = formData.get("coverFile");
-    const serviceImageFile = formData.get("serviceImageFile");
-    const verificationDocumentFile = formData.get("verificationDocumentFile");
-    if (logoFile instanceof File && logoFile.size > 0) {
-      payload.logoUrl = await fileToDataUrl(logoFile);
-    }
-    if (coverFile instanceof File && coverFile.size > 0) {
-      payload.coverImageUrl = await fileToDataUrl(coverFile);
-    }
-    if (serviceImageFile instanceof File && serviceImageFile.size > 0) {
-      payload.imageUrl = await fileToDataUrl(serviceImageFile);
-    }
-    if (verificationDocumentFile instanceof File && verificationDocumentFile.size > 0) {
-      payload.fileUrl = await fileToDataUrl(verificationDocumentFile);
-    }
-    if (formData.has("categoryIds")) {
-      payload.categoryIds = formData
-        .getAll("categoryIds")
-        .filter((item): item is string => typeof item === "string" && item.length > 0);
-    }
-    if (typeof payload.providerType === "string" && payload.providerType !== "other") {
-      payload.providerTypeOther = "";
-    }
-    if (
-      typeof payload.businessActivitySector === "string" &&
-      payload.businessActivitySector !== "other" &&
-      typeof payload.businessActivityDetail === "string" &&
-      payload.businessActivityDetail !== "other"
-    ) {
-      payload.businessActivityOther = "";
-    }
-    if (typeof payload.representativeIdType === "string" && payload.representativeIdType !== "other") {
-      payload.representativeIdTypeOther = "";
-    }
-    if (typeof payload.city === "string") {
-      payload.city = normalizeCityInput(payload.city) ?? "";
-    }
-    if (typeof payload.country === "string") {
-      payload.country = normalizeCountryInput(payload.country) ?? "";
-    }
-    if (typeof payload.docType === "string" && payload.docType === "other") {
-      const customDocType = String(payload.docTypeOther ?? "").trim();
-      if (customDocType.length > 0) {
-        payload.docType = customDocType;
-      }
-    }
-    if (typeof payload.docTypeOther === "string") {
-      delete payload.docTypeOther;
-    }
-
-    if ("quotationAvailable" in payload) {
-      payload.quotationAvailable = payload.quotationAvailable === "on";
-    }
-    if ("ebmAvailable" in payload) {
-      payload.ebmAvailable = payload.ebmAvailable === "on";
-    }
-    if ("isPublic" in payload) {
-      payload.isPublic = payload.isPublic === "on";
-    }
-    if ("canIssueQuotation" in payload) {
-      payload.canIssueQuotation = payload.canIssueQuotation === "on";
-    }
-    if ("canIssueEbm" in payload) {
-      payload.canIssueEbm = payload.canIssueEbm === "on";
-    }
-    if (formData.has("paymentTerms")) {
-      payload.paymentTerms = formData
-        .getAll("paymentTerms")
-        .filter((item): item is string => typeof item === "string" && item.length > 0);
-    } else {
-      payload.paymentTerms = [];
-    }
-    if (formData.has("paymentMethods")) {
-      payload.paymentMethods = formData
-        .getAll("paymentMethods")
-        .filter((item): item is string => typeof item === "string" && item.length > 0);
-    } else {
-      payload.paymentMethods = [];
-    }
-    if (!selectedPaymentMethods.includes("other")) {
-      payload.paymentMethodOtherDetail = "";
-    }
-    if (options?.draft) {
-      payload.draft = true;
-    }
-
-    setLoading(true);
-    setError("");
-    setFeedback("");
-    const response = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const data = (await response.json()) as ApiResult;
-    setLoading(false);
-
-    if (!response.ok) {
-      setError(data.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
-      return;
-    }
-
-    if (saveAction) {
-      setCompletedActions((current) => ({ ...current, [saveAction]: true }));
-    }
-
-    setFeedback(
-      options?.draft
-        ? tr(locale, "Draft saved.", "임시 저장되었습니다.")
-        : tr(locale, "Saved successfully", "저장되었습니다.")
-    );
-    router.refresh();
-    if (!options?.draft) {
-      event.currentTarget.reset();
-    }
-  }
-
-  async function submitServiceWithPriceCard(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const servicePayload: Record<string, unknown> = {
-      categoryId: formData.get("categoryId"),
-      title: formData.get("title"),
-      description: formData.get("description") || undefined
-    };
-
-    const serviceImageFile = formData.get("serviceImageFile");
-    if (serviceImageFile instanceof File && serviceImageFile.size > 0) {
-      servicePayload.imageUrl = await fileToDataUrl(serviceImageFile);
-    }
-
-    const pricePayload = {
-      tier: "standard" as const,
-      currency: String(formData.get("currency") ?? "RWF"),
-      basePrice: formData.get("basePrice"),
-      unit: formData.get("unit"),
-      inclusions: formData.get("inclusions") || undefined,
-      exclusions: formData.get("exclusions") || undefined,
-      isPublic: formData.get("isPublic") === "on"
-    };
-
-    setLoading(true);
-    setError("");
-    setFeedback("");
-
-    const serviceResponse = await fetch("/api/provider/services", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(servicePayload)
-    });
-    const serviceData = (await serviceResponse.json()) as ApiResult & { data?: { id: string } };
-    if (!serviceResponse.ok) {
-      setLoading(false);
-      setError(serviceData.error?.message ?? tr(locale, "Failed to create service", "서비스 등록에 실패했습니다."));
-      return;
-    }
-
-    const serviceId = serviceData.data?.id;
-    if (!serviceId) {
-      setLoading(false);
-      setError(tr(locale, "Failed to create service", "서비스 등록에 실패했습니다."));
-      return;
-    }
-
-    const priceResponse = await fetch(`/api/provider/services/${serviceId}/price-cards`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(pricePayload)
-    });
-    const priceData = (await priceResponse.json()) as ApiResult;
-    setLoading(false);
-
-    if (!priceResponse.ok) {
-      setError(priceData.error?.message ?? tr(locale, "Service saved but price card failed", "서비스는 등록됐지만 가격 카드 추가에 실패했습니다."));
-      router.refresh();
-      return;
-    }
-
-    setFeedback(tr(locale, "Service and price card saved", "서비스와 가격 카드가 저장되었습니다."));
-    setCompletedActions((current) => ({ ...current, servicePrice: true }));
-    router.refresh();
-    event.currentTarget.reset();
-  }
-
-  async function triggerVerification(): Promise<void> {
-    if (!verificationCaseId) {
-      setError(tr(locale, "Upload documents before requesting review.", "심사 요청 전에 서류를 업로드해 주세요."));
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-    setFeedback("");
-    const response = await fetch(`/api/provider/verification-cases/${verificationCaseId}/submit`, {
-      method: "POST"
-    });
-    const data = (await response.json()) as ApiResult;
-    setLoading(false);
-    if (!response.ok) {
-      setError(data.error?.message ?? tr(locale, "Failed to start document review", "서류 검토 시작에 실패했습니다."));
-      return;
-    }
-    setFeedback(tr(locale, "Review request submitted.", "심사 시작 요청이 완료되었습니다."));
-    router.refresh();
   }
 
   async function uploadVerificationDocument(
@@ -518,32 +481,33 @@ export function ProviderDashboard({
       <p className="muted">
         {tr(
           locale,
-          "Publish transparent price cards, enable Quotation/EBM, and submit verification evidence.",
-          "투명한 가격카드를 공개하고, Quotation/EBM 설정 및 검증 자료를 제출하세요."
+          "Complete all three sections below, then save a draft or request review.",
+          "아래 세 가지 섹션을 완료한 뒤 임시 저장 또는 심사 요청을 해 주세요."
         )}
       </p>
       {error && <div className="flash error">{error}</div>}
       {feedback && <div className="flash success">{feedback}</div>}
 
+      <form className="grid" ref={formRef}>
       <article className="panel">
-        <h2 style={{ marginTop: 0 }}>
-          {profile
-            ? tr(locale, "Update profile", "프로필 수정")
-            : tr(locale, "Create provider profile", "업체 프로필 만들기")}
-        </h2>
+        <div className="row">
+          <h2 style={{ margin: 0 }}>
+            {profile
+              ? tr(locale, "Update profile", "프로필 수정")
+              : tr(locale, "Create provider profile", "업체 프로필 만들기")}
+          </h2>
+          <span className={`badge ${profileSectionComplete ? "good" : ""}`}>
+            {renderSectionBadge(profileSectionComplete)}
+          </span>
+        </div>
         <p className="tiny muted">
           {tr(
             locale,
-            "Save drafts anytime, upload documents, then request review when ready.",
-            "언제든 임시저장하고 서류를 업로드한 뒤, 준비가 되면 심사를 요청하세요."
+            "Fill in your business and representative details for verification.",
+            "검증에 필요한 업체 및 대표자 정보를 입력하세요."
           )}
         </p>
-        <form
-          className="grid grid-3"
-          onSubmit={(event) =>
-            submitJson(event, "/api/provider/profile", profile ? "PATCH" : "POST", "profile")
-          }
-        >
+        <div className="grid grid-3">
           <div style={{ gridColumn: "1 / -1" }}>
             <h3 style={{ margin: "0 0 8px 0" }}>{tr(locale, "Required for verification", "검증용 필수 항목")}</h3>
           </div>
@@ -728,40 +692,17 @@ export function ProviderDashboard({
               ))}
             </div>
           </div>
-          <div className="row" style={{ gridColumn: "1 / -1" }}>
-            <button className="btn" disabled={loading} type="submit">
-              {getSaveButtonLabel("profile", loading, "Save profile", "프로필 저장")}
-            </button>
-            <button
-              className="btn secondary"
-              disabled={loading}
-              onClick={(event) => {
-                const form = event.currentTarget.closest("form");
-                if (!form) {
-                  return;
-                }
-                void submitJson(
-                  { currentTarget: form },
-                  "/api/provider/profile",
-                  profile ? "PATCH" : "POST",
-                  "profile",
-                  { draft: true }
-                );
-              }}
-              type="button"
-            >
-              {tr(locale, "Save draft", "임시저장")}
-            </button>
-          </div>
-        </form>
+        </div>
       </article>
 
       <article className="panel">
-        <h2 style={{ marginTop: 0 }}>{tr(locale, "Quotation / EBM settings", "Quotation / EBM 설정")}</h2>
-        <form
-          className="grid grid-3"
-          onSubmit={(event) => submitJson(event, "/api/provider/billing-capabilities", "PUT", "billing")}
-        >
+        <div className="row">
+          <h2 style={{ margin: 0 }}>{tr(locale, "Quotation / EBM settings", "Quotation / EBM 설정")}</h2>
+          <span className={`badge ${billingSectionComplete ? "good" : ""}`}>
+            {renderSectionBadge(billingSectionComplete)}
+          </span>
+        </div>
+        <div className="grid grid-3">
           <label className="tiny">
             <input defaultChecked={billing?.quotationAvailable ?? false} name="quotationAvailable" type="checkbox" />{" "}
             {tr(locale, "Quotation available", "견적서 발행 가능")}
@@ -921,32 +862,17 @@ export function ProviderDashboard({
             <label className="tiny">{tr(locale, "EBM notes", "EBM 메모")}</label>
             <textarea className="textarea" defaultValue={billing?.ebmNotes ?? ""} name="ebmNotes" />
           </div>
-          <div className="row" style={{ gridColumn: "1 / -1" }}>
-            <button className="btn" disabled={loading} type="submit">
-              {getSaveButtonLabel("billing", loading, "Save billing settings", "발행 설정 저장")}
-            </button>
-            <button
-              className="btn secondary"
-              disabled={loading}
-              onClick={(event) => {
-                const form = event.currentTarget.closest("form");
-                if (!form) {
-                  return;
-                }
-                void submitJson({ currentTarget: form }, "/api/provider/billing-capabilities", "PUT", "billing", {
-                  draft: true
-                });
-              }}
-              type="button"
-            >
-              {tr(locale, "Save draft", "임시저장")}
-            </button>
-          </div>
-        </form>
+        </div>
       </article>
+      </form>
 
       <article className="panel">
-        <h2 style={{ marginTop: 0 }}>{tr(locale, "Business verification documents", "업체 확인 서류")}</h2>
+        <div className="row">
+          <h2 style={{ margin: 0 }}>{tr(locale, "Business verification documents", "업체 확인 서류")}</h2>
+          <span className={`badge ${documentsSectionComplete ? "good" : ""}`}>
+            {renderSectionBadge(documentsSectionComplete)}
+          </span>
+        </div>
         <p className="tiny muted">
           {tr(
             locale,
@@ -986,8 +912,8 @@ export function ProviderDashboard({
           <p className="tiny muted">
             {tr(
               locale,
-              "Save your profile above before uploading documents.",
-              "서류를 업로드하려면 먼저 위에서 프로필을 저장해 주세요."
+              "Save your registration draft first, then upload documents.",
+              "먼저 아래에서 임시 저장한 뒤 서류를 업로드해 주세요."
             )}
           </p>
         )}
@@ -1067,210 +993,58 @@ export function ProviderDashboard({
             </button>
           </div>
         )}
-        {canRequestReview && (
-          <button className="btn" disabled={loading} onClick={() => void triggerVerification()} style={{ marginTop: "16px" }} type="button">
-            {loading
-              ? tr(locale, "Submitting review request...", "심사 요청 중...")
-              : tr(locale, "Request review start", "심사 시작 요청")}
-          </button>
-        )}
-        {isDraftReview && verificationDocumentCount === 0 && (
-          <p className="tiny muted" style={{ marginTop: "12px", marginBottom: 0 }}>
-            {tr(
-              locale,
-              "Upload at least one document to enable review request.",
-              "심사 시작 요청을 하려면 서류를 1개 이상 업로드해 주세요."
-            )}
-          </p>
-        )}
-        {hasActiveReview && (
-          <p className="tiny muted" style={{ marginTop: "12px", marginBottom: 0 }}>
-            {tr(
-              locale,
-              "Your review is in progress. Prepare your public profile and services while you wait.",
-              "심사가 진행 중입니다. 대기하는 동안 노출 프로필과 서비스를 준비할 수 있습니다."
-            )}
-          </p>
-        )}
-        {verificationStatus === "approved" && (
-          <p className="tiny muted" style={{ marginTop: "12px", marginBottom: 0 }}>
-            {tr(locale, "Review approved. Your business is visible on the marketplace.", "심사가 승인되었습니다. 홈 화면에 노출됩니다.")}
-          </p>
-        )}
         {verificationStatus === "rejected" && (
           <p className="tiny muted" style={{ marginTop: "12px", marginBottom: 0 }}>
             {tr(
               locale,
-              "Your review was rejected. Upload updated documents and request review again.",
+              "Your review was rejected. Update your documents and request review again.",
               "심사가 반려되었습니다. 서류를 다시 업로드한 뒤 심사를 재요청해 주세요."
             )}
           </p>
         )}
       </article>
 
-      {canSetupProfileAndServices && profile ? (
+      {isDraftReview && (
         <article className="panel">
-          <h2 style={{ marginTop: 0 }}>{tr(locale, "Profile and service setup", "프로필 및 서비스 설정")}</h2>
+          <h2 style={{ marginTop: 0 }}>{tr(locale, "Submit registration", "등록 제출")}</h2>
           <p className="tiny muted">
-            {verificationApproved
-              ? tr(
-                  locale,
-                  "Your business verification is approved and visible on the marketplace.",
-                  "업체 검증이 승인되었습니다. 홈 화면에 노출됩니다."
-                )
-              : tr(
-                  locale,
-                  "Prepare your public profile and services while review is in progress. You will appear on the home page only after approval.",
-                  "심사가 진행되는 동안 노출 프로필과 서비스를 미리 준비할 수 있습니다. 홈 화면 노출은 승인 후에만 됩니다."
-                )}
+            {tr(
+              locale,
+              "When all three sections are complete, you can save a draft or request review.",
+              "세 가지 섹션이 모두 완료되면 임시 저장 또는 심사 요청을 할 수 있습니다."
+            )}
           </p>
-
-          <div className="grid" style={{ gap: "24px" }}>
-            <section>
-              <h3 style={{ marginTop: 0 }}>{tr(locale, "Public profile", "사용자 노출 프로필")}</h3>
-              <form
-                className="grid grid-3"
-                onSubmit={(event) => submitJson(event, "/api/provider/profile", "PATCH", "publicProfile")}
-              >
-                <div>
-                  <label className="tiny">{tr(locale, "One-line intro", "한줄 소개")}</label>
-                  <input
-                    className="input"
-                    defaultValue={profile.tagline ?? ""}
-                    name="tagline"
-                    placeholder={tr(
-                      locale,
-                      "Example: Fast and trusted office electrical support.",
-                      "예시: 사무공간 전기 문제를 빠르고 정확하게 해결합니다."
-                    )}
-                  />
-                </div>
-                <div>
-                  <label className="tiny">{tr(locale, "Website", "웹사이트 주소")}</label>
-                  <input
-                    className="input"
-                    defaultValue={profile.websiteUrl ?? ""}
-                    name="websiteUrl"
-                    placeholder="https://"
-                  />
-                </div>
-                <div>
-                  <label className="tiny">{tr(locale, "Years in business", "업력(년)")}</label>
-                  <input
-                    className="input"
-                    defaultValue={profile.yearsInBusiness ?? ""}
-                    min={0}
-                    name="yearsInBusiness"
-                    type="number"
-                  />
-                </div>
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <label className="tiny">{tr(locale, "Detailed description", "상세 소개")}</label>
-                  <textarea
-                    className="textarea"
-                    defaultValue={profile.bio ?? ""}
-                    name="bio"
-                    placeholder={tr(
-                      locale,
-                      "Example: We provide fixed-price installation, maintenance, and emergency support with verified technicians.",
-                      "예시: 검증된 기술진이 정찰제 설치/정비/긴급출동 서비스를 제공합니다."
-                    )}
-                  />
-                </div>
-                <div>
-                  <label className="tiny">{tr(locale, "Logo image attachment", "로고 이미지 첨부")}</label>
-                  <input className="input" accept="image/*" name="logoFile" type="file" />
-                </div>
-                <div>
-                  <label className="tiny">{tr(locale, "Cover image attachment", "커버 이미지 첨부")}</label>
-                  <input className="input" accept="image/*" name="coverFile" type="file" />
-                </div>
-                <button className="btn" disabled={loading} type="submit">
-                  {getSaveButtonLabel("publicProfile", loading, "Save public profile", "노출 프로필 저장")}
-                </button>
-              </form>
-            </section>
-
-            <div className="hr" />
-
-            <section>
-              <h3 style={{ marginTop: 0 }}>{tr(locale, "Service and price card", "서비스 및 가격 카드")}</h3>
-              <p className="tiny muted">
-                {tr(
-                  locale,
-                  "Register a service and its public price in one step.",
-                  "서비스 정보와 공개 가격을 한 번에 등록할 수 있습니다."
-                )}
-              </p>
-              <form className="grid grid-3" onSubmit={(event) => void submitServiceWithPriceCard(event)}>
-                <div>
-                  <label className="tiny">{tr(locale, "Category", "카테고리")}</label>
-                  <select className="select" name="categoryId" required>
-                    <option value="">{tr(locale, "Choose category", "카테고리 선택")}</option>
-                    {serviceCategoryOptions.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="tiny">{tr(locale, "Title", "서비스명")}</label>
-                  <input className="input" name="title" required />
-                </div>
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <label className="tiny">{tr(locale, "Description (optional)", "상세 설명 (선택)")}</label>
-                  <textarea
-                    className="textarea"
-                    name="description"
-                    placeholder={tr(
-                      locale,
-                      "Example: Includes on-site setup, safety checklist, and post-service support.",
-                      "예시: 현장 설치, 안전 점검표, 서비스 이후 지원이 포함됩니다."
-                    )}
-                  />
-                </div>
-                <div>
-                  <label className="tiny">{tr(locale, "Service image attachment", "서비스 이미지 첨부")}</label>
-                  <input className="input" accept="image/*" name="serviceImageFile" type="file" />
-                </div>
-                <div>
-                  <label className="tiny">{tr(locale, "Currency", "통화")}</label>
-                  <input className="input" defaultValue="RWF" maxLength={3} name="currency" required />
-                </div>
-                <div>
-                  <label className="tiny">{tr(locale, "Price", "가격")}</label>
-                  <input className="input" min={1} name="basePrice" required type="number" />
-                </div>
-                <div>
-                  <label className="tiny">{tr(locale, "Unit", "단위")}</label>
-                  <select className="select" defaultValue="per_project" name="unit">
-                    <option value="per_hour">{tr(locale, "Per hour", "시간당")}</option>
-                    <option value="per_day">{tr(locale, "Per day", "일당")}</option>
-                    <option value="per_project">{tr(locale, "Per project", "프로젝트당")}</option>
-                    <option value="per_person">{tr(locale, "Per person", "인당")}</option>
-                  </select>
-                </div>
-                <label className="tiny">
-                  <input defaultChecked name="isPublic" type="checkbox" />{" "}
-                  {tr(locale, "Publicly visible", "공개 노출")}
-                </label>
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <label className="tiny">{tr(locale, "Inclusions", "포함 항목")}</label>
-                  <textarea className="textarea" name="inclusions" />
-                </div>
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <label className="tiny">{tr(locale, "Exclusions", "미포함 항목")}</label>
-                  <textarea className="textarea" name="exclusions" />
-                </div>
-                <button className="btn" disabled={loading} type="submit">
-                  {getSaveButtonLabel("servicePrice", loading, "Add service and price", "서비스·가격 등록")}
-                </button>
-              </form>
-            </section>
+          <div className="row">
+            <button
+              className="btn secondary"
+              disabled={loading}
+              onClick={() => void saveRegistration(true)}
+              type="button"
+            >
+              {loading ? tr(locale, "Saving...", "저장 중...") : tr(locale, "Save draft", "임시 저장")}
+            </button>
+            <button
+              className="btn"
+              disabled={loading || !allSectionsComplete}
+              onClick={() => void submitForReview()}
+              type="button"
+            >
+              {loading
+                ? tr(locale, "Submitting review request...", "심사 요청 중...")
+                : tr(locale, "Request review", "심사 요청")}
+            </button>
           </div>
+          {!allSectionsComplete && (
+            <p className="tiny muted" style={{ marginTop: "12px", marginBottom: 0 }}>
+              {tr(
+                locale,
+                "Complete profile, Quotation/EBM settings, and upload at least one document.",
+                "프로필, Quotation/EBM 설정, 서류 업로드를 모두 완료해 주세요."
+              )}
+            </p>
+          )}
         </article>
-      ) : null}
+      )}
     </section>
   );
 }

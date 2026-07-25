@@ -1,19 +1,20 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { ProviderDashboard } from "@/components/ProviderDashboard";
 import { BecomeProviderButton } from "@/components/BecomeProviderButton";
+import { ProviderSetupView } from "@/components/provider/ProviderSetupView";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { tr } from "@/lib/i18n";
 import { loadProviderPageData } from "@/lib/provider-data";
 
-export default async function ProviderPage() {
+export default async function ProviderSetupPage() {
   const session = await getSession();
   const locale = await getLocaleFromCookies();
+
   if (!session) {
     return (
       <section className="panel">
-        <h1>{tr(locale, "Vendor registration", "벤더 등록")}</h1>
+        <h1>{tr(locale, "Vendor review status", "벤더 심사 현황")}</h1>
         <p>{tr(locale, "Please sign in first.", "먼저 로그인해 주세요.")}</p>
         <Link className="btn" href="/auth">
           {tr(locale, "Go to Sign in", "로그인하러 가기")}
@@ -25,13 +26,9 @@ export default async function ProviderPage() {
   if (session.role !== "provider") {
     return (
       <section className="panel">
-        <h1>{tr(locale, "Vendor registration", "벤더 등록")}</h1>
+        <h1>{tr(locale, "Vendor review status", "벤더 심사 현황")}</h1>
         <p className="muted">
-          {tr(
-            locale,
-            "Use your existing account and switch to vendor mode to register your business.",
-            "현재 계정 그대로 벤더 모드로 전환한 뒤 업체 정보를 등록할 수 있습니다."
-          )}
+          {tr(locale, "Register as a vendor to access this page.", "벤더로 등록하면 이 페이지를 이용할 수 있습니다.")}
         </p>
         <BecomeProviderButton locale={locale} />
       </section>
@@ -40,22 +37,19 @@ export default async function ProviderPage() {
 
   const data = await loadProviderPageData(session.userId);
 
-  if (
-    data.verificationStatus === "pending" ||
-    data.verificationStatus === "on_hold" ||
-    data.verificationStatus === "approved"
-  ) {
-    redirect("/provider/setup");
+  if (!data.profile) {
+    redirect("/provider");
+  }
+
+  if (data.verificationStatus === "draft" || data.verificationStatus === "rejected" || !data.verificationStatus) {
+    redirect("/provider");
   }
 
   return (
-    <ProviderDashboard
-      billing={data.billing}
+    <ProviderSetupView
       categories={data.categories}
       locale={locale}
       profile={data.profile}
-      verificationCaseId={data.verificationCaseId}
-      verificationDocumentCount={data.verificationDocumentCount}
       verificationStatus={data.verificationStatus}
     />
   );

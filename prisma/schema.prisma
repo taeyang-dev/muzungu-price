@@ -105,6 +105,22 @@ model User {
   bookings            Booking[]              @relation("CustomerBookings")
   reviews             Review[]               @relation("ReviewerReviews")
   verificationCodes   AuthVerificationCode[]
+  inboxReceived       InboxMessage[]         @relation("InboxRecipient")
+  inboxSent           InboxMessage[]         @relation("InboxSender")
+}
+
+model InboxMessage {
+  id              String   @id @default(cuid())
+  recipientUserId String
+  senderUserId    String?
+  subject         String
+  body            String
+  isRead          Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  recipient       User     @relation("InboxRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  sender          User?    @relation("InboxSender", fields: [senderUserId], references: [id], onDelete: SetNull)
+
+  @@index([recipientUserId, createdAt])
 }
 
 model Organization {

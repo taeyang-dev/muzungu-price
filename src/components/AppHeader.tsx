@@ -52,6 +52,7 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
   const [recent, setRecent] = useState<VendorReference[]>([]);
   const [chatVendors, setChatVendors] = useState<VendorReference[]>([]);
   const [requestDocCounts, setRequestDocCounts] = useState({ quotation: 0, ebm: 0 });
+  const [unreadInboxCount, setUnreadInboxCount] = useState(0);
 
   useEffect(() => {
     function refresh(): void {
@@ -61,15 +62,33 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
       setRequestDocCounts(getRequestedDocumentCounts());
     }
 
+    async function refreshInbox(): Promise<void> {
+      if (!session) {
+        setUnreadInboxCount(0);
+        return;
+      }
+      try {
+        const response = await fetch("/api/inbox", { method: "HEAD" });
+        if (response.ok) {
+          setUnreadInboxCount(Number(response.headers.get("X-Unread-Count") ?? "0"));
+        }
+      } catch {
+        setUnreadInboxCount(0);
+      }
+    }
+
     refresh();
+    void refreshInbox();
     const eventName = getVendorStorageEventName();
     window.addEventListener(eventName, refresh);
     window.addEventListener("storage", refresh);
+    window.addEventListener("inbox-updated", () => void refreshInbox());
     return () => {
       window.removeEventListener(eventName, refresh);
       window.removeEventListener("storage", refresh);
+      window.removeEventListener("inbox-updated", () => void refreshInbox());
     };
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
@@ -143,6 +162,9 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
             </p>
           )}
           <nav className="drawer-nav">
+            <Link href="/my-page" onClick={() => setMenuOpen(false)}>
+              {tr(locale, "My page", "마이페이지")}
+            </Link>
             <Link href="/" onClick={() => setMenuOpen(false)}>
               {tr(locale, "Home", "홈")}
             </Link>
@@ -151,6 +173,11 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
                 {session.role === "provider"
                   ? tr(locale, "Vendor registration", "벤더 등록")
                   : tr(locale, "Register as vendor", "벤더 등록")}
+              </Link>
+            )}
+            {session && (
+              <Link href="/inbox" onClick={() => setMenuOpen(false)}>
+                {tr(locale, "Inbox", "쪽지함")} ({unreadInboxCount})
               </Link>
             )}
             <Link href="/requests" onClick={() => setMenuOpen(false)}>
