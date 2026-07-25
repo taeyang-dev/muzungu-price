@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { fail, ok } from "@/lib/api";
 import { requireRole } from "@/lib/guards";
+import { normalizeCityInput, normalizeCountryInput } from "@/lib/location";
 import { prisma } from "@/lib/prisma";
 
 const imageValueSchema = z
@@ -115,9 +116,14 @@ function validateConditionalOtherFields(
   }
 }
 
-const createSchema = profileSchemaBase.superRefine((payload, ctx) => {
-  validateConditionalOtherFields(payload, ctx);
-});
+const createSchema = profileSchemaBase
+  .extend({
+    city: z.string().min(2),
+    country: z.string().min(2)
+  })
+  .superRefine((payload, ctx) => {
+    validateConditionalOtherFields(payload, ctx);
+  });
 
 const updateSchema = profileSchemaBase.partial().superRefine((payload, ctx) => {
   validateConditionalOtherFields(payload, ctx);
@@ -166,8 +172,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         contactPhone: payload.contactPhone || payload.representativePhone || null,
         websiteUrl: payload.websiteUrl || null,
         yearsInBusiness: payload.yearsInBusiness,
-        country: payload.country?.trim() || null,
-        city: payload.city?.trim() || null,
+        country: normalizeCountryInput(payload.country),
+        city: normalizeCityInput(payload.city),
         categories: categoryIds.length > 0
           ? {
               createMany: {
@@ -264,8 +270,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             : payload.contactPhone || null,
         websiteUrl: payload.websiteUrl === undefined ? undefined : payload.websiteUrl || null,
         yearsInBusiness: payload.yearsInBusiness ?? undefined,
-        country: payload.country ?? undefined,
-        city: payload.city ?? undefined
+        country:
+          payload.country === undefined ? undefined : normalizeCountryInput(payload.country),
+        city: payload.city === undefined ? undefined : normalizeCityInput(payload.city)
       }
     });
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { decimalToNumber, ok } from "@/lib/api";
+import { normalizeCityInput } from "@/lib/location";
 import { prisma } from "@/lib/prisma";
 
 type ProviderProfileWhereInput = NonNullable<
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const quotationAvailable = search.get("quotation_available") === "true";
   const ebmAvailable = search.get("ebm_available") === "true";
   const category = search.get("category");
-  const city = search.get("city");
+  const city = normalizeCityInput(search.get("city"));
 
   const where: ProviderProfileWhereInput = {
     isActive: true

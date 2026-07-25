@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Locale, tr } from "@/lib/i18n";
+import { normalizeCityInput, normalizeCountryInput } from "@/lib/location";
 
 interface Category {
   id: string;
@@ -107,6 +108,9 @@ export function ProviderDashboard({
     profile?.representativeIdType ?? "national_id"
   );
   const [selectedDocumentType, setSelectedDocumentType] = useState("rdb_certificate");
+  const [cityInput, setCityInput] = useState(profile?.city ?? "");
+  const [countryInput, setCountryInput] = useState(profile?.country ?? "Rwanda");
+  const registrationComplete = Boolean(profile && verificationCaseId);
 
   const providerTypeOptions = [
     { value: "company", labelEn: "Company", labelKo: "법인 업체" },
@@ -209,6 +213,12 @@ export function ProviderDashboard({
     }
     if (typeof payload.representativeIdType === "string" && payload.representativeIdType !== "other") {
       payload.representativeIdTypeOther = "";
+    }
+    if (typeof payload.city === "string") {
+      payload.city = normalizeCityInput(payload.city) ?? "";
+    }
+    if (typeof payload.country === "string") {
+      payload.country = normalizeCountryInput(payload.country) ?? "";
     }
     if (typeof payload.docType === "string" && payload.docType === "other") {
       const customDocType = String(payload.docTypeOther ?? "").trim();
@@ -379,8 +389,8 @@ export function ProviderDashboard({
         <p className="tiny muted">
           {tr(
             locale,
-            "Complete only required fields first. Optional sections can be completed later from this page.",
-            "먼저 필수 항목만 입력하고, 선택 항목은 나중에 이 페이지에서 수정할 수 있습니다."
+            "Complete the required fields below to finish vendor registration.",
+            "아래 필수 항목을 입력해 벤더 등록을 완료해 주세요."
           )}
         </p>
         <form
@@ -465,6 +475,37 @@ export function ProviderDashboard({
               defaultValue={profile?.officialBusinessAddress ?? ""}
               name="officialBusinessAddress"
               required
+            />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "City", "도시")}</label>
+            <input
+              className="input"
+              name="city"
+              onBlur={() => setCityInput(normalizeCityInput(cityInput) ?? cityInput)}
+              onChange={(event) => setCityInput(event.target.value)}
+              placeholder={tr(locale, "Kigali", "키갈리")}
+              required
+              value={cityInput}
+            />
+            <p className="tiny muted" style={{ marginTop: "6px", marginBottom: 0 }}>
+              {tr(
+                locale,
+                "You can type Korean names (e.g. 키갈리) and we will match them to English (Kigali).",
+                "한글로 입력해도 됩니다. 예: 키갈리 → Kigali"
+              )}
+            </p>
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Country", "국가")}</label>
+            <input
+              className="input"
+              name="country"
+              onBlur={() => setCountryInput(normalizeCountryInput(countryInput) ?? countryInput)}
+              onChange={(event) => setCountryInput(event.target.value)}
+              placeholder={tr(locale, "Rwanda", "르완다")}
+              required
+              value={countryInput}
             />
           </div>
           <div>
@@ -718,24 +759,125 @@ export function ProviderDashboard({
       </article>
 
       <article className="panel">
-        <h2 style={{ marginTop: 0 }}>{tr(locale, "Optional sections (you can fill later)", "선택 사항 (나중에 입력 가능)")}</h2>
+        <h2 style={{ marginTop: 0 }}>{tr(locale, "Business verification documents", "업체 확인 서류")}</h2>
         <p className="tiny muted">
           {tr(
             locale,
-            "These sections are optional for onboarding and can be updated later from vendor registration.",
-            "아래 항목은 초기 등록 시 필수가 아니며, 추후 프로필에서 언제든 수정할 수 있습니다."
+            "Start document review and upload supporting files here.",
+            "서류 검토를 시작하고 증빙 파일을 여기서 업로드하세요."
           )}
         </p>
+        <div className="grid grid-3">
+          <div className="panel" style={{ padding: "12px" }}>
+            <h3 style={{ marginTop: 0 }}>{tr(locale, "Required documents", "필수 서류")}</h3>
+            <ul className="tiny" style={{ margin: 0, paddingLeft: "18px" }}>
+              <li>{tr(locale, "RDB business registration certificate", "RDB 사업자등록증")}</li>
+              <li>{tr(locale, "TIN registration certificate", "TIN 등록증")}</li>
+              <li>{tr(locale, "Representative ID document", "대표자 신분증")}</li>
+            </ul>
+          </div>
+          <div className="panel" style={{ padding: "12px" }}>
+            <h3 style={{ marginTop: 0 }}>{tr(locale, "Optional additional documents", "추가(선택) 서류")}</h3>
+            <p className="tiny muted" style={{ marginTop: 0 }}>
+              {tr(
+                locale,
+                "Additional documents proving business legitimacy",
+                "Additional documents proving business legitimacy"
+              )}
+            </p>
+            <ul className="tiny" style={{ margin: 0, paddingLeft: "18px" }}>
+              <li>{tr(locale, "Past quotation sample", "기존 견적서 샘플")}</li>
+              <li>{tr(locale, "EBM sample format", "EBM 발행 샘플")}</li>
+              <li>{tr(locale, "Client references", "고객 추천서/레퍼런스")}</li>
+              <li>{tr(locale, "Insurance or compliance certificate", "보험/컴플라이언스 증빙")}</li>
+              <li>{tr(locale, "RRA tax clearance certificate", "RRA 세금 완납 증명서")}</li>
+              <li>{tr(locale, "VAT registration certificate", "VAT 등록증")}</li>
+            </ul>
+          </div>
+        </div>
+        {hasActiveReview && (
+          <p className="tiny muted" style={{ marginBottom: "8px" }}>
+            {tr(
+              locale,
+              "Your document review is in progress. You can upload more files below.",
+              "서류 검토가 진행 중입니다. 아래에서 추가 파일을 업로드할 수 있습니다."
+            )}
+          </p>
+        )}
+        <button className="btn" disabled={loading || hasActiveReview} onClick={() => void triggerVerification()} type="button">
+          {verificationCaseId
+            ? tr(locale, "Start new review request", "새 서류 검토 시작")
+            : tr(locale, "Start document review", "서류 검토 시작")}
+        </button>
+        {verificationCaseId && hasActiveReview && (
+          <form
+            className="grid"
+            style={{ marginTop: "16px" }}
+            onSubmit={(event) =>
+              submitJson(
+                event,
+                `/api/provider/verification-cases/${verificationCaseId}/documents`,
+                "POST"
+              )
+            }
+          >
+            <div>
+              <label className="tiny">{tr(locale, "Document type", "서류 종류")}</label>
+              <select
+                className="select"
+                defaultValue="rdb_certificate"
+                name="docType"
+                onChange={(event) => setSelectedDocumentType(event.target.value)}
+                required
+              >
+                <option value="rdb_certificate">{tr(locale, "RDB business registration certificate", "RDB 사업자등록증")}</option>
+                <option value="tin_certificate">{tr(locale, "TIN registration certificate", "TIN 등록증")}</option>
+                <option value="owner_id">{tr(locale, "Representative ID document", "대표자 신분증")}</option>
+                <option value="quotation_sample">{tr(locale, "Past quotation sample", "기존 견적서 샘플")}</option>
+                <option value="ebm_sample">{tr(locale, "EBM sample format", "EBM 발행 샘플")}</option>
+                <option value="tax_clearance">{tr(locale, "RRA tax clearance certificate", "RRA 세금 완납 증명서")}</option>
+                <option value="vat_certificate">{tr(locale, "VAT registration certificate", "VAT 등록증")}</option>
+                <option value="other">{tr(locale, "Other", "기타")}</option>
+              </select>
+              {selectedDocumentType === "other" && (
+                <input
+                  className="input"
+                  name="docTypeOther"
+                  placeholder={tr(locale, "Enter document type", "서류 종류를 직접 입력")}
+                  required
+                  style={{ marginTop: "8px" }}
+                />
+              )}
+            </div>
+            <div>
+              <label className="tiny">{tr(locale, "File attachment", "파일 첨부")}</label>
+              <input className="input" accept=".pdf,.png,.jpg,.jpeg,.webp" name="verificationDocumentFile" required type="file" />
+              <p className="tiny muted" style={{ marginTop: "6px", marginBottom: 0 }}>
+                {tr(
+                  locale,
+                  "Accepted: PDF, PNG, JPG, WEBP",
+                  "업로드 가능 형식: PDF, PNG, JPG, WEBP"
+                )}
+              </p>
+            </div>
+            <button className="btn" disabled={loading} type="submit">
+              {tr(locale, "Upload document", "서류 업로드")}
+            </button>
+          </form>
+        )}
+      </article>
 
-        {!profile ? (
+      {registrationComplete && profile ? (
+        <article className="panel">
+          <h2 style={{ marginTop: 0 }}>{tr(locale, "Profile and service setup", "프로필 및 서비스 설정")}</h2>
           <p className="tiny muted">
             {tr(
               locale,
-              "Save the required profile section first to enable the forms below.",
-              "먼저 위의 필수 프로필을 저장하면 아래 폼을 사용할 수 있습니다."
+              "Vendor registration is complete. You can now set up your public profile and services.",
+              "벤더 등록이 완료되었습니다. 이제 노출 프로필과 서비스를 설정할 수 있습니다."
             )}
           </p>
-        ) : (
+
           <div className="grid" style={{ gap: "24px" }}>
             <section>
               <h3 style={{ marginTop: 0 }}>{tr(locale, "Public profile", "사용자 노출 프로필")}</h3>
@@ -877,117 +1019,8 @@ export function ProviderDashboard({
               </form>
             </section>
           </div>
-        )}
-      </article>
-
-      <article className="panel">
-        <h2 style={{ marginTop: 0 }}>{tr(locale, "Business verification documents", "업체 확인 서류")}</h2>
-        <p className="tiny muted">
-          {tr(
-            locale,
-            "Start document review and upload supporting files here.",
-            "서류 검토를 시작하고 증빙 파일을 여기서 업로드하세요."
-          )}
-        </p>
-        <div className="grid grid-3">
-          <div className="panel" style={{ padding: "12px" }}>
-            <h3 style={{ marginTop: 0 }}>{tr(locale, "Required documents", "필수 서류")}</h3>
-            <ul className="tiny" style={{ margin: 0, paddingLeft: "18px" }}>
-              <li>{tr(locale, "RDB business registration certificate", "RDB 사업자등록증")}</li>
-              <li>{tr(locale, "TIN registration certificate", "TIN 등록증")}</li>
-              <li>{tr(locale, "Representative ID document", "대표자 신분증")}</li>
-            </ul>
-          </div>
-          <div className="panel" style={{ padding: "12px" }}>
-            <h3 style={{ marginTop: 0 }}>{tr(locale, "Optional additional documents", "추가(선택) 서류")}</h3>
-            <p className="tiny muted" style={{ marginTop: 0 }}>
-              {tr(
-                locale,
-                "Additional documents proving business legitimacy",
-                "Additional documents proving business legitimacy"
-              )}
-            </p>
-            <ul className="tiny" style={{ margin: 0, paddingLeft: "18px" }}>
-              <li>{tr(locale, "Past quotation sample", "기존 견적서 샘플")}</li>
-              <li>{tr(locale, "EBM sample format", "EBM 발행 샘플")}</li>
-              <li>{tr(locale, "Client references", "고객 추천서/레퍼런스")}</li>
-              <li>{tr(locale, "Insurance or compliance certificate", "보험/컴플라이언스 증빙")}</li>
-              <li>{tr(locale, "RRA tax clearance certificate", "RRA 세금 완납 증명서")}</li>
-              <li>{tr(locale, "VAT registration certificate", "VAT 등록증")}</li>
-            </ul>
-          </div>
-        </div>
-        {hasActiveReview && (
-          <p className="tiny muted" style={{ marginBottom: "8px" }}>
-            {tr(
-              locale,
-              "Your document review is in progress. You can upload more files below.",
-              "서류 검토가 진행 중입니다. 아래에서 추가 파일을 업로드할 수 있습니다."
-            )}
-          </p>
-        )}
-        <button className="btn" disabled={loading || hasActiveReview} onClick={() => void triggerVerification()} type="button">
-          {verificationCaseId
-            ? tr(locale, "Start new review request", "새 서류 검토 시작")
-            : tr(locale, "Start document review", "서류 검토 시작")}
-        </button>
-        {verificationCaseId && hasActiveReview && (
-          <form
-            className="grid"
-            style={{ marginTop: "16px" }}
-            onSubmit={(event) =>
-              submitJson(
-                event,
-                `/api/provider/verification-cases/${verificationCaseId}/documents`,
-                "POST"
-              )
-            }
-          >
-            <div>
-              <label className="tiny">{tr(locale, "Document type", "서류 종류")}</label>
-              <select
-                className="select"
-                defaultValue="rdb_certificate"
-                name="docType"
-                onChange={(event) => setSelectedDocumentType(event.target.value)}
-                required
-              >
-                <option value="rdb_certificate">{tr(locale, "RDB business registration certificate", "RDB 사업자등록증")}</option>
-                <option value="tin_certificate">{tr(locale, "TIN registration certificate", "TIN 등록증")}</option>
-                <option value="owner_id">{tr(locale, "Representative ID document", "대표자 신분증")}</option>
-                <option value="quotation_sample">{tr(locale, "Past quotation sample", "기존 견적서 샘플")}</option>
-                <option value="ebm_sample">{tr(locale, "EBM sample format", "EBM 발행 샘플")}</option>
-                <option value="tax_clearance">{tr(locale, "RRA tax clearance certificate", "RRA 세금 완납 증명서")}</option>
-                <option value="vat_certificate">{tr(locale, "VAT registration certificate", "VAT 등록증")}</option>
-                <option value="other">{tr(locale, "Other", "기타")}</option>
-              </select>
-              {selectedDocumentType === "other" && (
-                <input
-                  className="input"
-                  name="docTypeOther"
-                  placeholder={tr(locale, "Enter document type", "서류 종류를 직접 입력")}
-                  required
-                  style={{ marginTop: "8px" }}
-                />
-              )}
-            </div>
-            <div>
-              <label className="tiny">{tr(locale, "File attachment", "파일 첨부")}</label>
-              <input className="input" accept=".pdf,.png,.jpg,.jpeg,.webp" name="verificationDocumentFile" required type="file" />
-              <p className="tiny muted" style={{ marginTop: "6px", marginBottom: 0 }}>
-                {tr(
-                  locale,
-                  "Accepted: PDF, PNG, JPG, WEBP",
-                  "업로드 가능 형식: PDF, PNG, JPG, WEBP"
-                )}
-              </p>
-            </div>
-            <button className="btn" disabled={loading} type="submit">
-              {tr(locale, "Upload document", "서류 업로드")}
-            </button>
-          </form>
-        )}
-      </article>
+        </article>
+      ) : null}
     </section>
   );
 }
