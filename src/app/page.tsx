@@ -5,6 +5,7 @@ import { getDefaultServiceImage } from "@/lib/default-images";
 import { FallbackImage } from "@/components/FallbackImage";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { Locale, localizeCopy, tr } from "@/lib/i18n";
+import { normalizeCityInput } from "@/lib/location";
 
 interface HomePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -132,7 +133,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const quotationOnly = params.quotation === "1";
   const ebmOnly = params.ebm === "1";
   const category = typeof params.category === "string" ? params.category : undefined;
-  const city = typeof params.city === "string" ? params.city : undefined;
+  const city = normalizeCityInput(typeof params.city === "string" ? params.city : undefined) ?? undefined;
   const viewMode = params.view === "list" ? "list" : "gallery";
 
   const where = {

@@ -5,11 +5,15 @@ import { ok, fail } from "@/lib/api";
 import { signSession, setSessionCookie } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizePhone, VERIFICATION_MAX_ATTEMPTS } from "@/lib/auth-verification";
+import { isPasswordValid, passwordRequirementMessage } from "@/lib/password";
 
 const schema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z
+    .string()
+    .min(8)
+    .refine(isPasswordValid, passwordRequirementMessage("en")),
   phone: z.string().min(8).max(30).optional().or(z.literal("")),
   verificationChannel: z.enum(["email", "sms", "whatsapp"]),
   verificationCode: z.string().regex(/^\d{6}$/)

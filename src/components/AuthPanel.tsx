@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Locale, tr } from "@/lib/i18n";
+import { isPasswordValid, passwordRequirementMessage } from "@/lib/password";
 
 interface AuthResult {
   error?: { message: string };
@@ -35,6 +36,20 @@ export function AuthPanel({ locale }: AuthPanelProps) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const payload = Object.fromEntries(formData.entries());
+
+    if (mode === "register") {
+      const password = String(payload.password ?? "");
+      if (!isPasswordValid(password)) {
+        setError(
+          tr(
+            locale,
+            passwordRequirementMessage("en"),
+            passwordRequirementMessage("ko")
+          )
+        );
+        return;
+      }
+    }
 
     setLoading(true);
     setError("");
@@ -215,6 +230,13 @@ export function AuthPanel({ locale }: AuthPanelProps) {
           <div>
             <label className="tiny">{tr(locale, "Password", "비밀번호")}</label>
             <input className="input" name="password" type="password" required />
+            <p className="tiny muted" style={{ marginTop: "6px", marginBottom: 0 }}>
+              {tr(
+                locale,
+                passwordRequirementMessage("en"),
+                passwordRequirementMessage("ko")
+              )}
+            </p>
           </div>
         )}
         <button className="btn" disabled={loading} type="submit">
