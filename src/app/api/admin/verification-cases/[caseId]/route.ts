@@ -41,9 +41,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
       where: { id: caseId },
       data: {
         status: payload.status,
-        score: payload.score,
-        level: payload.level,
-        notes: payload.notes,
+        score: payload.score ?? 0,
+        level: payload.level ?? "verified",
+        notes: payload.notes || null,
         reviewedAt: new Date(),
         reviewerUserId: auth.session.userId
       }
@@ -70,12 +70,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
 
     const message = statusLabels[payload.status];
     if (message) {
-      await sendInboxMessage({
-        recipientUserId: verificationCase.providerProfile.userId,
-        senderUserId: auth.session.userId,
-        subject: message.subject,
-        body: message.body
-      });
+      try {
+        await sendInboxMessage({
+          recipientUserId: verificationCase.providerProfile.userId,
+          senderUserId: auth.session.userId,
+          subject: message.subject,
+          body: message.body
+        });
+      } catch (inboxError) {
+        console.error("Failed to send inbox message after review:", inboxError);
+      }
     }
 
     return ok(updated);
@@ -83,6 +87,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
     if (error instanceof z.ZodError) {
       return fail(error.issues[0]?.message ?? "Invalid payload", 400, "VAL_001");
     }
-    return fail("Failed to review verification case", 500, "VER_500");
+    console.error("Failed to review verification case:", error);
+    const message = error instanceof Error ? error.message : "Failed to review verification case";
+    return fail(message, 500, "VER_500");
   }
 }
