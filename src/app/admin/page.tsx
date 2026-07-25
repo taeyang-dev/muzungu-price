@@ -32,6 +32,9 @@ export default async function AdminPage() {
   }
 
   const cases = await prisma.verificationCase.findMany({
+    where: {
+      status: { not: "draft" }
+    },
     include: {
       providerProfile: {
         include: {

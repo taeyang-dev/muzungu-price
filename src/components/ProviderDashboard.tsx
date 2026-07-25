@@ -54,7 +54,8 @@ interface ProviderDashboardProps {
       }
     | null;
   verificationCaseId: string | null;
-  verificationStatus: "pending" | "approved" | "rejected" | "on_hold" | null;
+  verificationDocumentCount: number;
+  verificationStatus: "draft" | "pending" | "approved" | "rejected" | "on_hold" | null;
   billing:
     | {
         quotationAvailable: boolean;
@@ -95,6 +96,7 @@ export function ProviderDashboard({
   categories,
   profile,
   verificationCaseId,
+  verificationDocumentCount,
   verificationStatus,
   billing
 }: ProviderDashboardProps) {
@@ -106,6 +108,12 @@ export function ProviderDashboard({
   );
   const router = useRouter();
   const hasActiveReview = verificationStatus === "pending" || verificationStatus === "on_hold";
+  const isDraftReview = verificationStatus === "draft";
+  const reviewSubmitted =
+    verificationStatus === "pending" || verificationStatus === "on_hold" || verificationStatus === "approved";
+  const canUploadDocuments = Boolean(profile && verificationStatus !== "approved");
+  const canRequestReview = Boolean(profile && isDraftReview && verificationDocumentCount > 0);
+  const canSetupProfileAndServices = Boolean(profile && reviewSubmitted);
   const [selectedProviderType, setSelectedProviderType] = useState<string>(
     profile?.providerType ?? "company"
   );
@@ -125,8 +133,6 @@ export function ProviderDashboard({
   const [uploadedDocumentRowIds, setUploadedDocumentRowIds] = useState<Set<string>>(new Set());
   const [uploadingDocumentRowId, setUploadingDocumentRowId] = useState<string | null>(null);
   const verificationApproved = verificationStatus === "approved";
-  const reviewRequested = Boolean(verificationCaseId);
-  const canSetupProfileAndServices = Boolean(profile && reviewRequested);
 
   const providerTypeOptions = [
     { value: "company", labelEn: "Company", labelKo: "법인 업체" },
@@ -219,12 +225,13 @@ export function ProviderDashboard({
   }
 
   async function submitJson(
-    event: FormEvent<HTMLFormElement>,
+    event: FormEvent<HTMLFormElement> | { currentTarget: HTMLFormElement; preventDefault?: () => void },
     url: string,
     method: "POST" | "PATCH" | "PUT",
-    saveAction?: SaveAction
+    saveAction?: SaveAction,
+    options?: { draft?: boolean }
   ): Promise<void> {
-    event.preventDefault();
+    event.preventDefault?.();
     const formData = new FormData(event.currentTarget);
     const payloadEntries = Array.from(formData.entries()).filter(([, value]) => !(value instanceof File));
     const payload: Record<string, unknown> = Object.fromEntries(payloadEntries);
@@ -312,6 +319,9 @@ export function ProviderDashboard({
     if (!selectedPaymentMethods.includes("other")) {
       payload.paymentMethodOtherDetail = "";
     }
+    if (options?.draft) {
+      payload.draft = true;
+    }
 
     setLoading(true);
     setError("");
@@ -333,9 +343,15 @@ export function ProviderDashboard({
       setCompletedActions((current) => ({ ...current, [saveAction]: true }));
     }
 
-    setFeedback(tr(locale, "Saved successfully", "저장되었습니다."));
+    setFeedback(
+      options?.draft
+        ? tr(locale, "Draft saved.", "임시 저장되었습니다.")
+        : tr(locale, "Saved successfully", "저장되었습니다.")
+    );
     router.refresh();
-    event.currentTarget.reset();
+    if (!options?.draft) {
+      event.currentTarget.reset();
+    }
   }
 
   async function submitServiceWithPriceCard(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -406,10 +422,15 @@ export function ProviderDashboard({
   }
 
   async function triggerVerification(): Promise<void> {
+    if (!verificationCaseId) {
+      setError(tr(locale, "Upload documents before requesting review.", "심사 요청 전에 서류를 업로드해 주세요."));
+      return;
+    }
+
     setLoading(true);
     setError("");
     setFeedback("");
-    const response = await fetch("/api/provider/verification-cases", {
+    const response = await fetch(`/api/provider/verification-cases/${verificationCaseId}/submit`, {
       method: "POST"
     });
     const data = (await response.json()) as ApiResult;
@@ -426,16 +447,26 @@ export function ProviderDashboard({
     event: FormEvent<HTMLFormElement>,
     rowId: string
   ): Promise<void> {
-    if (!verificationCaseId) {
-      return;
-    }
-
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
     const row = documentRows.find((entry) => entry.id === rowId);
     if (!row) {
       return;
+    }
+
+    let caseId = verificationCaseId;
+    if (!caseId || verificationStatus === "rejected" || verificationStatus === "approved") {
+      const ensureResponse = await fetch("/api/provider/verification-cases", { method: "POST" });
+      const ensureData = (await ensureResponse.json()) as ApiResult & { data?: { id: string } };
+      if (!ensureResponse.ok || !ensureData.data?.id) {
+        setError(
+          ensureData.error?.message ??
+            tr(locale, "Save your profile before uploading documents.", "서류 업로드 전에 프로필을 저장해 주세요.")
+        );
+        return;
+      }
+      caseId = ensureData.data.id;
     }
 
     const payload: Record<string, unknown> = {
@@ -462,7 +493,7 @@ export function ProviderDashboard({
     setError("");
     setFeedback("");
 
-    const response = await fetch(`/api/provider/verification-cases/${verificationCaseId}/documents`, {
+    const response = await fetch(`/api/provider/verification-cases/${caseId}/documents`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -503,8 +534,8 @@ export function ProviderDashboard({
         <p className="tiny muted">
           {tr(
             locale,
-            "Complete the required fields below to finish vendor registration.",
-            "아래 필수 항목을 입력해 벤더 등록을 완료해 주세요."
+            "Save drafts anytime, upload documents, then request review when ready.",
+            "언제든 임시저장하고 서류를 업로드한 뒤, 준비가 되면 심사를 요청하세요."
           )}
         </p>
         <form
@@ -697,9 +728,31 @@ export function ProviderDashboard({
               ))}
             </div>
           </div>
-          <button className="btn" disabled={loading} type="submit">
-            {getSaveButtonLabel("profile", loading, "Save profile", "프로필 저장")}
-          </button>
+          <div className="row" style={{ gridColumn: "1 / -1" }}>
+            <button className="btn" disabled={loading} type="submit">
+              {getSaveButtonLabel("profile", loading, "Save profile", "프로필 저장")}
+            </button>
+            <button
+              className="btn secondary"
+              disabled={loading}
+              onClick={(event) => {
+                const form = event.currentTarget.closest("form");
+                if (!form) {
+                  return;
+                }
+                void submitJson(
+                  { currentTarget: form },
+                  "/api/provider/profile",
+                  profile ? "PATCH" : "POST",
+                  "profile",
+                  { draft: true }
+                );
+              }}
+              type="button"
+            >
+              {tr(locale, "Save draft", "임시저장")}
+            </button>
+          </div>
         </form>
       </article>
 
@@ -868,9 +921,27 @@ export function ProviderDashboard({
             <label className="tiny">{tr(locale, "EBM notes", "EBM 메모")}</label>
             <textarea className="textarea" defaultValue={billing?.ebmNotes ?? ""} name="ebmNotes" />
           </div>
-          <button className="btn" disabled={loading} type="submit">
-            {getSaveButtonLabel("billing", loading, "Save billing settings", "발행 설정 저장")}
-          </button>
+          <div className="row" style={{ gridColumn: "1 / -1" }}>
+            <button className="btn" disabled={loading} type="submit">
+              {getSaveButtonLabel("billing", loading, "Save billing settings", "발행 설정 저장")}
+            </button>
+            <button
+              className="btn secondary"
+              disabled={loading}
+              onClick={(event) => {
+                const form = event.currentTarget.closest("form");
+                if (!form) {
+                  return;
+                }
+                void submitJson({ currentTarget: form }, "/api/provider/billing-capabilities", "PUT", "billing", {
+                  draft: true
+                });
+              }}
+              type="button"
+            >
+              {tr(locale, "Save draft", "임시저장")}
+            </button>
+          </div>
         </form>
       </article>
 
@@ -879,8 +950,8 @@ export function ProviderDashboard({
         <p className="tiny muted">
           {tr(
             locale,
-            "After saving your profile, request a review and upload supporting documents.",
-            "프로필 저장 후 심사를 요청하고 증빙 서류를 업로드하세요."
+            "Upload your documents first. When ready, request review to start the approval process.",
+            "먼저 서류를 업로드하세요. 준비가 끝나면 심사 시작 요청을 눌러 주세요."
           )}
         </p>
         <div className="grid grid-3">
@@ -915,40 +986,12 @@ export function ProviderDashboard({
           <p className="tiny muted">
             {tr(
               locale,
-              "Save your profile above before requesting a review.",
-              "심사를 요청하려면 먼저 위에서 프로필을 저장해 주세요."
+              "Save your profile above before uploading documents.",
+              "서류를 업로드하려면 먼저 위에서 프로필을 저장해 주세요."
             )}
           </p>
         )}
-        {profile && !verificationCaseId && (
-          <button className="btn" disabled={loading} onClick={() => void triggerVerification()} type="button">
-            {loading
-              ? tr(locale, "Submitting review request...", "심사 요청 중...")
-              : tr(locale, "Request review start", "심사 시작 요청")}
-          </button>
-        )}
-        {hasActiveReview && (
-          <p className="tiny muted" style={{ marginBottom: "8px" }}>
-            {tr(
-              locale,
-              "Your review is in progress. Upload documents below and prepare your public profile while you wait.",
-              "심사가 진행 중입니다. 아래에서 서류를 업로드하고, 대기하는 동안 노출 프로필을 준비할 수 있습니다."
-            )}
-          </p>
-        )}
-        {verificationStatus === "approved" && (
-          <p className="tiny muted" style={{ marginBottom: "8px" }}>
-            {tr(locale, "Review approved. Your business is visible on the marketplace.", "심사가 승인되었습니다. 홈 화면에 업체가 노출됩니다.")}
-          </p>
-        )}
-        {verificationStatus === "rejected" && (
-          <button className="btn" disabled={loading} onClick={() => void triggerVerification()} type="button">
-            {loading
-              ? tr(locale, "Submitting review request...", "심사 요청 중...")
-              : tr(locale, "Request review again", "심사 재요청")}
-          </button>
-        )}
-        {verificationCaseId && hasActiveReview && (
+        {profile && canUploadDocuments && (
           <div className="grid" style={{ gap: "16px", marginTop: "16px" }}>
             {documentRows.map((row) => {
               const rowUploaded = uploadedDocumentRowIds.has(row.id);
@@ -1024,9 +1067,48 @@ export function ProviderDashboard({
             </button>
           </div>
         )}
+        {canRequestReview && (
+          <button className="btn" disabled={loading} onClick={() => void triggerVerification()} style={{ marginTop: "16px" }} type="button">
+            {loading
+              ? tr(locale, "Submitting review request...", "심사 요청 중...")
+              : tr(locale, "Request review start", "심사 시작 요청")}
+          </button>
+        )}
+        {isDraftReview && verificationDocumentCount === 0 && (
+          <p className="tiny muted" style={{ marginTop: "12px", marginBottom: 0 }}>
+            {tr(
+              locale,
+              "Upload at least one document to enable review request.",
+              "심사 시작 요청을 하려면 서류를 1개 이상 업로드해 주세요."
+            )}
+          </p>
+        )}
+        {hasActiveReview && (
+          <p className="tiny muted" style={{ marginTop: "12px", marginBottom: 0 }}>
+            {tr(
+              locale,
+              "Your review is in progress. Prepare your public profile and services while you wait.",
+              "심사가 진행 중입니다. 대기하는 동안 노출 프로필과 서비스를 준비할 수 있습니다."
+            )}
+          </p>
+        )}
+        {verificationStatus === "approved" && (
+          <p className="tiny muted" style={{ marginTop: "12px", marginBottom: 0 }}>
+            {tr(locale, "Review approved. Your business is visible on the marketplace.", "심사가 승인되었습니다. 홈 화면에 노출됩니다.")}
+          </p>
+        )}
+        {verificationStatus === "rejected" && (
+          <p className="tiny muted" style={{ marginTop: "12px", marginBottom: 0 }}>
+            {tr(
+              locale,
+              "Your review was rejected. Upload updated documents and request review again.",
+              "심사가 반려되었습니다. 서류를 다시 업로드한 뒤 심사를 재요청해 주세요."
+            )}
+          </p>
+        )}
       </article>
 
-      {canSetupProfileAndServices ? (
+      {canSetupProfileAndServices && profile ? (
         <article className="panel">
           <h2 style={{ marginTop: 0 }}>{tr(locale, "Profile and service setup", "프로필 및 서비스 설정")}</h2>
           <p className="tiny muted">

@@ -4,6 +4,7 @@ import { fail, ok } from "@/lib/api";
 import { requireRole } from "@/lib/guards";
 import { normalizeCityInput, normalizeCountryInput } from "@/lib/location";
 import { prisma } from "@/lib/prisma";
+import { ensureDraftVerificationCase } from "@/lib/verification-case";
 
 const imageValueSchema = z
   .string()
@@ -129,6 +130,73 @@ const updateSchema = profileSchemaBase.partial().superRefine((payload, ctx) => {
   validateConditionalOtherFields(payload, ctx);
 });
 
+const draftCreateSchema = profileSchemaBase.partial();
+const draftUpdateSchema = profileSchemaBase.partial();
+
+function buildProfileData(
+  payload: Partial<z.infer<typeof profileSchemaBase>>,
+  isDraft: boolean
+): {
+  businessName: string;
+  providerType: z.infer<typeof providerTypeSchema>;
+  providerTypeOther: string | null;
+  businessActivitySector: string | null;
+  businessActivityCode: string | null;
+  businessActivityDetail: string | null;
+  businessActivityOther: string | null;
+  officialBusinessAddress: string | null;
+  representativeName: string | null;
+  representativeNationality: string | null;
+  representativeIdType: string | null;
+  representativeIdTypeOther: string | null;
+  representativeIdNumber: string | null;
+  representativeLocalAddress: string | null;
+  representativeEmail: string | null;
+  representativePhone: string | null;
+  tagline: string | null | undefined;
+  bio: string | null | undefined;
+  logoUrl: string | null | undefined;
+  coverImageUrl: string | null | undefined;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  websiteUrl: string | null | undefined;
+  yearsInBusiness: number | null | undefined;
+  country: string | null;
+  city: string | null;
+} {
+  const representativeEmail = payload.representativeEmail?.trim() || null;
+  const representativePhone = payload.representativePhone?.trim() || null;
+
+  return {
+    businessName: payload.businessName?.trim() || (isDraft ? "임시 저장" : ""),
+    providerType: payload.providerType ?? "company",
+    providerTypeOther: payload.providerTypeOther?.trim() || null,
+    businessActivitySector: payload.businessActivitySector ?? null,
+    businessActivityCode: payload.businessActivityCode?.trim() || null,
+    businessActivityDetail: payload.businessActivityDetail?.trim() || null,
+    businessActivityOther: payload.businessActivityOther?.trim() || null,
+    officialBusinessAddress: payload.officialBusinessAddress?.trim() || null,
+    representativeName: payload.representativeName?.trim() || null,
+    representativeNationality: payload.representativeNationality?.trim() || null,
+    representativeIdType: payload.representativeIdType ?? null,
+    representativeIdTypeOther: payload.representativeIdTypeOther?.trim() || null,
+    representativeIdNumber: payload.representativeIdNumber?.trim() || null,
+    representativeLocalAddress: payload.representativeLocalAddress?.trim() || null,
+    representativeEmail,
+    representativePhone,
+    tagline: payload.tagline,
+    bio: payload.bio,
+    logoUrl: payload.logoUrl || null,
+    coverImageUrl: payload.coverImageUrl || null,
+    contactEmail: payload.contactEmail?.trim() || representativeEmail,
+    contactPhone: payload.contactPhone?.trim() || representativePhone,
+    websiteUrl: payload.websiteUrl || null,
+    yearsInBusiness: payload.yearsInBusiness,
+    country: payload.country ? normalizeCountryInput(payload.country) : null,
+    city: payload.city ? normalizeCityInput(payload.city) : null
+  };
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const auth = await requireRole(request, ["provider"]);
   if (auth.error || !auth.session) {
@@ -136,7 +204,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const payload = createSchema.parse(await request.json());
+    const requestBody = (await request.json()) as Record<string, unknown>;
+    const isDraft = requestBody.draft === true;
+    delete requestBody.draft;
+    const payload = isDraft ? draftCreateSchema.parse(requestBody) : createSchema.parse(requestBody);
     const categoryIds = payload.categoryIds?.filter((item) => item.length > 0) ?? [];
     const existing = await prisma.providerProfile.findUnique({
       where: { userId: auth.session.userId }
@@ -148,32 +219,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const profile = await prisma.providerProfile.create({
       data: {
         userId: auth.session.userId,
-        businessName: payload.businessName,
-        providerType: payload.providerType,
-        providerTypeOther: payload.providerTypeOther?.trim() || null,
-        businessActivitySector: payload.businessActivitySector,
-        businessActivityCode: payload.businessActivityCode?.trim() || null,
-        businessActivityDetail: payload.businessActivityDetail.trim(),
-        businessActivityOther: payload.businessActivityOther?.trim() || null,
-        officialBusinessAddress: payload.officialBusinessAddress.trim(),
-        representativeName: payload.representativeName.trim(),
-        representativeNationality: payload.representativeNationality.trim(),
-        representativeIdType: payload.representativeIdType,
-        representativeIdTypeOther: payload.representativeIdTypeOther?.trim() || null,
-        representativeIdNumber: payload.representativeIdNumber.trim(),
-        representativeLocalAddress: payload.representativeLocalAddress.trim(),
-        representativeEmail: payload.representativeEmail.trim(),
-        representativePhone: payload.representativePhone.trim(),
-        tagline: payload.tagline,
-        bio: payload.bio,
-        logoUrl: payload.logoUrl || null,
-        coverImageUrl: payload.coverImageUrl || null,
-        contactEmail: payload.contactEmail || payload.representativeEmail || null,
-        contactPhone: payload.contactPhone || payload.representativePhone || null,
-        websiteUrl: payload.websiteUrl || null,
-        yearsInBusiness: payload.yearsInBusiness,
-        country: normalizeCountryInput(payload.country),
-        city: normalizeCityInput(payload.city),
+        ...buildProfileData(payload, isDraft),
         categories: categoryIds.length > 0
           ? {
               createMany: {
@@ -186,6 +232,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         categories: { include: { category: true } }
       }
     });
+
+    await ensureDraftVerificationCase(profile.id);
 
     return ok(profile);
   } catch (error) {
@@ -203,7 +251,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const payload = updateSchema.parse(await request.json());
+    const requestBody = (await request.json()) as Record<string, unknown>;
+    const isDraft = requestBody.draft === true;
+    delete requestBody.draft;
+    const payload = isDraft ? draftUpdateSchema.parse(requestBody) : updateSchema.parse(requestBody);
     const categoryIds = payload.categoryIds?.filter((item) => item.length > 0);
     const profile = await prisma.providerProfile.findUnique({
       where: { userId: auth.session.userId }
@@ -212,9 +263,40 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       return fail("Provider profile does not exist", 404, "PROV_001");
     }
 
+    const draftData = isDraft ? buildProfileData({ ...profile, ...payload }, true) : null;
+
     const updated = await prisma.providerProfile.update({
       where: { id: profile.id },
-      data: {
+      data: isDraft
+        ? {
+            businessName: draftData?.businessName,
+            providerType: draftData?.providerType,
+            providerTypeOther: draftData?.providerTypeOther,
+            businessActivitySector: draftData?.businessActivitySector,
+            businessActivityCode: draftData?.businessActivityCode,
+            businessActivityDetail: draftData?.businessActivityDetail,
+            businessActivityOther: draftData?.businessActivityOther,
+            officialBusinessAddress: draftData?.officialBusinessAddress,
+            representativeName: draftData?.representativeName,
+            representativeNationality: draftData?.representativeNationality,
+            representativeIdType: draftData?.representativeIdType,
+            representativeIdTypeOther: draftData?.representativeIdTypeOther,
+            representativeIdNumber: draftData?.representativeIdNumber,
+            representativeLocalAddress: draftData?.representativeLocalAddress,
+            representativeEmail: draftData?.representativeEmail,
+            representativePhone: draftData?.representativePhone,
+            tagline: draftData?.tagline,
+            bio: draftData?.bio,
+            logoUrl: draftData?.logoUrl,
+            coverImageUrl: draftData?.coverImageUrl,
+            contactEmail: draftData?.contactEmail,
+            contactPhone: draftData?.contactPhone,
+            websiteUrl: draftData?.websiteUrl,
+            yearsInBusiness: draftData?.yearsInBusiness,
+            country: draftData?.country,
+            city: draftData?.city
+          }
+        : {
         businessName: payload.businessName ?? undefined,
         providerType: payload.providerType ?? undefined,
         providerTypeOther:
@@ -273,7 +355,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         country:
           payload.country === undefined ? undefined : normalizeCountryInput(payload.country),
         city: payload.city === undefined ? undefined : normalizeCityInput(payload.city)
-      }
+          }
     });
 
     if (categoryIds !== undefined) {
@@ -287,6 +369,8 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         });
       }
     }
+
+    await ensureDraftVerificationCase(updated.id);
 
     return ok(updated);
   } catch (error) {

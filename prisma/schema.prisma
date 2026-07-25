@@ -24,6 +24,7 @@ enum ProviderType {
 }
 
 enum VerificationStatus {
+  draft
   pending
   approved
   rejected
