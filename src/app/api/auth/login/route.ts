@@ -25,6 +25,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           "AUTH_002"
         );
       }
+
+      if (normalizedEmail === "admin@muzunguprice.com") {
+        return fail(
+          "Admin account is not in this database yet. Copy DATABASE_URL and DIRECT_URL from Vercel into your local .env, then run `npm run db:ensure-admin`.",
+          401,
+          "AUTH_003"
+        );
+      }
     }
 
     if (!user) {

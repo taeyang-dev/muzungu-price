@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "db:push": "prisma db push",
-    "db:seed": "node prisma/seed.mjs"
+    "db:seed": "node prisma/seed.mjs",
+    "db:ensure-admin": "node prisma/ensure-admin.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.0",
