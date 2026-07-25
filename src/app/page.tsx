@@ -186,7 +186,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       : {})
   };
 
-  const [providers, categories] = await Promise.all([
+  const loadProviders = () =>
     prisma.providerProfile.findMany({
       where,
       include: {
@@ -208,9 +208,19 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         reviews: true
       },
       orderBy: { createdAt: "desc" }
-    }),
-    prisma.serviceCategory.findMany({ orderBy: { name: "asc" } })
-  ]);
+    });
+
+  const loadCategories = () => prisma.serviceCategory.findMany({ orderBy: { name: "asc" } });
+
+  let providers: Awaited<ReturnType<typeof loadProviders>> = [];
+  let categories: Awaited<ReturnType<typeof loadCategories>> = [];
+  let databaseError: string | null = null;
+
+  try {
+    [providers, categories] = await Promise.all([loadProviders(), loadCategories()]);
+  } catch (error) {
+    databaseError = error instanceof Error ? error.message : "Database unavailable";
+  }
 
   type ProviderItem = (typeof providers)[number];
   type ProviderServiceItem = ProviderItem["services"][number];
@@ -221,6 +231,19 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <>
+      {databaseError ? (
+        <section className="panel section">
+          <h2 style={{ marginTop: 0 }}>{tr(locale, "Marketplace unavailable", "마켓플레이스를 불러올 수 없습니다")}</h2>
+          <p className="muted">
+            {tr(
+              locale,
+              "The app cannot reach the database. In Vercel, set DATABASE_URL / DIRECT_URL / AUTH_SECRET, push the schema with npm run db:push, then redeploy.",
+              "데이터베이스에 연결할 수 없습니다. Vercel에 DATABASE_URL / DIRECT_URL / AUTH_SECRET을 설정하고 npm run db:push 후 재배포하세요."
+            )}
+          </p>
+          <p className="tiny muted">{databaseError}</p>
+        </section>
+      ) : null}
       <section className="panel section">
         <form className="grid grid-3" method="GET">
           <div style={{ gridColumn: "1 / -1" }}>

@@ -96,7 +96,7 @@ Main endpoints are under `/api`:
 2. Copy:
    - pooled connection string -> `DATABASE_URL`
    - direct connection string -> `DIRECT_URL`
-3. Push schema once from local:
+3. Push schema once from local (or any machine with the env vars):
 
 ```bash
 npm run db:push
@@ -105,12 +105,14 @@ npm run db:seed
 
 4. Push your branch to GitHub.
 5. In Vercel, import this GitHub repo and deploy.
-6. In Vercel Project Settings -> Environment Variables, add:
+6. In Vercel Project Settings -> Environment Variables, add for **Production and Preview**:
    - `DATABASE_URL`
    - `DIRECT_URL`
    - `AUTH_SECRET`
    - verification delivery vars (Resend/Twilio) listed below
 7. Redeploy from Vercel after env vars are saved.
+8. If the site asks you to log in to Vercel before opening the app, turn off **Deployment Protection** (Vercel Project Settings → Deployment Protection) so the public can access it.
+9. Health check: open `/api/health` on the deployed site. It should return `"ok": true`. If not, the database URL or schema push is still wrong.
 
 ### Verification-code delivery configuration (real sending)
 
