@@ -49,8 +49,12 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
       : Promise.resolve([])
   );
 
+  type VendorDirectoryItem = (typeof vendorDirectory)[number];
+
   const selectedVendorId =
-    (vendorId && vendorDirectory.some((vendor) => vendor.id === vendorId) ? vendorId : null) ??
+    (vendorId && vendorDirectory.some((vendor: VendorDirectoryItem) => vendor.id === vendorId)
+      ? vendorId
+      : null) ??
     vendorDirectory[0]?.id ??
     null;
   const vendorContext = selectedVendorId
@@ -70,6 +74,8 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
         }
       })
     : null;
+
+  type VendorServiceItem = NonNullable<typeof vendorContext>["services"][number];
 
   const where: ServiceRequestWhereInput =
     session.role === "provider"
@@ -173,7 +179,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
               bankAccountName: vendorContext.billingCapability?.bankAccountName ?? null,
               bankAccountNumber: vendorContext.billingCapability?.bankAccountNumber ?? null,
               bankSwiftCode: vendorContext.billingCapability?.bankSwiftCode ?? null,
-              services: vendorContext.services.map((service) => ({
+              services: vendorContext.services.map((service: VendorServiceItem) => ({
                 id: service.id,
                 title: service.title,
                 categoryId: service.categoryId,

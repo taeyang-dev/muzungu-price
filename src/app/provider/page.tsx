@@ -63,6 +63,8 @@ export default async function ProviderPage() {
     })
   ]);
 
+  type ProviderCategoryLink = NonNullable<typeof profile>["categories"][number];
+
   return (
     <ProviderDashboard
       billing={
@@ -127,7 +129,7 @@ export default async function ProviderPage() {
               contactPhone: profile.contactPhone,
               websiteUrl: profile.websiteUrl,
               yearsInBusiness: profile.yearsInBusiness,
-              categoryIds: profile.categories.map((entry) => entry.categoryId)
+              categoryIds: profile.categories.map((entry: ProviderCategoryLink) => entry.categoryId)
             }
           : null
       }

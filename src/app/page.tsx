@@ -212,6 +212,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     prisma.serviceCategory.findMany({ orderBy: { name: "asc" } })
   ]);
 
+  type ProviderItem = (typeof providers)[number];
+  type ProviderServiceItem = ProviderItem["services"][number];
+  type ProviderPriceItem = ProviderServiceItem["priceCards"][number];
+  type ProviderReviewItem = ProviderItem["reviews"][number];
+  type ProviderCategoryItem = ProviderItem["categories"][number];
+  type CategoryItem = (typeof categories)[number];
+
   return (
     <>
       <section className="panel section">
@@ -233,7 +240,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <label className="tiny">{tr(locale, "Category", "카테고리")}</label>
             <select className="select" name="category" defaultValue={category}>
               <option value="">{tr(locale, "All categories", "전체 카테고리")}</option>
-              {categories.map((item) => (
+              {categories.map((item: CategoryItem) => (
                 <option value={item.slug} key={item.id}>
                   {categoryLabel(locale, item.slug, item.name)}
                 </option>
@@ -287,23 +294,25 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       </section>
 
       <section className={`cards section vendor-results vendor-results--${viewMode}`}>
-        {providers.map((provider) => {
+        {providers.map((provider: ProviderItem) => {
           const approved = provider.verificationCases[0];
           const representative = provider.services
-            .flatMap((service) => service.priceCards)
-            .sort((a, b) => a.basePrice.comparedTo(b.basePrice))[0];
+            .flatMap((service: ProviderServiceItem) => service.priceCards)
+            .sort((a: ProviderPriceItem, b: ProviderPriceItem) => a.basePrice.comparedTo(b.basePrice))[0];
           const representativeMinOrder = extractMinimumOrder(locale, representative?.inclusions ?? null);
-          const hasCustomService = provider.services.some((service) =>
+          const hasCustomService = provider.services.some((service: ProviderServiceItem) =>
             isCustomOrderService(locale, service.title)
           );
-          const serviceWithImage = provider.services.find((service) => service.imageUrl);
+          const serviceWithImage = provider.services.find((service: ProviderServiceItem) => service.imageUrl);
           const serviceImage = serviceWithImage?.imageUrl
             ? serviceWithImage.imageUrl
             : getDefaultServiceImage(provider.services[0]?.category.slug);
           const averageRating =
             provider.reviews.length > 0
-              ? provider.reviews.reduce((sum, review) => sum + review.ratingOverall, 0) /
-                provider.reviews.length
+              ? provider.reviews.reduce(
+                  (sum: number, review: ProviderReviewItem) => sum + review.ratingOverall,
+                  0
+                ) / provider.reviews.length
               : null;
           const quotationStatus = provider.billingCapability?.quotationAvailable
             ? tr(locale, "Quotation available", "견적서 가능")
@@ -396,7 +405,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <p className="tiny vendor-category-line">
                 {tr(locale, "Categories", "카테고리")}:{" "}
                 {provider.categories
-                  .map((entry) => categoryLabel(locale, entry.category.slug, entry.category.name))
+                  .map((entry: ProviderCategoryItem) =>
+                    categoryLabel(locale, entry.category.slug, entry.category.name)
+                  )
                   .join(", ")}
               </p>
               {representativeMinOrder && (
