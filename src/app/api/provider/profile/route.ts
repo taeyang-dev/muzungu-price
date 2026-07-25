@@ -133,8 +133,12 @@ const updateSchema = profileSchemaBase.partial().superRefine((payload, ctx) => {
 const draftCreateSchema = profileSchemaBase.partial();
 const draftUpdateSchema = profileSchemaBase.partial();
 
+type ProfileFormInput = Partial<{
+  [K in keyof z.infer<typeof profileSchemaBase>]: z.infer<typeof profileSchemaBase>[K] | null | undefined;
+}>;
+
 function buildProfileData(
-  payload: Partial<z.infer<typeof profileSchemaBase>>,
+  payload: ProfileFormInput,
   isDraft: boolean
 ): {
   businessName: string;
@@ -169,7 +173,7 @@ function buildProfileData(
 
   return {
     businessName: payload.businessName?.trim() || (isDraft ? "임시 저장" : ""),
-    providerType: payload.providerType ?? "company",
+    providerType: (payload.providerType as z.infer<typeof providerTypeSchema> | null | undefined) ?? "company",
     providerTypeOther: payload.providerTypeOther?.trim() || null,
     businessActivitySector: payload.businessActivitySector ?? null,
     businessActivityCode: payload.businessActivityCode?.trim() || null,
@@ -263,7 +267,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       return fail("Provider profile does not exist", 404, "PROV_001");
     }
 
-    const draftData = isDraft ? buildProfileData({ ...profile, ...payload }, true) : null;
+    const draftData = isDraft ? buildProfileData(payload, true) : null;
 
     const updated = await prisma.providerProfile.update({
       where: { id: profile.id },
