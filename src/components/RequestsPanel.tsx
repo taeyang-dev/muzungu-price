@@ -661,7 +661,7 @@ export function RequestsPanel({
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label className="tiny">{tr(locale, "Request details", "요청 상세")}</label>
-                <textarea className="textarea" name="requirementText" required />
+                <textarea className="textarea" name="requirementText" />
               </div>
               <button className="btn" disabled={loading} type="submit">
                 {tr(locale, "Send quotation request", "견적서 요청 보내기")}
@@ -854,7 +854,7 @@ export function RequestsPanel({
               )}
               <div style={{ gridColumn: "1 / -1" }}>
                 <label className="tiny">{tr(locale, "Request details", "요청 상세")}</label>
-                <textarea className="textarea" name="requirementText" required />
+                <textarea className="textarea" name="requirementText" />
               </div>
               <button className="btn" disabled={loading} type="submit">
                 {tr(locale, "Send EBM request", "EBM 요청 보내기")}

@@ -22,7 +22,7 @@ const schema = z.object({
   documentFileName: z.string().optional(),
   requestedAmount: z.coerce.number().positive().optional(),
   title: z.string().min(3),
-  requirementText: z.string().min(10),
+  requirementText: z.string(),
   locationText: z.string().optional(),
   budgetMin: z.coerce.number().positive().optional(),
   budgetMax: z.coerce.number().positive().optional(),
