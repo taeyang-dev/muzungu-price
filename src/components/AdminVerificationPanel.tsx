@@ -105,17 +105,32 @@ export function AdminVerificationPanel({ cases, locale }: AdminVerificationPanel
             <p className="tiny muted">{tr(locale, "No submitted documents.", "제출된 문서가 없습니다.")}</p>
           ) : (
             <div className="grid">
-              {item.documents.map((document) => (
+              {item.documents.map((document) => {
+                const viewUrl = `/api/admin/verification-documents/${document.id}`;
+                const isImage = document.fileUrl.startsWith("data:image/");
+                return (
                 <div className="card" key={document.id}>
                   <strong>{document.docType}</strong>
                   <p className="tiny muted">
                     {tr(locale, "Status", "상태")}: {document.status}
                   </p>
-                  <a className="tiny" href={document.fileUrl} rel="noreferrer" target="_blank">
-                    {tr(locale, "View evidence", "증빙 보기")}
-                  </a>
+                  {isImage && (
+                    <a href={viewUrl} rel="noreferrer" target="_blank">
+                      <img
+                        alt={document.docType}
+                        src={viewUrl}
+                        style={{ display: "block", marginTop: "8px", maxHeight: "180px", maxWidth: "100%", borderRadius: "8px" }}
+                      />
+                    </a>
+                  )}
+                  <p style={{ marginTop: "8px", marginBottom: 0 }}>
+                    <a className="tiny" href={viewUrl} rel="noreferrer" target="_blank">
+                      {tr(locale, "View evidence", "증빙 보기")}
+                    </a>
+                  </p>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
 
