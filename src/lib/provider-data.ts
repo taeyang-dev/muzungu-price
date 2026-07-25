@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { ensureDefaultServiceCategories } from "@/lib/service-categories";
+import { ensureDefaultServiceCategories } from "@/lib/service-categories-server";
 
 export interface ProviderPageCategory {
   id: string;
