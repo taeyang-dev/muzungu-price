@@ -48,11 +48,6 @@ export default async function ProviderPage() {
     prisma.providerProfile.findUnique({
       where: { userId: session.userId },
       include: {
-        services: {
-          include: {
-            category: true
-          }
-        },
         categories: true,
         billingCapability: true,
         verificationCases: {
@@ -133,7 +128,6 @@ export default async function ProviderPage() {
             }
           : null
       }
-      services={profile?.services ?? []}
       verificationCaseId={profile?.verificationCases[0]?.id ?? null}
       verificationStatus={profile?.verificationCases[0]?.status ?? null}
     />
