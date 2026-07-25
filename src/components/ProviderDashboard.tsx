@@ -10,15 +10,6 @@ interface Category {
   name: string;
 }
 
-interface Service {
-  id: string;
-  title: string;
-  imageUrl?: string | null;
-  category?: {
-    name: string;
-  };
-}
-
 interface ProviderDashboardProps {
   categories: Category[];
   locale: Locale;
@@ -61,7 +52,6 @@ interface ProviderDashboardProps {
         categoryIds: string[];
       }
     | null;
-  services: Service[];
   verificationCaseId: string | null;
   verificationStatus: "pending" | "approved" | "rejected" | "on_hold" | null;
   billing:
@@ -92,7 +82,6 @@ export function ProviderDashboard({
   locale,
   categories,
   profile,
-  services,
   verificationCaseId,
   verificationStatus,
   billing
@@ -152,10 +141,8 @@ export function ProviderDashboard({
     { value: "tour_operations", labelEn: "Tour operations", labelKo: "투어 운영" },
     { value: "other", labelEn: "Other", labelKo: "기타" }
   ] as const;
-  const serviceCategoryOptions = [
-    ...categories.filter((category) => category.slug !== "other"),
-    ...categories.filter((category) => category.slug === "other")
-  ];
+  const marketplaceCategories = categories.filter((category) => category.slug !== "other");
+  const serviceCategoryOptions = marketplaceCategories;
 
   function togglePaymentMethod(method: string, checked: boolean): void {
     setSelectedPaymentMethods((current) => {
@@ -287,6 +274,72 @@ export function ProviderDashboard({
     event.currentTarget.reset();
   }
 
+  async function submitServiceWithPriceCard(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const servicePayload: Record<string, unknown> = {
+      categoryId: formData.get("categoryId"),
+      title: formData.get("title"),
+      description: formData.get("description") || undefined
+    };
+
+    const serviceImageFile = formData.get("serviceImageFile");
+    if (serviceImageFile instanceof File && serviceImageFile.size > 0) {
+      servicePayload.imageUrl = await fileToDataUrl(serviceImageFile);
+    }
+
+    const pricePayload = {
+      tier: "standard" as const,
+      currency: String(formData.get("currency") ?? "RWF"),
+      basePrice: formData.get("basePrice"),
+      unit: formData.get("unit"),
+      inclusions: formData.get("inclusions") || undefined,
+      exclusions: formData.get("exclusions") || undefined,
+      isPublic: formData.get("isPublic") === "on"
+    };
+
+    setLoading(true);
+    setError("");
+    setFeedback("");
+
+    const serviceResponse = await fetch("/api/provider/services", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(servicePayload)
+    });
+    const serviceData = (await serviceResponse.json()) as ApiResult & { data?: { id: string } };
+    if (!serviceResponse.ok) {
+      setLoading(false);
+      setError(serviceData.error?.message ?? tr(locale, "Failed to create service", "서비스 등록에 실패했습니다."));
+      return;
+    }
+
+    const serviceId = serviceData.data?.id;
+    if (!serviceId) {
+      setLoading(false);
+      setError(tr(locale, "Failed to create service", "서비스 등록에 실패했습니다."));
+      return;
+    }
+
+    const priceResponse = await fetch(`/api/provider/services/${serviceId}/price-cards`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(pricePayload)
+    });
+    const priceData = (await priceResponse.json()) as ApiResult;
+    setLoading(false);
+
+    if (!priceResponse.ok) {
+      setError(priceData.error?.message ?? tr(locale, "Service saved but price card failed", "서비스는 등록됐지만 가격 카드 추가에 실패했습니다."));
+      router.refresh();
+      return;
+    }
+
+    setFeedback(tr(locale, "Service and price card saved", "서비스와 가격 카드가 저장되었습니다."));
+    router.refresh();
+    event.currentTarget.reset();
+  }
+
   async function triggerVerification(): Promise<void> {
     setLoading(true);
     setError("");
@@ -385,15 +438,6 @@ export function ProviderDashboard({
             </select>
           </div>
           <div>
-            <label className="tiny">{tr(locale, "Business activity ISIC code", "주요 사업 ISIC 코드")}</label>
-            <input
-              className="input"
-              defaultValue={profile?.businessActivityCode ?? ""}
-              name="businessActivityCode"
-              placeholder="e.g. J6201"
-            />
-          </div>
-          <div>
             <label className="tiny">{tr(locale, "Business activity detail", "주요 사업 상세")}</label>
             <select
               className="select"
@@ -486,7 +530,7 @@ export function ProviderDashboard({
             <label className="tiny">{tr(locale, "Marketplace categories", "마켓플레이스 카테고리")}</label>
             <div className="category-checkbox-grid">
               <input name="categoryIds" type="hidden" value="" />
-              {categories.map((category) => (
+              {marketplaceCategories.map((category) => (
                 <label className="category-check" key={category.id}>
                   <input
                     defaultChecked={profile?.categoryIds.includes(category.id) ?? false}
@@ -682,209 +726,158 @@ export function ProviderDashboard({
             "아래 항목은 초기 등록 시 필수가 아니며, 추후 프로필에서 언제든 수정할 수 있습니다."
           )}
         </p>
-      </article>
 
-      <article className="panel">
-        <h2 style={{ marginTop: 0 }}>{tr(locale, "Optional public profile", "선택: 사용자 노출 프로필")}</h2>
-        {!profile && (
+        {!profile ? (
           <p className="tiny muted">
             {tr(
               locale,
-              "Save the required profile section first to enable this form.",
-              "먼저 필수 프로필을 저장하면 이 선택 폼을 사용할 수 있습니다."
+              "Save the required profile section first to enable the forms below.",
+              "먼저 위의 필수 프로필을 저장하면 아래 폼을 사용할 수 있습니다."
             )}
           </p>
-        )}
-        {profile && (
-          <form className="grid grid-3" onSubmit={(event) => submitJson(event, "/api/provider/profile", "PATCH")}>
-            <div>
-              <label className="tiny">{tr(locale, "One-line intro", "한줄 소개")}</label>
-              <input
-                className="input"
-                defaultValue={profile.tagline ?? ""}
-                name="tagline"
-                placeholder={tr(
-                  locale,
-                  "Example: Fast and trusted office electrical support.",
-                  "예시: 사무공간 전기 문제를 빠르고 정확하게 해결합니다."
-                )}
-              />
-            </div>
-            <div>
-              <label className="tiny">{tr(locale, "Website", "웹사이트 주소")}</label>
-              <input
-                className="input"
-                defaultValue={profile.websiteUrl ?? ""}
-                name="websiteUrl"
-                placeholder="https://"
-              />
-            </div>
-            <div>
-              <label className="tiny">{tr(locale, "Years in business", "업력(년)")}</label>
-              <input
-                className="input"
-                defaultValue={profile.yearsInBusiness ?? ""}
-                min={0}
-                name="yearsInBusiness"
-                type="number"
-              />
-            </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label className="tiny">{tr(locale, "Detailed description", "상세 소개")}</label>
-              <textarea
-                className="textarea"
-                defaultValue={profile.bio ?? ""}
-                name="bio"
-                placeholder={tr(
-                  locale,
-                  "Example: We provide fixed-price installation, maintenance, and emergency support with verified technicians.",
-                  "예시: 검증된 기술진이 정찰제 설치/정비/긴급출동 서비스를 제공합니다."
-                )}
-              />
-            </div>
-            <div>
-              <label className="tiny">{tr(locale, "Logo image attachment", "로고 이미지 첨부")}</label>
-              <input className="input" accept="image/*" name="logoFile" type="file" />
-            </div>
-            <div>
-              <label className="tiny">{tr(locale, "Cover image attachment", "커버 이미지 첨부")}</label>
-              <input className="input" accept="image/*" name="coverFile" type="file" />
-            </div>
-            <button className="btn" disabled={loading} type="submit">
-              {tr(locale, "Save optional profile", "선택 프로필 저장")}
-            </button>
-          </form>
-        )}
-      </article>
+        ) : (
+          <div className="grid" style={{ gap: "24px" }}>
+            <section>
+              <h3 style={{ marginTop: 0 }}>{tr(locale, "Public profile", "사용자 노출 프로필")}</h3>
+              <form className="grid grid-3" onSubmit={(event) => submitJson(event, "/api/provider/profile", "PATCH")}>
+                <div>
+                  <label className="tiny">{tr(locale, "One-line intro", "한줄 소개")}</label>
+                  <input
+                    className="input"
+                    defaultValue={profile.tagline ?? ""}
+                    name="tagline"
+                    placeholder={tr(
+                      locale,
+                      "Example: Fast and trusted office electrical support.",
+                      "예시: 사무공간 전기 문제를 빠르고 정확하게 해결합니다."
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="tiny">{tr(locale, "Website", "웹사이트 주소")}</label>
+                  <input
+                    className="input"
+                    defaultValue={profile.websiteUrl ?? ""}
+                    name="websiteUrl"
+                    placeholder="https://"
+                  />
+                </div>
+                <div>
+                  <label className="tiny">{tr(locale, "Years in business", "업력(년)")}</label>
+                  <input
+                    className="input"
+                    defaultValue={profile.yearsInBusiness ?? ""}
+                    min={0}
+                    name="yearsInBusiness"
+                    type="number"
+                  />
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label className="tiny">{tr(locale, "Detailed description", "상세 소개")}</label>
+                  <textarea
+                    className="textarea"
+                    defaultValue={profile.bio ?? ""}
+                    name="bio"
+                    placeholder={tr(
+                      locale,
+                      "Example: We provide fixed-price installation, maintenance, and emergency support with verified technicians.",
+                      "예시: 검증된 기술진이 정찰제 설치/정비/긴급출동 서비스를 제공합니다."
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="tiny">{tr(locale, "Logo image attachment", "로고 이미지 첨부")}</label>
+                  <input className="input" accept="image/*" name="logoFile" type="file" />
+                </div>
+                <div>
+                  <label className="tiny">{tr(locale, "Cover image attachment", "커버 이미지 첨부")}</label>
+                  <input className="input" accept="image/*" name="coverFile" type="file" />
+                </div>
+                <button className="btn" disabled={loading} type="submit">
+                  {tr(locale, "Save public profile", "노출 프로필 저장")}
+                </button>
+              </form>
+            </section>
 
-      <article className="panel">
-        <h2 style={{ marginTop: 0 }}>{tr(locale, "Create service", "서비스 등록")}</h2>
-        <p className="tiny muted">
-          {tr(
-            locale,
-            "Optional section — you can register services later and edit them anytime.",
-            "선택 항목입니다. 서비스 등록은 나중에 해도 되며, 추후 언제든 수정할 수 있습니다."
-          )}
-        </p>
-        <form className="grid grid-3" onSubmit={(event) => submitJson(event, "/api/provider/services", "POST")}>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <h3 style={{ margin: "0 0 8px 0" }}>{tr(locale, "Required", "필수")}</h3>
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Category", "카테고리")}</label>
-            <select className="select" name="categoryId" required>
-              <option value="">{tr(locale, "Choose category", "카테고리 선택")}</option>
-              {serviceCategoryOptions.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.slug === "other" ? tr(locale, "Other", "기타") : category.name}
-                </option>
-              ))}
-            </select>
-            <p className="tiny muted" style={{ marginTop: "6px", marginBottom: 0 }}>
-              {tr(
-                locale,
-                "If you choose Other, write the exact service type in Service name.",
-                "기타를 선택한 경우 서비스명에 구체적인 유형을 직접 입력해 주세요."
-              )}
-            </p>
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Title", "서비스명")}</label>
-            <input className="input" name="title" required />
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">{tr(locale, "Description (optional)", "상세 설명 (선택)")}</label>
-            <textarea
-              className="textarea"
-              name="description"
-              placeholder={tr(
-                locale,
-                "Example: Includes on-site setup, safety checklist, and post-service support.",
-                "예시: 현장 설치, 안전 점검표, 서비스 이후 지원이 포함됩니다."
-              )}
-            />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Service image attachment", "서비스 이미지 첨부")}</label>
-            <input className="input" accept="image/*" name="serviceImageFile" type="file" />
-          </div>
-          <button className="btn" disabled={loading} type="submit">
-            {tr(locale, "Add service", "서비스 추가")}
-          </button>
-        </form>
-      </article>
+            <div className="hr" />
 
-      <article className="panel">
-        <h2 style={{ marginTop: 0 }}>{tr(locale, "Add price card to a service", "서비스 가격 카드 추가")}</h2>
-        <p className="tiny muted">
-          {tr(
-            locale,
-            "Optional section — you can add pricing later from your profile.",
-            "선택 항목입니다. 가격은 나중에 프로필에서 추가해도 됩니다."
-          )}
-        </p>
-        <form
-          className="grid grid-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const formData = new FormData(event.currentTarget);
-            const serviceId = formData.get("serviceId");
-            if (!serviceId || typeof serviceId !== "string") {
-              setError(tr(locale, "Select a service first.", "먼저 서비스를 선택해 주세요."));
-              return;
-            }
-            void submitJson(
-              event,
-              `/api/provider/services/${serviceId}/price-cards`,
-              "POST"
-            );
-          }}
-        >
-          <div>
-            <label className="tiny">{tr(locale, "Service", "서비스")}</label>
-            <select className="select" name="serviceId" required>
-              <option value="">{tr(locale, "Choose service", "서비스 선택")}</option>
-              {services.map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.title}
-                </option>
-              ))}
-            </select>
+            <section>
+              <h3 style={{ marginTop: 0 }}>{tr(locale, "Service and price card", "서비스 및 가격 카드")}</h3>
+              <p className="tiny muted">
+                {tr(
+                  locale,
+                  "Register a service and its public price in one step.",
+                  "서비스 정보와 공개 가격을 한 번에 등록할 수 있습니다."
+                )}
+              </p>
+              <form className="grid grid-3" onSubmit={(event) => void submitServiceWithPriceCard(event)}>
+                <div>
+                  <label className="tiny">{tr(locale, "Category", "카테고리")}</label>
+                  <select className="select" name="categoryId" required>
+                    <option value="">{tr(locale, "Choose category", "카테고리 선택")}</option>
+                    {serviceCategoryOptions.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="tiny">{tr(locale, "Title", "서비스명")}</label>
+                  <input className="input" name="title" required />
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label className="tiny">{tr(locale, "Description (optional)", "상세 설명 (선택)")}</label>
+                  <textarea
+                    className="textarea"
+                    name="description"
+                    placeholder={tr(
+                      locale,
+                      "Example: Includes on-site setup, safety checklist, and post-service support.",
+                      "예시: 현장 설치, 안전 점검표, 서비스 이후 지원이 포함됩니다."
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="tiny">{tr(locale, "Service image attachment", "서비스 이미지 첨부")}</label>
+                  <input className="input" accept="image/*" name="serviceImageFile" type="file" />
+                </div>
+                <div>
+                  <label className="tiny">{tr(locale, "Currency", "통화")}</label>
+                  <input className="input" defaultValue="RWF" maxLength={3} name="currency" required />
+                </div>
+                <div>
+                  <label className="tiny">{tr(locale, "Price", "가격")}</label>
+                  <input className="input" min={1} name="basePrice" required type="number" />
+                </div>
+                <div>
+                  <label className="tiny">{tr(locale, "Unit", "단위")}</label>
+                  <select className="select" defaultValue="per_project" name="unit">
+                    <option value="per_hour">{tr(locale, "Per hour", "시간당")}</option>
+                    <option value="per_day">{tr(locale, "Per day", "일당")}</option>
+                    <option value="per_project">{tr(locale, "Per project", "프로젝트당")}</option>
+                    <option value="per_person">{tr(locale, "Per person", "인당")}</option>
+                  </select>
+                </div>
+                <label className="tiny">
+                  <input defaultChecked name="isPublic" type="checkbox" />{" "}
+                  {tr(locale, "Publicly visible", "공개 노출")}
+                </label>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label className="tiny">{tr(locale, "Inclusions", "포함 항목")}</label>
+                  <textarea className="textarea" name="inclusions" />
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label className="tiny">{tr(locale, "Exclusions", "미포함 항목")}</label>
+                  <textarea className="textarea" name="exclusions" />
+                </div>
+                <button className="btn" disabled={loading} type="submit">
+                  {tr(locale, "Add service and price", "서비스·가격 등록")}
+                </button>
+              </form>
+            </section>
           </div>
-          <input name="tier" type="hidden" value="standard" />
-          <div>
-            <label className="tiny">{tr(locale, "Currency", "통화")}</label>
-            <input className="input" defaultValue="RWF" maxLength={3} name="currency" required />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Price", "가격")}</label>
-            <input className="input" min={1} name="basePrice" required type="number" />
-          </div>
-          <div>
-            <label className="tiny">{tr(locale, "Unit", "단위")}</label>
-            <select className="select" defaultValue="per_project" name="unit">
-              <option value="per_hour">{tr(locale, "Per hour", "시간당")}</option>
-              <option value="per_day">{tr(locale, "Per day", "일당")}</option>
-              <option value="per_project">{tr(locale, "Per project", "프로젝트당")}</option>
-              <option value="per_person">{tr(locale, "Per person", "인당")}</option>
-            </select>
-          </div>
-          <label className="tiny">
-            <input defaultChecked name="isPublic" type="checkbox" />{" "}
-            {tr(locale, "Publicly visible", "공개 노출")}
-          </label>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">{tr(locale, "Inclusions", "포함 항목")}</label>
-            <textarea className="textarea" name="inclusions" />
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">{tr(locale, "Exclusions", "미포함 항목")}</label>
-            <textarea className="textarea" name="exclusions" />
-          </div>
-          <button className="btn" disabled={loading} type="submit">
-            {tr(locale, "Add price card", "가격 카드 추가")}
-          </button>
-        </form>
+        )}
       </article>
 
       <article className="panel">

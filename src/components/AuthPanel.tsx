@@ -114,10 +114,6 @@ export function AuthPanel({ locale }: AuthPanelProps) {
       <h1 style={{ marginTop: 0 }}>
         {mode === "login" ? tr(locale, "Sign in", "로그인") : tr(locale, "Create account", "계정 만들기")}
       </h1>
-      <p className="muted tiny">
-        {tr(locale, "Demo users after seeding", "시드 데이터 데모 계정")}: admin@muzunguprice.com /
-        admin1234 · electric.pro@example.com / provider1234
-      </p>
       {error && <div className="flash error">{error}</div>}
       <form className="grid" onSubmit={submit}>
         {mode === "register" && (
