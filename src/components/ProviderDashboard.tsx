@@ -118,7 +118,6 @@ export function ProviderDashboard({
   const [selectedRepresentativeIdType, setSelectedRepresentativeIdType] = useState<string>(
     profile?.representativeIdType ?? "national_id"
   );
-  const [selectedDocumentType, setSelectedDocumentType] = useState("rdb_certificate");
   const [cityInput, setCityInput] = useState(profile?.city ?? "");
   const [countryInput, setCountryInput] = useState(profile?.country ?? "Rwanda");
   const [completedActions, setCompletedActions] = useState<Partial<Record<SaveAction, boolean>>>({});
@@ -126,6 +125,8 @@ export function ProviderDashboard({
   const [uploadedDocumentRowIds, setUploadedDocumentRowIds] = useState<Set<string>>(new Set());
   const [uploadingDocumentRowId, setUploadingDocumentRowId] = useState<string | null>(null);
   const verificationApproved = verificationStatus === "approved";
+  const reviewRequested = Boolean(verificationCaseId);
+  const canSetupProfileAndServices = Boolean(profile && reviewRequested);
 
   const providerTypeOptions = [
     { value: "company", labelEn: "Company", labelKo: "법인 업체" },
@@ -417,7 +418,7 @@ export function ProviderDashboard({
       setError(data.error?.message ?? tr(locale, "Failed to start document review", "서류 검토 시작에 실패했습니다."));
       return;
     }
-    setFeedback(tr(locale, "Document review started.", "서류 검토가 시작되었습니다."));
+    setFeedback(tr(locale, "Review request submitted.", "심사 시작 요청이 완료되었습니다."));
     router.refresh();
   }
 
@@ -681,7 +682,6 @@ export function ProviderDashboard({
             />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">{tr(locale, "Marketplace categories", "마켓플레이스 카테고리")}</label>
             <div className="category-checkbox-grid">
               <input name="categoryIds" type="hidden" value="" />
               {marketplaceCategories.map((category) => (
@@ -879,8 +879,8 @@ export function ProviderDashboard({
         <p className="tiny muted">
           {tr(
             locale,
-            "Start document review and upload supporting files here.",
-            "서류 검토를 시작하고 증빙 파일을 여기서 업로드하세요."
+            "After saving your profile, request a review and upload supporting documents.",
+            "프로필 저장 후 심사를 요청하고 증빙 서류를 업로드하세요."
           )}
         </p>
         <div className="grid grid-3">
@@ -911,20 +911,43 @@ export function ProviderDashboard({
             </ul>
           </div>
         </div>
+        {!profile && (
+          <p className="tiny muted">
+            {tr(
+              locale,
+              "Save your profile above before requesting a review.",
+              "심사를 요청하려면 먼저 위에서 프로필을 저장해 주세요."
+            )}
+          </p>
+        )}
+        {profile && !verificationCaseId && (
+          <button className="btn" disabled={loading} onClick={() => void triggerVerification()} type="button">
+            {loading
+              ? tr(locale, "Submitting review request...", "심사 요청 중...")
+              : tr(locale, "Request review start", "심사 시작 요청")}
+          </button>
+        )}
         {hasActiveReview && (
           <p className="tiny muted" style={{ marginBottom: "8px" }}>
             {tr(
               locale,
-              "Your document review is in progress. You can upload more files below.",
-              "서류 검토가 진행 중입니다. 아래에서 추가 파일을 업로드할 수 있습니다."
+              "Your review is in progress. Upload documents below and prepare your public profile while you wait.",
+              "심사가 진행 중입니다. 아래에서 서류를 업로드하고, 대기하는 동안 노출 프로필을 준비할 수 있습니다."
             )}
           </p>
         )}
-        <button className="btn" disabled={loading || hasActiveReview} onClick={() => void triggerVerification()} type="button">
-          {verificationCaseId
-            ? tr(locale, "Start new review request", "새 서류 검토 시작")
-            : tr(locale, "Start document review", "서류 검토 시작")}
-        </button>
+        {verificationStatus === "approved" && (
+          <p className="tiny muted" style={{ marginBottom: "8px" }}>
+            {tr(locale, "Review approved. Your business is visible on the marketplace.", "심사가 승인되었습니다. 홈 화면에 업체가 노출됩니다.")}
+          </p>
+        )}
+        {verificationStatus === "rejected" && (
+          <button className="btn" disabled={loading} onClick={() => void triggerVerification()} type="button">
+            {loading
+              ? tr(locale, "Submitting review request...", "심사 요청 중...")
+              : tr(locale, "Request review again", "심사 재요청")}
+          </button>
+        )}
         {verificationCaseId && hasActiveReview && (
           <div className="grid" style={{ gap: "16px", marginTop: "16px" }}>
             {documentRows.map((row) => {
@@ -1003,15 +1026,21 @@ export function ProviderDashboard({
         )}
       </article>
 
-      {verificationApproved && profile ? (
+      {canSetupProfileAndServices ? (
         <article className="panel">
           <h2 style={{ marginTop: 0 }}>{tr(locale, "Profile and service setup", "프로필 및 서비스 설정")}</h2>
           <p className="tiny muted">
-            {tr(
-              locale,
-              "Your business verification is approved. You can now set up your public profile and services.",
-              "업체 검증이 승인되었습니다. 이제 노출 프로필과 서비스를 설정할 수 있습니다."
-            )}
+            {verificationApproved
+              ? tr(
+                  locale,
+                  "Your business verification is approved and visible on the marketplace.",
+                  "업체 검증이 승인되었습니다. 홈 화면에 노출됩니다."
+                )
+              : tr(
+                  locale,
+                  "Prepare your public profile and services while review is in progress. You will appear on the home page only after approval.",
+                  "심사가 진행되는 동안 노출 프로필과 서비스를 미리 준비할 수 있습니다. 홈 화면 노출은 승인 후에만 됩니다."
+                )}
           </p>
 
           <div className="grid" style={{ gap: "24px" }}>

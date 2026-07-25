@@ -16,7 +16,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const city = normalizeCityInput(search.get("city"));
 
   const where: ProviderProfileWhereInput = {
-    isActive: true
+    isActive: true,
+    verificationCases: {
+      some: { status: "approved" }
+    }
   };
   if (city) {
     where.city = { contains: city };

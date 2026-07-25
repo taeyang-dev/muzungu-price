@@ -278,6 +278,11 @@ export default async function ProviderDetailPage({
     notFound();
   }
 
+  const isApproved = provider.verificationCases.length > 0;
+  if (!isApproved) {
+    notFound();
+  }
+
   type ProviderServiceItem = (typeof provider.services)[number];
   type ProviderPriceItem = ProviderServiceItem["priceCards"][number];
   type ProviderCategoryItem = (typeof provider.categories)[number];
