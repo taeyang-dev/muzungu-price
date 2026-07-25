@@ -49,8 +49,12 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
       : Promise.resolve([])
   );
 
+  type VendorDirectoryItem = (typeof vendorDirectory)[number];
+
   const selectedVendorId =
-    (vendorId && vendorDirectory.some((vendor) => vendor.id === vendorId) ? vendorId : null) ??
+    (vendorId && vendorDirectory.some((vendor: VendorDirectoryItem) => vendor.id === vendorId)
+      ? vendorId
+      : null) ??
     vendorDirectory[0]?.id ??
     null;
   const vendorContext = selectedVendorId
@@ -70,6 +74,8 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
         }
       })
     : null;
+
+  type VendorServiceItem = NonNullable<typeof vendorContext>["services"][number];
 
   const where: ServiceRequestWhereInput =
     session.role === "provider"
@@ -93,11 +99,14 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
     orderBy: { createdAt: "desc" }
   });
 
+  type ServiceRequestListItem = (typeof requests)[number];
+  type ServiceRequestOffer = ServiceRequestListItem["offers"][number];
+
   return (
     <RequestsPanel
       key={`requests-${selectedVendorId ?? "none"}-${session.role}`}
       locale={locale}
-      requests={requests.map((item) => ({
+      requests={requests.map((item: ServiceRequestListItem) => ({
         id: item.id,
         title: item.title,
         requirementText: item.requirementText,
@@ -125,7 +134,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
         category: {
           name: item.category.name
         },
-        offers: item.offers.map((offer) => ({
+        offers: item.offers.map((offer: ServiceRequestOffer) => ({
           id: offer.id,
           providerName: offer.providerProfile.businessName,
           quotedPrice: decimalToNumber(offer.quotedPrice) ?? 0,
@@ -170,7 +179,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
               bankAccountName: vendorContext.billingCapability?.bankAccountName ?? null,
               bankAccountNumber: vendorContext.billingCapability?.bankAccountNumber ?? null,
               bankSwiftCode: vendorContext.billingCapability?.bankSwiftCode ?? null,
-              services: vendorContext.services.map((service) => ({
+              services: vendorContext.services.map((service: VendorServiceItem) => ({
                 id: service.id,
                 title: service.title,
                 categoryId: service.categoryId,

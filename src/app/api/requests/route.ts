@@ -154,8 +154,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     orderBy: { createdAt: "desc" }
   });
 
+  type ServiceRequestListItem = (typeof requests)[number];
+  type ServiceRequestOffer = ServiceRequestListItem["offers"][number];
+
   return ok(
-    requests.map((item) => ({
+    requests.map((item: ServiceRequestListItem) => ({
       id: item.id,
       title: item.title,
       requirementText: item.requirementText,
@@ -181,7 +184,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       requestedAmount: decimalToNumber(item.requestedAmount),
       status: item.status,
       category: item.category,
-      offers: item.offers.map((offer) => ({
+      offers: item.offers.map((offer: ServiceRequestOffer) => ({
         id: offer.id,
         providerName: offer.providerProfile.businessName,
         quotedPrice: decimalToNumber(offer.quotedPrice),

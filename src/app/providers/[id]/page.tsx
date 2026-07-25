@@ -278,8 +278,15 @@ export default async function ProviderDetailPage({
     notFound();
   }
 
+  type ProviderServiceItem = (typeof provider.services)[number];
+  type ProviderPriceItem = ProviderServiceItem["priceCards"][number];
+  type ProviderCategoryItem = (typeof provider.categories)[number];
+  type ProviderReviewItem = (typeof provider.reviews)[number];
+
   const verification = provider.verificationCases[0];
-  const topServices = provider.services.slice(0, 3).map((service) => localizeCopy(locale, service.title));
+  const topServices = provider.services
+    .slice(0, 3)
+    .map((service: ProviderServiceItem) => localizeCopy(locale, service.title));
   const billingStatus = getBillingStatusText(locale, provider.billingCapability);
 
   return (
@@ -345,7 +352,7 @@ export default async function ProviderDetailPage({
             : tr(locale, "No business overview provided yet.", "업체 소개가 아직 등록되지 않았습니다.")}
         </p>
         <div className="provider-chip-row">
-          {provider.categories.map((entry) => (
+          {provider.categories.map((entry: ProviderCategoryItem) => (
             <span className="badge" key={entry.id}>
               {entry.category.name}
             </span>
@@ -430,7 +437,7 @@ export default async function ProviderDetailPage({
           <p className="muted">{tr(locale, "No services published yet.", "등록된 서비스가 없습니다.")}</p>
         )}
         <div className="cards">
-          {provider.services.map((service) => (
+          {provider.services.map((service: ProviderServiceItem) => (
             <div className="card service-detail-card" key={service.id}>
               <FallbackImage
                 alt={`${localizeCopy(locale, service.title)} visual`}
@@ -453,7 +460,7 @@ export default async function ProviderDetailPage({
               {service.priceCards.length === 0 && (
                 <p className="tiny muted">{tr(locale, "No price cards yet.", "가격 카드가 없습니다.")}</p>
               )}
-              {service.priceCards.map((price) => (
+              {service.priceCards.map((price: ProviderPriceItem) => (
                 <div className="price-row" key={price.id}>
                   <details className="price-breakdown">
                     <summary className="row tiny">
@@ -504,7 +511,7 @@ export default async function ProviderDetailPage({
         {provider.reviews.length === 0 && (
           <p className="muted">{tr(locale, "No reviews yet.", "아직 리뷰가 없습니다.")}</p>
         )}
-        {provider.reviews.map((review) => (
+        {provider.reviews.map((review: ProviderReviewItem) => (
           <div className="review-item" key={review.id} style={{ marginBottom: "12px" }}>
             <strong>{review.ratingOverall}/5</strong>
             <div className="reviewer-line">

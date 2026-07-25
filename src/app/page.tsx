@@ -186,7 +186,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       : {})
   };
 
-  const [providers, categories] = await Promise.all([
+  const loadProviders = () =>
     prisma.providerProfile.findMany({
       where,
       include: {
@@ -208,12 +208,42 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         reviews: true
       },
       orderBy: { createdAt: "desc" }
-    }),
-    prisma.serviceCategory.findMany({ orderBy: { name: "asc" } })
-  ]);
+    });
+
+  const loadCategories = () => prisma.serviceCategory.findMany({ orderBy: { name: "asc" } });
+
+  let providers: Awaited<ReturnType<typeof loadProviders>> = [];
+  let categories: Awaited<ReturnType<typeof loadCategories>> = [];
+  let databaseError: string | null = null;
+
+  try {
+    [providers, categories] = await Promise.all([loadProviders(), loadCategories()]);
+  } catch (error) {
+    databaseError = error instanceof Error ? error.message : "Database unavailable";
+  }
+
+  type ProviderItem = (typeof providers)[number];
+  type ProviderServiceItem = ProviderItem["services"][number];
+  type ProviderPriceItem = ProviderServiceItem["priceCards"][number];
+  type ProviderReviewItem = ProviderItem["reviews"][number];
+  type ProviderCategoryItem = ProviderItem["categories"][number];
+  type CategoryItem = (typeof categories)[number];
 
   return (
     <>
+      {databaseError ? (
+        <section className="panel section">
+          <h2 style={{ marginTop: 0 }}>{tr(locale, "Marketplace unavailable", "마켓플레이스를 불러올 수 없습니다")}</h2>
+          <p className="muted">
+            {tr(
+              locale,
+              "The app cannot reach the database. In Vercel, set DATABASE_URL / DIRECT_URL / AUTH_SECRET, push the schema with npm run db:push, then redeploy.",
+              "데이터베이스에 연결할 수 없습니다. Vercel에 DATABASE_URL / DIRECT_URL / AUTH_SECRET을 설정하고 npm run db:push 후 재배포하세요."
+            )}
+          </p>
+          <p className="tiny muted">{databaseError}</p>
+        </section>
+      ) : null}
       <section className="panel section">
         <form className="grid grid-3" method="GET">
           <div style={{ gridColumn: "1 / -1" }}>
@@ -233,7 +263,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <label className="tiny">{tr(locale, "Category", "카테고리")}</label>
             <select className="select" name="category" defaultValue={category}>
               <option value="">{tr(locale, "All categories", "전체 카테고리")}</option>
-              {categories.map((item) => (
+              {categories.map((item: CategoryItem) => (
                 <option value={item.slug} key={item.id}>
                   {categoryLabel(locale, item.slug, item.name)}
                 </option>
@@ -287,23 +317,25 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       </section>
 
       <section className={`cards section vendor-results vendor-results--${viewMode}`}>
-        {providers.map((provider) => {
+        {providers.map((provider: ProviderItem) => {
           const approved = provider.verificationCases[0];
           const representative = provider.services
-            .flatMap((service) => service.priceCards)
-            .sort((a, b) => a.basePrice.comparedTo(b.basePrice))[0];
+            .flatMap((service: ProviderServiceItem) => service.priceCards)
+            .sort((a: ProviderPriceItem, b: ProviderPriceItem) => a.basePrice.comparedTo(b.basePrice))[0];
           const representativeMinOrder = extractMinimumOrder(locale, representative?.inclusions ?? null);
-          const hasCustomService = provider.services.some((service) =>
+          const hasCustomService = provider.services.some((service: ProviderServiceItem) =>
             isCustomOrderService(locale, service.title)
           );
-          const serviceWithImage = provider.services.find((service) => service.imageUrl);
+          const serviceWithImage = provider.services.find((service: ProviderServiceItem) => service.imageUrl);
           const serviceImage = serviceWithImage?.imageUrl
             ? serviceWithImage.imageUrl
             : getDefaultServiceImage(provider.services[0]?.category.slug);
           const averageRating =
             provider.reviews.length > 0
-              ? provider.reviews.reduce((sum, review) => sum + review.ratingOverall, 0) /
-                provider.reviews.length
+              ? provider.reviews.reduce(
+                  (sum: number, review: ProviderReviewItem) => sum + review.ratingOverall,
+                  0
+                ) / provider.reviews.length
               : null;
           const quotationStatus = provider.billingCapability?.quotationAvailable
             ? tr(locale, "Quotation available", "견적서 가능")
@@ -396,7 +428,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <p className="tiny vendor-category-line">
                 {tr(locale, "Categories", "카테고리")}:{" "}
                 {provider.categories
-                  .map((entry) => categoryLabel(locale, entry.category.slug, entry.category.name))
+                  .map((entry: ProviderCategoryItem) =>
+                    categoryLabel(locale, entry.category.slug, entry.category.name)
+                  )
                   .join(", ")}
               </p>
               {representativeMinOrder && (
