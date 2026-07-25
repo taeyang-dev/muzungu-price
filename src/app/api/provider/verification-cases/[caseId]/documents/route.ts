@@ -47,6 +47,9 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     if (verificationCase.providerProfile.userId !== auth.session.userId) {
       return fail("Insufficient permissions", 403, "AUTH_002");
     }
+    if (!["draft", "pending", "on_hold"].includes(verificationCase.status)) {
+      return fail("Documents cannot be uploaded for this review status", 400, "VER_005");
+    }
 
     const document = await prisma.verificationDocument.create({
       data: {

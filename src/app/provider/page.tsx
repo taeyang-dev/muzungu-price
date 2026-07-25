@@ -52,7 +52,10 @@ export default async function ProviderPage() {
         billingCapability: true,
         verificationCases: {
           orderBy: { createdAt: "desc" },
-          take: 1
+          take: 1,
+          include: {
+            documents: true
+          }
         }
       }
     })
@@ -129,6 +132,7 @@ export default async function ProviderPage() {
           : null
       }
       verificationCaseId={profile?.verificationCases[0]?.id ?? null}
+      verificationDocumentCount={profile?.verificationCases[0]?.documents.length ?? 0}
       verificationStatus={profile?.verificationCases[0]?.status ?? null}
     />
   );

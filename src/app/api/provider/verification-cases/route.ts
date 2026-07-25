@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { fail, ok } from "@/lib/api";
 import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
+import { ensureDraftVerificationCase } from "@/lib/verification-case";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const auth = await requireRole(request, ["provider"]);
@@ -13,23 +14,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     where: { userId: auth.session.userId }
   });
   if (!profile) {
-    return fail("Provider profile does not exist", 404, "PROV_001");
+    return fail("Save your profile before uploading documents.", 404, "PROV_001");
   }
 
-  const active = await prisma.verificationCase.findFirst({
+  const activeReview = await prisma.verificationCase.findFirst({
     where: {
       providerProfileId: profile.id,
       status: { in: ["pending", "on_hold"] }
     }
   });
 
-  if (active) {
-    return fail("A document review is already in progress", 409, "VER_002");
+  if (activeReview) {
+    return ok(activeReview);
   }
 
-  const created = await prisma.verificationCase.create({
-    data: { providerProfileId: profile.id }
-  });
-
-  return ok(created);
+  const draft = await ensureDraftVerificationCase(profile.id);
+  return ok(draft);
 }

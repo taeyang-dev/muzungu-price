@@ -138,6 +138,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const where = {
     isActive: true,
+    verificationCases: {
+      some: { status: "approved" as const }
+    },
     ...(searchTerms.length > 0
       ? {
           OR: searchTerms.flatMap((term) => [
