@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ensureDefaultServiceCategories } from "@/lib/service-categories";
 
 export interface ProviderPageCategory {
   id: string;
@@ -73,11 +74,7 @@ export interface ProviderPageData {
 }
 
 export async function loadProviderPageData(userId: string): Promise<ProviderPageData> {
-  await prisma.serviceCategory.upsert({
-    where: { slug: "other" },
-    update: { name: "Other Services" },
-    create: { slug: "other", name: "Other Services" }
-  });
+  await ensureDefaultServiceCategories();
 
   const [categories, profile] = await Promise.all([
     prisma.serviceCategory.findMany({ orderBy: { name: "asc" } }),

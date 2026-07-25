@@ -1,9 +1,10 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Locale, tr } from "@/lib/i18n";
 import { ProviderPageCategory, ProviderPageProfile } from "@/lib/provider-data";
+import { isMarketplaceCategorySlug } from "@/lib/service-categories";
 
 interface ApiResult {
   error?: { message: string };
@@ -31,8 +32,15 @@ export function ProviderProfileServiceSetup({
   const [loading, setLoading] = useState(false);
   const [completedActions, setCompletedActions] = useState<Partial<Record<SaveAction, boolean>>>({});
   const router = useRouter();
-  const marketplaceCategories = categories.filter((category) => category.slug !== "other");
-  const serviceCategoryOptions = marketplaceCategories;
+  const marketplaceCategories = categories.filter((category) => isMarketplaceCategorySlug(category.slug));
+  const vendorCategories = useMemo(
+    () =>
+      profile.categoryIds.length > 0
+        ? marketplaceCategories.filter((category) => profile.categoryIds.includes(category.id))
+        : marketplaceCategories,
+    [marketplaceCategories, profile.categoryIds]
+  );
+  const usesVendorScope = profile.categoryIds.length > 0;
 
   async function fileToDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -250,18 +258,33 @@ export function ProviderProfileServiceSetup({
         <section>
           <h3 style={{ marginTop: 0 }}>{tr(locale, "Service and price card", "서비스 및 가격 카드")}</h3>
           <p className="tiny muted">
-            {tr(
-              locale,
-              "Register a service and its public price in one step.",
-              "서비스 정보와 공개 가격을 한 번에 등록할 수 있습니다."
-            )}
+            {usesVendorScope
+              ? tr(
+                  locale,
+                  "Choose one of your vendor registration categories for this service. Create separate services for each offering.",
+                  "벤더 등록 시 선택한 업종 카테고리 중 이 서비스에 맞는 항목을 고르세요. 서비스마다 하나씩 등록하면 됩니다."
+                )
+              : tr(
+                  locale,
+                  "Pick the closest marketplace category. If your business spans many areas, select multiple categories in vendor registration first.",
+                  "가장 가까운 마켓플레이스 카테고리를 선택하세요. 업종이 넓다면 벤더 등록에서 여러 카테고리를 먼저 선택해 주세요."
+                )}
           </p>
+          {vendorCategories.length === 0 ? (
+            <div className="flash error">
+              {tr(
+                locale,
+                "No categories available yet. Update your vendor registration and select at least one marketplace category.",
+                "선택 가능한 카테고리가 없습니다. 벤더 등록에서 마켓플레이스 카테고리를 1개 이상 선택해 주세요."
+              )}
+            </div>
+          ) : (
           <form className="grid grid-3" onSubmit={(event) => void submitServiceWithPriceCard(event)}>
             <div>
               <label className="tiny">{tr(locale, "Category", "카테고리")}</label>
               <select className="select" name="categoryId" required>
                 <option value="">{tr(locale, "Choose category", "카테고리 선택")}</option>
-                {serviceCategoryOptions.map((category) => (
+                {vendorCategories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
@@ -320,6 +343,7 @@ export function ProviderProfileServiceSetup({
               {getSaveButtonLabel("servicePrice", loading, "Add service and price", "서비스·가격 등록")}
             </button>
           </form>
+          )}
         </section>
       </div>
     </article>

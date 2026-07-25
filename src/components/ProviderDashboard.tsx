@@ -4,6 +4,7 @@ import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Locale, tr } from "@/lib/i18n";
 import { normalizeCityInput, normalizeCountryInput } from "@/lib/location";
+import { isMarketplaceCategorySlug } from "@/lib/service-categories";
 
 interface Category {
   id: string;
@@ -175,7 +176,7 @@ export function ProviderDashboard({
     { value: "tour_operations", labelEn: "Tour operations", labelKo: "투어 운영" },
     { value: "other", labelEn: "Other", labelKo: "기타" }
   ] as const;
-  const marketplaceCategories = categories.filter((category) => category.slug !== "other");
+  const marketplaceCategories = categories.filter((category) => isMarketplaceCategorySlug(category.slug));
 
   function getUploadButtonLabel(rowId: string): string {
     if (uploadingDocumentRowId === rowId) {

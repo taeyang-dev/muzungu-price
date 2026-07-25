@@ -26,6 +26,7 @@ async function main() {
     { slug: "art-experience", name: "Art Experience" },
     { slug: "furniture", name: "Furniture Making" },
     { slug: "electronics", name: "Electronics Sales" },
+    { slug: "general-services", name: "General Services" },
     { slug: "other", name: "Other Services" }
   ];
 
