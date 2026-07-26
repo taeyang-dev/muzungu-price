@@ -401,14 +401,7 @@ export function RequestsPanel({
       serviceId: service?.id,
       categoryId: resolvedCategoryId,
       title: titleByType[type],
-      requirementText:
-        requirementText ||
-        (type === "quotation"
-          ? `Please issue an official quotation for this service: ${serviceTitleForRequest}.`
-          : type === "purchase"
-            ? `Please proceed with purchase for: ${serviceTitleForRequest}.`
-            : `Please issue EBM document for this transaction (${serviceTitleForRequest}).`),
-      locationText: null as string | null,
+      requirementText,
       currency: service?.baseCurrency || "RWF",
       needsQuotation: type === "quotation",
       needsEbm: type === "ebm",
