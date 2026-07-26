@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Locale, localizeCopy, tr } from "@/lib/i18n";
 import {
@@ -100,6 +100,29 @@ interface ApiResult {
 }
 
 type VendorRequestType = "quotation" | "purchase" | "ebm";
+
+const ACTIVE_REQUEST_STATUSES = new Set(["open", "negotiating", "booked"]);
+
+function hasDuplicateVendorRequest(
+  requests: RequestItem[],
+  input: {
+    providerProfileId: string;
+    serviceId?: string;
+    requestType: VendorRequestType;
+  }
+): boolean {
+  if (!input.serviceId) {
+    return false;
+  }
+
+  return requests.some(
+    (item) =>
+      item.providerProfileId === input.providerProfileId &&
+      item.serviceId === input.serviceId &&
+      item.requestType === input.requestType &&
+      ACTIVE_REQUEST_STATUSES.has(item.status)
+  );
+}
 
 function toTermLabel(locale: Locale, value: string): string {
   const map: Record<string, { en: string; ko: string; fr: string; rw: string }> = {
@@ -204,6 +227,7 @@ export function RequestsPanel({
     vendorContext?.paymentMethods[0] ?? "bank_transfer"
   );
   const [uploadingByRequestId, setUploadingByRequestId] = useState<Record<string, boolean>>({});
+  const submittingVendorRequestRef = useRef(false);
   const availablePaymentTerms = ["prepaid", "postpaid", "deposit"];
   const availablePaymentMethods =
     vendorContext && vendorContext.paymentMethods.length > 0
@@ -341,7 +365,7 @@ export function RequestsPanel({
     type: VendorRequestType
   ): Promise<void> {
     event.preventDefault();
-    if (!vendorContext) {
+    if (!vendorContext || loading) {
       return;
     }
 
@@ -389,6 +413,25 @@ export function RequestsPanel({
 
     const serviceTitleForRequest = service ? localizeCopy(locale, service.title) : customServiceName;
 
+    if (
+      service?.id &&
+      hasDuplicateVendorRequest(requests, {
+        providerProfileId: vendorContext.id,
+        serviceId: service.id,
+        requestType: type
+      })
+    ) {
+      setError(tr(locale, "This request already exists.", "이미 요청한 건 입니다."));
+      return;
+    }
+
+    if (submittingVendorRequestRef.current) {
+      setError(tr(locale, "This request already exists.", "이미 요청한 건 입니다."));
+      return;
+    }
+
+    submittingVendorRequestRef.current = true;
+
     const titleByType: Record<VendorRequestType, string> = {
       quotation: `${vendorContext.businessName} ${serviceTitleForRequest} quotation request`,
       purchase: `${vendorContext.businessName} ${serviceTitleForRequest} purchase request`,
@@ -417,28 +460,47 @@ export function RequestsPanel({
     setLoading(true);
     setError("");
     setFeedback("");
-    const response = await fetch("/api/requests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const result = (await response.json()) as ApiResult;
-    setLoading(false);
 
-    if (!response.ok) {
-      setError(result.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
-      return;
+    try {
+      const response = await fetch("/api/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const result = (await response.json()) as ApiResult;
+
+      if (!response.ok) {
+        if (result.error?.code === "REQ_409") {
+          setError(tr(locale, "This request already exists.", "이미 요청한 건 입니다."));
+          return;
+        }
+        setError(result.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
+        return;
+      }
+
+      const successMessageByType: Record<VendorRequestType, { en: string; ko: string }> = {
+        quotation: {
+          en: "Request submitted. You will be notified when the vendor uploads quotation/EBM documents.",
+          ko: "요청이 접수되었습니다. 업체가 견적서/EBM 문서를 올리면 알림이 표시됩니다."
+        },
+        purchase: {
+          en: "Purchase request complete.",
+          ko: "구매/진행 요청 완료"
+        },
+        ebm: {
+          en: "Request submitted. You will be notified when the vendor uploads quotation/EBM documents.",
+          ko: "요청이 접수되었습니다. 업체가 견적서/EBM 문서를 올리면 알림이 표시됩니다."
+        }
+      };
+      const successMessage = successMessageByType[type];
+
+      setFeedback(tr(locale, successMessage.en, successMessage.ko));
+      router.refresh();
+      event.currentTarget.reset();
+    } finally {
+      setLoading(false);
+      submittingVendorRequestRef.current = false;
     }
-
-    setFeedback(
-      tr(
-        locale,
-        "Request submitted. You will be notified when the vendor uploads quotation/EBM documents.",
-        "요청이 접수되었습니다. 업체가 견적서/EBM 문서를 올리면 알림이 표시됩니다."
-      )
-    );
-    router.refresh();
-    event.currentTarget.reset();
   }
 
   function saveRenamedDocument(id: string): void {
