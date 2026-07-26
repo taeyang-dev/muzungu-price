@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LogoutButton } from "@/components/LogoutButton";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
-import { getRequestedDocumentCounts } from "@/lib/request-documents-storage";
 import {
   getVendorStorageEventName,
   readChatVendors,
@@ -51,7 +50,10 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
   const [favorites, setFavorites] = useState<VendorReference[]>([]);
   const [recent, setRecent] = useState<VendorReference[]>([]);
   const [chatVendors, setChatVendors] = useState<VendorReference[]>([]);
-  const [requestDocCounts, setRequestDocCounts] = useState({ quotation: 0, ebm: 0 });
+  const [requestCounts, setRequestCounts] = useState({
+    sent: { total: 0, quotation: 0, ebm: 0 },
+    received: { total: 0, quotation: 0, ebm: 0 }
+  });
   const [unreadInboxCount, setUnreadInboxCount] = useState(0);
 
   useEffect(() => {
@@ -59,7 +61,36 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
       setFavorites(readFavoriteVendors());
       setRecent(readRecentVendors());
       setChatVendors(readChatVendors());
-      setRequestDocCounts(getRequestedDocumentCounts());
+    }
+
+    async function refreshRequestCounts(): Promise<void> {
+      if (!session) {
+        setRequestCounts({
+          sent: { total: 0, quotation: 0, ebm: 0 },
+          received: { total: 0, quotation: 0, ebm: 0 }
+        });
+        return;
+      }
+      try {
+        const response = await fetch("/api/requests/counts");
+        if (!response.ok) {
+          return;
+        }
+        const payload = (await response.json()) as {
+          data?: {
+            sent: { total: number; quotation: number; ebm: number };
+            received: { total: number; quotation: number; ebm: number };
+          };
+        };
+        if (payload.data) {
+          setRequestCounts(payload.data);
+        }
+      } catch {
+        setRequestCounts({
+          sent: { total: 0, quotation: 0, ebm: 0 },
+          received: { total: 0, quotation: 0, ebm: 0 }
+        });
+      }
     }
 
     async function refreshInbox(): Promise<void> {
@@ -78,14 +109,17 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
     }
 
     refresh();
+    void refreshRequestCounts();
     void refreshInbox();
     const eventName = getVendorStorageEventName();
     window.addEventListener(eventName, refresh);
     window.addEventListener("storage", refresh);
+    window.addEventListener("requests-updated", () => void refreshRequestCounts());
     window.addEventListener("inbox-updated", () => void refreshInbox());
     return () => {
       window.removeEventListener(eventName, refresh);
       window.removeEventListener("storage", refresh);
+      window.removeEventListener("requests-updated", () => void refreshRequestCounts());
       window.removeEventListener("inbox-updated", () => void refreshInbox());
     };
   }, [session]);
@@ -180,9 +214,6 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
                 {tr(locale, "Inbox", "쪽지함")} ({unreadInboxCount})
               </Link>
             )}
-            <Link href="/requests" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "Requests", "요청서")} ({requestDocCounts.quotation + requestDocCounts.ebm})
-            </Link>
             <Link href="/" onClick={() => setMenuOpen(false)}>
               {tr(locale, "Browse vendors", "업체 둘러보기")}
             </Link>
@@ -195,24 +226,24 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
         </section>
 
         <section className="drawer-section">
+          <h3>{tr(locale, "Requests", "요청서")}</h3>
+          <nav className="drawer-nav">
+            <Link href="/requests?box=sent" onClick={() => setMenuOpen(false)}>
+              {tr(locale, "Sent", "발신")} ({requestCounts.sent.total})
+            </Link>
+            <Link href="/requests?box=received" onClick={() => setMenuOpen(false)}>
+              {tr(locale, "Received", "수신")} ({requestCounts.received.total})
+            </Link>
+          </nav>
+        </section>
+
+        <section className="drawer-section">
           <h3>{tr(locale, "Messages with vendors", "업체와 대화")}</h3>
           <VendorList
             items={chatVendors}
             emptyText={tr(locale, "No active chats yet.", "대화중인 업체가 없습니다.")}
             hrefSuffix="#vendor-chat"
           />
-        </section>
-
-        <section className="drawer-section">
-          <h3>{tr(locale, "Request documents", "요청 문서")}</h3>
-          <nav className="drawer-nav">
-            <Link href="/requests#requested-documents" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "Requested quotations", "요청한 견적서")} ({requestDocCounts.quotation})
-            </Link>
-            <Link href="/requests#requested-documents" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "Requested EBM", "요청한 EBM")} ({requestDocCounts.ebm})
-            </Link>
-          </nav>
         </section>
 
         <section className="drawer-section">

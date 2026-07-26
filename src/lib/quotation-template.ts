@@ -5,6 +5,9 @@ export interface QuotationLineItem {
   unitPrice: number;
 }
 
+export type QuotationInclusiveNote = "none" | "vat" | "transport" | "vat_transport" | "other";
+export type QuotationPaymentMethod = "bank_transfer" | "momo";
+
 export interface QuotationTemplateData {
   businessName: string;
   email: string;
@@ -13,11 +16,15 @@ export interface QuotationTemplateData {
   quotationDate: string;
   projectName: string;
   lineItems: QuotationLineItem[];
-  transportInclusive: boolean;
-  vatInclusive: boolean;
+  inclusiveNote: QuotationInclusiveNote;
+  inclusiveNoteOther: string;
+  paymentMethod: QuotationPaymentMethod;
   bankAccountName: string;
   bankAccountNumber: string;
   bankName: string;
+  bankSwiftCode: string;
+  momoAccountName: string;
+  momoNumber: string;
   signatureDataUrl?: string;
 }
 
@@ -26,9 +33,13 @@ export interface QuotationTemplateDefaults {
   email: string;
   phone: string;
   address: string;
+  paymentMethod?: QuotationPaymentMethod;
   bankName: string;
   bankAccountName: string;
   bankAccountNumber: string;
+  bankSwiftCode?: string;
+  momoAccountName?: string;
+  momoNumber?: string;
   projectName?: string;
 }
 
@@ -36,13 +47,14 @@ function formatMoney(value: number): string {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+function defaultPaymentMethod(defaults: QuotationTemplateDefaults): QuotationPaymentMethod {
+  if (defaults.paymentMethod) {
+    return defaults.paymentMethod;
+  }
+  if (defaults.momoNumber?.trim() && !defaults.bankAccountNumber?.trim()) {
+    return "momo";
+  }
+  return "bank_transfer";
 }
 
 export function createEmptyLineItem(): QuotationLineItem {
@@ -68,11 +80,15 @@ export function createQuotationTemplateData(
     quotationDate,
     projectName: defaults.projectName ?? "",
     lineItems: [createEmptyLineItem()],
-    transportInclusive: true,
-    vatInclusive: true,
+    inclusiveNote: "none",
+    inclusiveNoteOther: "",
+    paymentMethod: defaultPaymentMethod(defaults),
     bankAccountName: defaults.bankAccountName,
     bankAccountNumber: defaults.bankAccountNumber,
-    bankName: defaults.bankName
+    bankName: defaults.bankName,
+    bankSwiftCode: defaults.bankSwiftCode ?? "",
+    momoAccountName: defaults.momoAccountName ?? "",
+    momoNumber: defaults.momoNumber ?? ""
   };
 }
 
@@ -80,86 +96,161 @@ export function calculateQuotationTotal(lineItems: QuotationLineItem[]): number 
   return lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 }
 
-export function buildQuotationHtml(data: QuotationTemplateData): string {
-  const rows = data.lineItems
-    .map((item, index) => {
-      const total = item.quantity * item.unitPrice;
-      return `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${escapeHtml(item.description)}</td>
-          <td style="text-align:right">${formatMoney(item.unitPrice)}</td>
-          <td style="text-align:right">${formatMoney(total)}</td>
-        </tr>
-      `;
-    })
-    .join("");
-
-  const total = calculateQuotationTotal(data.lineItems);
-  const signatureBlock = data.signatureDataUrl
-    ? `<div style="margin-top:28px"><p style="margin:0 0 8px;font-size:13px">Authorized signature</p><img src="${data.signatureDataUrl}" alt="Signature" style="max-width:220px;max-height:90px;border-bottom:1px solid #222" /></div>`
-    : "";
-
-  return `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Quotation - ${escapeHtml(data.businessName)}</title>
-    <style>
-      body { font-family: Arial, sans-serif; color: #111; margin: 32px; }
-      h1 { font-size: 28px; margin: 18px 0 8px; letter-spacing: 1px; }
-      .muted { color: #444; font-size: 14px; line-height: 1.5; }
-      table { width: 100%; border-collapse: collapse; margin-top: 18px; }
-      th, td { border: 1px solid #ccc; padding: 10px; vertical-align: top; font-size: 14px; }
-      th { background: #f5f5f5; text-align: left; }
-      .meta { margin-top: 16px; font-size: 14px; }
-      .notes { margin-top: 14px; font-size: 14px; }
-      .total { margin-top: 16px; font-size: 18px; font-weight: 700; }
-      .bank { margin-top: 24px; font-size: 14px; line-height: 1.6; }
-    </style>
-  </head>
-  <body>
-    <div class="muted">
-      <strong style="font-size:20px;color:#111">${escapeHtml(data.businessName)}</strong><br />
-      Email: ${escapeHtml(data.email)}<br />
-      Phone: ${escapeHtml(data.phone)}<br />
-      ${escapeHtml(data.address)}
-    </div>
-    <h1>QUOTATION</h1>
-    <div class="meta">
-      <div><strong>Date:</strong> ${escapeHtml(data.quotationDate)}</div>
-      <div><strong>Project:</strong> ${escapeHtml(data.projectName)}</div>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th style="width:48px">No</th>
-          <th>Description</th>
-          <th style="width:140px;text-align:right">Unit Price (RWF)</th>
-          <th style="width:140px;text-align:right">Total (RWF)</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows}
-      </tbody>
-    </table>
-    <div class="notes">
-      ${data.transportInclusive ? "<div>Transport Inclusive</div>" : ""}
-      ${data.vatInclusive ? "<div>VAT Inclusive</div>" : ""}
-    </div>
-    <div class="total">TOTAL ${formatMoney(total)}</div>
-    <div class="bank">
-      <strong>Bank Details</strong><br />
-      Account name: ${escapeHtml(data.bankAccountName)}<br />
-      Account Number: ${escapeHtml(data.bankAccountNumber)}<br />
-      Bank Name: ${escapeHtml(data.bankName)}
-    </div>
-    <p style="margin-top:24px">Thank you for your business!</p>
-    ${signatureBlock}
-  </body>
-</html>`;
+export function getInclusiveNoteText(data: QuotationTemplateData): string {
+  switch (data.inclusiveNote) {
+    case "vat":
+      return "VAT Inclusive";
+    case "transport":
+      return "Transport Inclusive";
+    case "vat_transport":
+      return "VAT & Transport Inclusive";
+    case "other":
+      return data.inclusiveNoteOther.trim();
+    default:
+      return "";
+  }
 }
 
-export function buildQuotationDataUrl(data: QuotationTemplateData): string {
-  return `data:text/html;charset=utf-8,${encodeURIComponent(buildQuotationHtml(data))}`;
+function buildQuotationFileName(businessName: string): string {
+  const safeName = businessName.trim().replace(/\s+/g, "_").slice(0, 40) || "vendor";
+  return `Quotation_${safeName}.pdf`;
+}
+
+export async function buildQuotationPdfDocument(
+  data: QuotationTemplateData
+): Promise<{ dataUrl: string; fileName: string }> {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF();
+  const left = 14;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const right = pageWidth - 14;
+  let y = 18;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text(data.businessName, left, y);
+  y += 8;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  const headerLines = [
+    data.email ? `Email: ${data.email}` : "",
+    data.phone ? `Phone: ${data.phone}` : "",
+    data.address
+  ].filter(Boolean);
+
+  for (const line of headerLines) {
+    doc.text(line, left, y);
+    y += 5;
+  }
+
+  y += 4;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.text("QUOTATION", left, y);
+  y += 10;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.text(`Date: ${data.quotationDate}`, left, y);
+  y += 6;
+  doc.text(`Project: ${data.projectName}`, left, y);
+  y += 10;
+
+  const colNo = left;
+  const colDescription = left + 12;
+  const colUnit = right - 58;
+  const colTotal = right - 28;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("No", colNo, y);
+  doc.text("Description", colDescription, y);
+  doc.text("Unit Price", colUnit, y, { align: "right" });
+  doc.text("Total", colTotal, y, { align: "right" });
+  y += 4;
+  doc.line(left, y, right, y);
+  y += 6;
+
+  doc.setFont("helvetica", "normal");
+  for (const [index, item] of data.lineItems.entries()) {
+    const lineTotal = item.quantity * item.unitPrice;
+    const descriptionLines = doc.splitTextToSize(item.description || "-", 95);
+    const rowHeight = Math.max(descriptionLines.length * 5, 6);
+
+    if (y + rowHeight > 270) {
+      doc.addPage();
+      y = 20;
+    }
+
+    doc.text(String(index + 1), colNo, y);
+    doc.text(descriptionLines, colDescription, y);
+    doc.text(formatMoney(item.unitPrice), colUnit, y, { align: "right" });
+    doc.text(formatMoney(lineTotal), colTotal, y, { align: "right" });
+    y += rowHeight + 4;
+  }
+
+  y += 2;
+  doc.line(left, y, right, y);
+  y += 8;
+
+  const inclusiveText = getInclusiveNoteText(data);
+  if (inclusiveText) {
+    doc.setFont("helvetica", "bold");
+    doc.text("Remarks", left, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    const remarkLines = doc.splitTextToSize(inclusiveText, right - left);
+    doc.text(remarkLines, left, y);
+    y += remarkLines.length * 5 + 4;
+  }
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text(`TOTAL RWF ${formatMoney(calculateQuotationTotal(data.lineItems))}`, left, y);
+  y += 12;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(data.paymentMethod === "momo" ? "MoMo Details" : "Bank Details", left, y);
+  y += 7;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+
+  const paymentLines =
+    data.paymentMethod === "momo"
+      ? [
+          `Account name: ${data.momoAccountName || "-"}`,
+          `MoMo number: ${data.momoNumber || "-"}`
+        ]
+      : [
+          `Account name: ${data.bankAccountName || "-"}`,
+          `Account number: ${data.bankAccountNumber || "-"}`,
+          `Bank name: ${data.bankName || "-"}`,
+          data.bankSwiftCode ? `SWIFT: ${data.bankSwiftCode}` : ""
+        ].filter(Boolean);
+
+  for (const line of paymentLines) {
+    doc.text(line, left, y);
+    y += 5;
+  }
+
+  y += 6;
+  doc.text("Thank you for your business!", left, y);
+  y += 10;
+
+  if (data.signatureDataUrl) {
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFont("helvetica", "normal");
+    doc.text("Authorized signature", left, y);
+    y += 4;
+    doc.addImage(data.signatureDataUrl, "PNG", left, y, 55, 22);
+  }
+
+  return {
+    dataUrl: doc.output("datauristring"),
+    fileName: buildQuotationFileName(data.businessName)
+  };
 }

@@ -16,10 +16,25 @@ interface UploadAttachment {
   dataUrl: string;
 }
 
+export interface VendorPaymentInfo {
+  businessName: string;
+  phone?: string;
+  tinNumber?: string;
+  paymentMethods?: string;
+  momoAccountName?: string;
+  momoNumber?: string;
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankSwiftCode?: string;
+}
+
 interface VendorChatBoxProps {
   vendorId: string;
   vendorName: string;
   locale: Locale;
+  canSendPaymentInfo?: boolean;
+  paymentInfo?: VendorPaymentInfo | null;
 }
 
 interface ChatAttachment extends UploadAttachment {
@@ -109,6 +124,38 @@ function defaultDisplayLanguage(locale: Locale): DisplayLang {
   return "en";
 }
 
+function buildPaymentInfoMessage(info: VendorPaymentInfo, locale: Locale): string {
+  const lines = [
+    tr(locale, "Payment information", "결제 정보"),
+    `${tr(locale, "Company", "회사명")}: ${info.businessName}`
+  ];
+
+  if (info.phone?.trim()) {
+    lines.push(`${tr(locale, "Phone", "휴대폰")}: ${info.phone}`);
+  }
+  if (info.tinNumber?.trim()) {
+    lines.push(`TIN: ${info.tinNumber}`);
+  }
+  if (info.paymentMethods?.trim()) {
+    lines.push(`${tr(locale, "Payment methods", "결제 방법")}: ${info.paymentMethods}`);
+  }
+  if (info.momoNumber?.trim()) {
+    lines.push(
+      `MoMo: ${info.momoNumber}${info.momoAccountName ? ` (${info.momoAccountName})` : ""}`
+    );
+  }
+  if (info.bankAccountNumber?.trim()) {
+    lines.push(`${tr(locale, "Bank", "은행")}: ${info.bankName ?? "-"}`);
+    lines.push(`${tr(locale, "Account name", "예금주")}: ${info.bankAccountName ?? "-"}`);
+    lines.push(`${tr(locale, "Account number", "계좌번호")}: ${info.bankAccountNumber}`);
+    if (info.bankSwiftCode?.trim()) {
+      lines.push(`SWIFT: ${info.bankSwiftCode}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
 async function translateText(text: string, targetLanguage: StoredLang): Promise<string> {
   if (!text.trim()) {
     return "";
@@ -147,7 +194,13 @@ function createTextAttachment(id: string, name: string, content: string): ChatAt
   };
 }
 
-export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxProps) {
+export function VendorChatBox({
+  vendorId,
+  vendorName,
+  locale,
+  canSendPaymentInfo = false,
+  paymentInfo = null
+}: VendorChatBoxProps) {
   const initialMessage = useMemo<ChatMessage[]>(
     () => [
       {
@@ -160,7 +213,7 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
               ? `Bonjour, ici ${vendorName}. Partagez votre demande et nous répondrons rapidement avec les informations de prix.`
               : locale === "rw"
                 ? `Muraho, aha ni ${vendorName}. Tanga ubusabe bwawe tugusubize vuba hamwe n'ibiciro.`
-            : `Hi, this is ${vendorName}. Share your request and we will respond quickly with pricing details.`,
+                : `Hi, this is ${vendorName}. Share your request and we will respond quickly with pricing details.`,
         timestamp: "welcome"
       }
     ],
@@ -179,6 +232,7 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const [attachmentNotice, setAttachmentNotice] = useState("");
   const [saveNotice, setSaveNotice] = useState("");
+  const [paymentInfoSent, setPaymentInfoSent] = useState(false);
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -372,6 +426,46 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
     );
   }
 
+  async function appendVendorMessage(text: string, attachments?: ChatAttachment[]): Promise<void> {
+    const now = new Date().toISOString();
+    const vendorMessage: ChatMessage = {
+      id: `vendor-${now}`,
+      sender: "vendor",
+      text,
+      timestamp: now,
+      attachments
+    };
+
+    const targetLanguages: StoredLang[] = ["en", "ko", "rw"];
+    const vendorTranslations = await Promise.all(
+      targetLanguages.map((lang) => translateText(vendorMessage.text, lang))
+    );
+    vendorMessage.translations = {
+      en: vendorTranslations[0],
+      ko: vendorTranslations[1],
+      rw: vendorTranslations[2]
+    };
+
+    setMessages((current) => [...current, vendorMessage]);
+    recordChatVendor({ id: vendorId, name: vendorName });
+  }
+
+  async function sendPaymentInfo(): Promise<void> {
+    if (!paymentInfo || paymentInfoSent) {
+      return;
+    }
+
+    const text = buildPaymentInfoMessage(paymentInfo, locale);
+    const attachment = createTextAttachment(
+      `payment-info-${Date.now()}`,
+      "payment-information.txt",
+      text
+    );
+    await appendVendorMessage(text, [attachment]);
+    setPaymentInfoSent(true);
+    setSaveNotice(tr(locale, "Payment information sent.", "결제 정보를 전송했습니다."));
+  }
+
   async function sendMessage(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const trimmed = input.trim();
@@ -475,6 +569,20 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
             </div>
           </div>
           <div className="chat-widget-body">
+            {canSendPaymentInfo && paymentInfo && (
+              <div className="chat-payment-actions">
+                <button
+                  className="btn secondary"
+                  disabled={paymentInfoSent}
+                  onClick={() => void sendPaymentInfo()}
+                  type="button"
+                >
+                  {paymentInfoSent
+                    ? tr(locale, "Payment info sent", "결제 정보 전송 완료")
+                    : tr(locale, "Send payment information", "결제 정보 보내기")}
+                </button>
+              </div>
+            )}
             <p className="tiny muted chat-helper">
               {tr(
                 locale,
@@ -497,7 +605,7 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
                       ? languageLabels[lang].fr
                       : locale === "rw"
                         ? languageLabels[lang].rw
-                      : languageLabels[lang].en}
+                        : languageLabels[lang].en}
                 </button>
               ))}
             </div>
@@ -543,7 +651,7 @@ export function VendorChatBox({ vendorId, vendorName, locale }: VendorChatBoxPro
                             ? languageLabels[lang].fr
                             : locale === "rw"
                               ? languageLabels[lang].rw
-                            : languageLabels[lang].en}
+                              : languageLabels[lang].en}
                       </button>
                     ))}
                   </div>

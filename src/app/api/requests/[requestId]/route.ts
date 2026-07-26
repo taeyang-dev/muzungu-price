@@ -95,7 +95,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
     select: {
       id: true,
       requesterUserId: true,
-      requestType: true
+      requestType: true,
+      title: true,
+      providerProfileId: true,
+      providerProfile: {
+        select: { userId: true, businessName: true }
+      },
+      requester: {
+        select: { name: true }
+      }
     }
   });
 
@@ -116,13 +124,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
       return fail("No update payload provided", 400, "VAL_001");
     }
 
+    const purchaseCode = payload.purchaseCode?.trim();
     const updated = await prisma.serviceRequest.update({
       where: { id: requestId },
       data: {
-        purchaseCode: payload.purchaseCode?.trim() || undefined,
-        organizationTinNumber: payload.organizationTinNumber?.trim() || undefined
+        purchaseCode: purchaseCode || undefined,
+        organizationTinNumber: payload.organizationTinNumber?.trim() || undefined,
+        purchaseCodeUpdatedAt: purchaseCode ? new Date() : undefined
       }
     });
+
+    if (purchaseCode && serviceRequest.providerProfile?.userId) {
+      const { sendInboxMessage } = await import("@/lib/inbox");
+      await sendInboxMessage({
+        recipientUserId: serviceRequest.providerProfile.userId,
+        senderUserId: auth.session.userId,
+        subject: `Purchase code updated: ${serviceRequest.title}`,
+        body: [
+          `${serviceRequest.requester?.name ?? "Customer"} updated the purchase code.`,
+          `Purchase code: ${purchaseCode}`,
+          "Open Received requests to view the latest code."
+        ].join("\n")
+      });
+    }
 
     return ok(updated);
   } catch (error) {

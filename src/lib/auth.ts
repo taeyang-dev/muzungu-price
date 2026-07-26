@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify, SignJWT, JWTPayload } from "jose";
+import { prisma } from "@/lib/prisma";
 
 export type AppRole = "customer" | "provider" | "org_buyer" | "admin";
 
@@ -59,6 +60,41 @@ export async function getSession(): Promise<SessionPayload | null> {
     return null;
   }
   return verifySession(token);
+}
+
+export async function writeSessionCookie(session: SessionPayload): Promise<void> {
+  const store = await cookies();
+  const token = await signSession(session);
+  store.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7
+  });
+}
+
+export async function getSessionForApp(): Promise<SessionPayload | null> {
+  const session = await getSession();
+  if (!session) {
+    return null;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { role: true }
+  });
+
+  if (!user || user.role === session.role) {
+    return session;
+  }
+
+  const aligned: SessionPayload = {
+    ...session,
+    role: user.role
+  };
+  await writeSessionCookie(aligned);
+  return aligned;
 }
 
 export async function getSessionFromRequest(

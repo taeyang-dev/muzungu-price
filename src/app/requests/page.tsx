@@ -1,24 +1,42 @@
 import Link from "next/link";
-import { decimalToNumber } from "@/lib/api";
-import { getSession } from "@/lib/auth";
+import { getSessionForApp, writeSessionCookie, type SessionPayload } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RequestsPanel } from "@/components/RequestsPanel";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { tr } from "@/lib/i18n";
+import {
+  buildReceivedRequestsWhere,
+  buildSentRequestsWhere,
+  loadVendorAccessForUser
+} from "@/lib/service-request-scope";
+import { mapServiceRequestItem, serviceRequestInclude } from "@/lib/service-request-mapper";
 
-type ServiceRequestWhereInput = NonNullable<
-  Parameters<typeof prisma.serviceRequest.findMany>[0]
->["where"];
+export const dynamic = "force-dynamic";
+
+type RequestBoxFilter = "sent" | "received";
+type RequestTypeFilter = "all" | "quotation" | "ebm";
+
+function parseBoxFilter(value: string | null): RequestBoxFilter {
+  return value === "received" ? "received" : "sent";
+}
+
+function parseTypeFilter(value: string | null): RequestTypeFilter {
+  if (value === "quotation" || value === "ebm") {
+    return value;
+  }
+  return "all";
+}
 
 interface RequestsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export default async function RequestsPage({ searchParams }: RequestsPageProps) {
-  const session = await getSession();
+  const session = await getSessionForApp();
   const locale = await getLocaleFromCookies();
   const params = await searchParams;
-  const vendorId = typeof params.vendorId === "string" ? params.vendorId : null;
+  const boxFilter = parseBoxFilter(typeof params.box === "string" ? params.box : null);
+  const typeFilter = parseTypeFilter(typeof params.type === "string" ? params.type : null);
 
   if (!session) {
     return (
@@ -27,8 +45,8 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
         <p>
           {tr(
             locale,
-            "Please sign in to create requests or submit offers.",
-            "요청서를 만들거나 오퍼를 제출하려면 로그인해 주세요."
+            "Please sign in to view and manage your requests.",
+            "요청 내역을 보고 관리하려면 로그인해 주세요."
           )}
         </p>
         <Link className="btn" href="/auth">
@@ -38,129 +56,46 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
     );
   }
 
-  const canCreateVendorRequests = true;
-
-  const vendorDirectory = await (
-    canCreateVendorRequests
-      ? prisma.providerProfile.findMany({
-          select: { id: true, businessName: true },
-          orderBy: { businessName: "asc" }
-        })
-      : Promise.resolve([])
+  const { dbRole, providerProfileId, roleUpdated } = await loadVendorAccessForUser(
+    session.userId,
+    session.email
   );
 
-  type VendorDirectoryItem = (typeof vendorDirectory)[number];
+  let effectiveSession: SessionPayload = session;
+  if (roleUpdated && dbRole === "provider") {
+    effectiveSession = { ...session, role: "provider" };
+    await writeSessionCookie(effectiveSession);
+  }
 
-  const selectedVendorId =
-    (vendorId && vendorDirectory.some((vendor: VendorDirectoryItem) => vendor.id === vendorId)
-      ? vendorId
-      : null) ??
-    vendorDirectory[0]?.id ??
-    null;
-  const vendorContext = selectedVendorId
-    ? await prisma.providerProfile.findUnique({
-        where: { id: selectedVendorId },
-        include: {
-          services: {
-            include: {
-              category: true,
-              priceCards: {
-                where: { isPublic: true },
-                orderBy: { basePrice: "asc" }
-              }
-            }
-          },
-          billingCapability: true
-        }
-      })
-    : null;
-
-  type VendorServiceItem = NonNullable<typeof vendorContext>["services"][number];
-
-  const where: ServiceRequestWhereInput =
-    session.role === "provider"
-      ? { OR: [{ status: "open" }, { status: "negotiating" }] }
-      : { requesterUserId: session.userId };
+  const where =
+    boxFilter === "sent"
+      ? buildSentRequestsWhere(session.userId)
+      : providerProfileId
+        ? buildReceivedRequestsWhere(providerProfileId)
+        : { id: "__none__" };
 
   const requests = await prisma.serviceRequest.findMany({
     where,
-    include: {
-      category: true,
-      providerProfile: true,
-      service: true,
-      offers: {
-        include: {
-          providerProfile: true
-        },
-        orderBy: { createdAt: "desc" }
-      },
-      booking: true
-    },
+    include: serviceRequestInclude,
     orderBy: { createdAt: "desc" }
   });
 
-  const providerSelf =
-    session.role === "provider"
-      ? await prisma.providerProfile.findUnique({
-          where: { userId: session.userId },
-          include: { billingCapability: true }
-        })
-      : null;
-
-  type ServiceRequestListItem = (typeof requests)[number];
-  type ServiceRequestOffer = ServiceRequestListItem["offers"][number];
+  const providerSelf = providerProfileId
+    ? await prisma.providerProfile.findUnique({
+        where: { id: providerProfileId },
+        include: { billingCapability: true }
+      })
+    : null;
 
   return (
     <RequestsPanel
-      key={`requests-${selectedVendorId ?? "none"}-${session.role}`}
+      key={`requests-${boxFilter}-${typeFilter}-${providerProfileId ?? "none"}`}
+      boxFilter={boxFilter}
       locale={locale}
-      requests={requests.map((item: ServiceRequestListItem) => ({
-        id: item.id,
-        title: item.title,
-        requirementText: item.requirementText,
-        locationText: item.locationText,
-        budgetMin: decimalToNumber(item.budgetMin),
-        budgetMax: decimalToNumber(item.budgetMax),
-        currency: item.currency,
-        needsQuotation: item.needsQuotation,
-        needsEbm: item.needsEbm,
-        requestType: item.requestType,
-        providerProfileId: item.providerProfileId,
-        providerName: item.providerProfile?.businessName ?? null,
-        serviceId: item.serviceId,
-        serviceTitle: item.service?.title ?? null,
-        organizationName: item.organizationName,
-        organizationTinNumber: item.organizationTinNumber,
-        purchaseCode: item.purchaseCode,
-        paymentTerm: item.paymentTerm,
-        paymentMethod: item.paymentMethod,
-        paymentNote: item.paymentNote,
-        paymentDueAt: item.paymentDueAt?.toISOString() ?? null,
-        documentFileName: item.documentFileName,
-        requestedAmount: decimalToNumber(item.requestedAmount),
-        status: item.status,
-        category: {
-          name: item.category.name
-        },
-        offers: item.offers.map((offer: ServiceRequestOffer) => ({
-          id: offer.id,
-          providerName: offer.providerProfile.businessName,
-          quotedPrice: decimalToNumber(offer.quotedPrice) ?? 0,
-          currency: offer.currency,
-          status: offer.status,
-          canIssueQuotation: offer.canIssueQuotation,
-          canIssueEbm: offer.canIssueEbm
-        })),
-        booking: item.booking
-          ? {
-              id: item.booking.id,
-              status: item.booking.status,
-              finalPrice: decimalToNumber(item.booking.finalPrice) ?? 0,
-              currency: item.booking.currency
-            }
-          : null
-      }))}
-      role={session.role}
+      mode="manage"
+      requests={requests.map(mapServiceRequestItem)}
+      role={effectiveSession.role}
+      typeFilter={typeFilter}
       providerSelf={
         providerSelf
           ? {
@@ -168,49 +103,17 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
               email: providerSelf.contactEmail ?? providerSelf.representativeEmail ?? "",
               phone: providerSelf.contactPhone ?? providerSelf.representativePhone ?? "",
               address: [providerSelf.city, providerSelf.country].filter(Boolean).join(", "),
+              paymentMethod: providerSelf.billingCapability?.momoNumber?.trim()
+                ? providerSelf.billingCapability?.bankAccountNumber?.trim()
+                  ? undefined
+                  : "momo"
+                : "bank_transfer",
               bankName: providerSelf.billingCapability?.bankName ?? "",
               bankAccountName: providerSelf.billingCapability?.bankAccountName ?? "",
-              bankAccountNumber: providerSelf.billingCapability?.bankAccountNumber ?? ""
-            }
-          : null
-      }
-      vendorContext={
-        vendorContext
-          ? {
-              id: vendorContext.id,
-              businessName: vendorContext.businessName,
-              contactPhone: vendorContext.contactPhone,
-              tinNumber: vendorContext.billingCapability?.vendorTinNumber ?? null,
-              paymentTerms: vendorContext.billingCapability?.paymentTermsCsv
-                ? vendorContext.billingCapability.paymentTermsCsv
-                    .split(",")
-                    .map((item) => item.trim())
-                    .filter(Boolean)
-                : [],
-              paymentMethods: vendorContext.billingCapability?.paymentMethodsCsv
-                ? vendorContext.billingCapability.paymentMethodsCsv
-                    .split(",")
-                    .map((item) => item.trim())
-                    .filter(Boolean)
-                : [],
-              paymentMethodOtherDetail: vendorContext.billingCapability?.paymentMethodOtherDetail ?? null,
-              momoAccountName: vendorContext.billingCapability?.momoAccountName ?? null,
-              momoNumber: vendorContext.billingCapability?.momoNumber ?? null,
-              bankName: vendorContext.billingCapability?.bankName ?? null,
-              bankAccountName: vendorContext.billingCapability?.bankAccountName ?? null,
-              bankAccountNumber: vendorContext.billingCapability?.bankAccountNumber ?? null,
-              bankSwiftCode: vendorContext.billingCapability?.bankSwiftCode ?? null,
-              services: vendorContext.services.map((service: VendorServiceItem) => ({
-                id: service.id,
-                title: service.title,
-                categoryId: service.categoryId,
-                categoryName: service.category.name,
-                baseAmount:
-                  service.priceCards.length > 0
-                    ? decimalToNumber(service.priceCards[0]?.basePrice) ?? null
-                    : null,
-                baseCurrency: service.priceCards[0]?.currency ?? "RWF"
-              }))
+              bankAccountNumber: providerSelf.billingCapability?.bankAccountNumber ?? "",
+              bankSwiftCode: providerSelf.billingCapability?.bankSwiftCode ?? "",
+              momoAccountName: providerSelf.billingCapability?.momoAccountName ?? "",
+              momoNumber: providerSelf.billingCapability?.momoNumber ?? ""
             }
           : null
       }

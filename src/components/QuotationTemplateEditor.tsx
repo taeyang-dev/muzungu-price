@@ -1,11 +1,11 @@
 "use client";
 
-import { FormEvent, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Locale, tr } from "@/lib/i18n";
 import {
   QuotationTemplateData,
   QuotationTemplateDefaults,
-  buildQuotationDataUrl,
+  buildQuotationPdfDocument,
   calculateQuotationTotal,
   createEmptyLineItem,
   createQuotationTemplateData
@@ -15,20 +15,41 @@ interface QuotationTemplateEditorProps {
   locale: Locale;
   defaults: QuotationTemplateDefaults;
   disabled?: boolean;
-  onSubmit: (input: { fileName: string; dataUrl: string }) => void;
+  submitting?: boolean;
+  completed?: boolean;
+  onSubmit: (input: { fileName: string; dataUrl: string }) => void | Promise<void>;
 }
 
 export function QuotationTemplateEditor({
   locale,
   defaults,
   disabled = false,
+  submitting = false,
+  completed = false,
   onSubmit
 }: QuotationTemplateEditorProps) {
   const [data, setData] = useState<QuotationTemplateData>(() => createQuotationTemplateData(defaults));
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);
 
   const total = useMemo(() => calculateQuotationTotal(data.lineItems), [data.lineItems]);
+
+  function fillCanvasBackground(canvas: HTMLCanvasElement): void {
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      fillCanvasBackground(canvas);
+    }
+  }, []);
 
   function updateLineItem(
     id: string,
@@ -98,20 +119,28 @@ export function QuotationTemplateEditor({
       return;
     }
     context.clearRect(0, 0, canvas.width, canvas.height);
+    fillCanvasBackground(canvas);
     setData((current) => ({ ...current, signatureDataUrl: undefined }));
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    const safeName = data.businessName.trim().replace(/\s+/g, "_").slice(0, 40) || "vendor";
-    onSubmit({
-      fileName: `Quotation_${safeName}.html`,
-      dataUrl: buildQuotationDataUrl(data)
-    });
+    setIsGeneratingPdf(true);
+    try {
+      const pdf = await buildQuotationPdfDocument(data);
+      await onSubmit({
+        fileName: pdf.fileName,
+        dataUrl: pdf.dataUrl
+      });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   }
 
+  const isBusy = disabled || submitting || isGeneratingPdf;
+
   return (
-    <form className="grid" onSubmit={handleSubmit}>
+    <form className="grid" onSubmit={(event) => void handleSubmit(event)}>
       <p className="tiny muted" style={{ margin: 0 }}>
         {tr(
           locale,
@@ -189,13 +218,14 @@ export function QuotationTemplateEditor({
             {tr(locale, "Add row", "행 추가")}
           </button>
         </div>
-        {data.lineItems.map((item, index) => (
+        {data.lineItems.map((item) => (
           <div className="grid grid-3" key={item.id} style={{ marginBottom: "8px" }}>
             <div>
-              <label className="tiny">No. {index + 1}</label>
+              <label className="tiny">{tr(locale, "Item name", "항목명")}</label>
               <textarea
                 className="textarea"
                 onChange={(event) => updateLineItem(item.id, { description: event.target.value })}
+                placeholder={tr(locale, "Describe the item", "항목을 입력해 주세요")}
                 rows={2}
                 value={item.description}
               />
@@ -231,51 +261,114 @@ export function QuotationTemplateEditor({
         </p>
       </div>
 
-      <div className="row tiny">
-        <label>
-          <input
-            checked={data.transportInclusive}
-            onChange={(event) => setData((current) => ({ ...current, transportInclusive: event.target.checked }))}
-            type="checkbox"
-          />{" "}
-          Transport Inclusive
-        </label>
-        <label>
-          <input
-            checked={data.vatInclusive}
-            onChange={(event) => setData((current) => ({ ...current, vatInclusive: event.target.checked }))}
-            type="checkbox"
-          />{" "}
-          VAT Inclusive
-        </label>
+      <div className="grid grid-3">
+        <div>
+          <label className="tiny">{tr(locale, "Inclusive items (remarks)", "포함 항목 (비고)")}</label>
+          <select
+            className="select"
+            onChange={(event) =>
+              setData((current) => ({
+                ...current,
+                inclusiveNote: event.target.value as QuotationTemplateData["inclusiveNote"]
+              }))
+            }
+            value={data.inclusiveNote}
+          >
+            <option value="none">{tr(locale, "None", "해당 없음")}</option>
+            <option value="vat">VAT Inclusive</option>
+            <option value="transport">Transport Inclusive</option>
+            <option value="vat_transport">VAT & Transport Inclusive</option>
+            <option value="other">{tr(locale, "Other (custom)", "기타 (직접 입력)")}</option>
+          </select>
+        </div>
+        {data.inclusiveNote === "other" && (
+          <div style={{ gridColumn: "span 2" }}>
+            <label className="tiny">{tr(locale, "Custom remark", "직접 입력")}</label>
+            <input
+              className="input"
+              onChange={(event) => setData((current) => ({ ...current, inclusiveNoteOther: event.target.value }))}
+              placeholder={tr(locale, "Describe what is included", "포함 내용을 입력해 주세요")}
+              value={data.inclusiveNoteOther}
+            />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-3">
         <div>
-          <label className="tiny">{tr(locale, "Account name", "예금주")}</label>
-          <input
-            className="input"
-            onChange={(event) => setData((current) => ({ ...current, bankAccountName: event.target.value }))}
-            value={data.bankAccountName}
-          />
-        </div>
-        <div>
-          <label className="tiny">{tr(locale, "Account number", "계좌번호")}</label>
-          <input
-            className="input"
-            onChange={(event) => setData((current) => ({ ...current, bankAccountNumber: event.target.value }))}
-            value={data.bankAccountNumber}
-          />
-        </div>
-        <div>
-          <label className="tiny">{tr(locale, "Bank", "은행")}</label>
-          <input
-            className="input"
-            onChange={(event) => setData((current) => ({ ...current, bankName: event.target.value }))}
-            value={data.bankName}
-          />
+          <label className="tiny">{tr(locale, "Payment method", "결제 수단")}</label>
+          <select
+            className="select"
+            onChange={(event) =>
+              setData((current) => ({
+                ...current,
+                paymentMethod: event.target.value as QuotationTemplateData["paymentMethod"]
+              }))
+            }
+            value={data.paymentMethod}
+          >
+            <option value="bank_transfer">{tr(locale, "Bank transfer", "은행 이체")}</option>
+            <option value="momo">{tr(locale, "MoMo transfer", "모모 이체")}</option>
+          </select>
         </div>
       </div>
+
+      {data.paymentMethod === "bank_transfer" ? (
+        <div className="grid grid-3">
+          <div>
+            <label className="tiny">{tr(locale, "Account name", "예금주")}</label>
+            <input
+              className="input"
+              onChange={(event) => setData((current) => ({ ...current, bankAccountName: event.target.value }))}
+              value={data.bankAccountName}
+            />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Account number", "계좌번호")}</label>
+            <input
+              className="input"
+              onChange={(event) => setData((current) => ({ ...current, bankAccountNumber: event.target.value }))}
+              value={data.bankAccountNumber}
+            />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Bank", "은행")}</label>
+            <input
+              className="input"
+              onChange={(event) => setData((current) => ({ ...current, bankName: event.target.value }))}
+              value={data.bankName}
+            />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Bank SWIFT code (optional)", "은행 SWIFT 코드 (선택)")}</label>
+            <input
+              className="input"
+              onChange={(event) => setData((current) => ({ ...current, bankSwiftCode: event.target.value }))}
+              placeholder={tr(locale, "Optional", "선택 입력")}
+              value={data.bankSwiftCode}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-3">
+          <div>
+            <label className="tiny">{tr(locale, "MoMo account name", "모모 예금주")}</label>
+            <input
+              className="input"
+              onChange={(event) => setData((current) => ({ ...current, momoAccountName: event.target.value }))}
+              value={data.momoAccountName}
+            />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "MoMo number", "모모 번호")}</label>
+            <input
+              className="input"
+              onChange={(event) => setData((current) => ({ ...current, momoNumber: event.target.value }))}
+              value={data.momoNumber}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="panel" style={{ padding: "12px" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: "8px" }}>
@@ -298,13 +391,24 @@ export function QuotationTemplateEditor({
           onPointerLeave={stopDrawing}
           onPointerMove={draw}
           onPointerUp={stopDrawing}
-          style={{ width: "100%", maxWidth: "420px", border: "1px solid #ccc", borderRadius: "8px", touchAction: "none" }}
+          style={{
+            width: "100%",
+            maxWidth: "420px",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+            touchAction: "none",
+            backgroundColor: "#ffffff"
+          }}
           width={420}
         />
       </div>
 
-      <button className="btn" disabled={disabled} type="submit">
-        {tr(locale, "Send quotation from template", "양식으로 견적서 보내기")}
+      <button className="btn" disabled={isBusy || completed} type="submit">
+        {submitting || isGeneratingPdf
+          ? tr(locale, "Uploading...", "업로드 중...")
+          : completed
+            ? tr(locale, "Upload complete", "업로드 완료")
+            : tr(locale, "Upload quotation", "견적서 업로드")}
       </button>
     </form>
   );

@@ -1,13 +1,16 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { decimalToNumber } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { RequestsPanel } from "@/components/RequestsPanel";
 import { VendorQuickActions } from "@/components/VendorQuickActions";
 import { VendorChatBox } from "@/components/VendorChatBox";
 import { FallbackImage } from "@/components/FallbackImage";
 import { getDefaultServiceImage } from "@/lib/default-images";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { Locale, localizeCopy, tr } from "@/lib/i18n";
+import { buildVendorRequestContext } from "@/lib/vendor-request-context";
 
 interface ProviderDetailPageProps {
   params: Promise<{ id: string }>;
@@ -253,6 +256,7 @@ export default async function ProviderDetailPage({
   params
 }: ProviderDetailPageProps) {
   const locale = await getLocaleFromCookies();
+  const session = await getSession();
   const { id } = await params;
   const provider = await prisma.providerProfile.findUnique({
     where: { id },
@@ -293,6 +297,49 @@ export default async function ProviderDetailPage({
     .slice(0, 3)
     .map((service: ProviderServiceItem) => localizeCopy(locale, service.title));
   const billingStatus = getBillingStatusText(locale, provider.billingCapability);
+
+  const userRequests =
+    session && session.role !== "provider"
+      ? await prisma.serviceRequest.findMany({
+          where: {
+            requesterUserId: session.userId,
+            status: { notIn: ["cancelled", "completed"] }
+          },
+          include: {
+            category: true,
+            providerProfile: true,
+            service: true,
+            offers: {
+              include: { providerProfile: true },
+              orderBy: { createdAt: "desc" }
+            },
+            booking: true
+          },
+          orderBy: { createdAt: "desc" }
+        })
+      : [];
+
+  type UserRequestItem = (typeof userRequests)[number];
+  type UserRequestOffer = UserRequestItem["offers"][number];
+
+  const isProviderOwner = session?.userId === provider.userId;
+  const paymentInfo = {
+    businessName: provider.businessName,
+    phone: provider.contactPhone ?? provider.representativePhone ?? "",
+    tinNumber: provider.billingCapability?.vendorTinNumber ?? "",
+    paymentMethods: [
+      provider.billingCapability?.paymentMethodsCsv,
+      provider.billingCapability?.paymentMethodOtherDetail
+    ]
+      .filter(Boolean)
+      .join(", "),
+    momoAccountName: provider.billingCapability?.momoAccountName ?? "",
+    momoNumber: provider.billingCapability?.momoNumber ?? "",
+    bankName: provider.billingCapability?.bankName ?? "",
+    bankAccountName: provider.billingCapability?.bankAccountName ?? "",
+    bankAccountNumber: provider.billingCapability?.bankAccountNumber ?? "",
+    bankSwiftCode: provider.billingCapability?.bankSwiftCode ?? ""
+  };
 
   return (
     <section className="grid provider-detail-page">
@@ -426,14 +473,98 @@ export default async function ProviderDetailPage({
               )}
             </li>
           </ul>
-          <Link className="btn provider-action-btn" href={`/requests?vendorId=${provider.id}#vendor-request`}>
+          <a className="btn provider-action-btn" href="#vendor-request">
             {tr(locale, "Request this vendor", "이 업체에 요청 보내기")}
-          </Link>
+          </a>
         </article>
       </section>
 
+      {session ? (
+        session.role !== "provider" ? (
+          <RequestsPanel
+            locale={locale}
+            mode="create"
+            requests={userRequests.map((item: UserRequestItem) => ({
+              id: item.id,
+              title: item.title,
+              requirementText: item.requirementText,
+              locationText: item.locationText,
+              budgetMin: decimalToNumber(item.budgetMin),
+              budgetMax: decimalToNumber(item.budgetMax),
+              currency: item.currency,
+              needsQuotation: item.needsQuotation,
+              needsEbm: item.needsEbm,
+              requestType: item.requestType,
+              providerProfileId: item.providerProfileId,
+              providerName: item.providerProfile?.businessName ?? null,
+              serviceId: item.serviceId,
+              serviceTitle: item.service?.title ?? null,
+              organizationName: item.organizationName,
+              organizationTinNumber: item.organizationTinNumber,
+              purchaseCode: item.purchaseCode,
+              purchaseCodeUpdatedAt: item.purchaseCodeUpdatedAt?.toISOString() ?? null,
+              paymentTerm: item.paymentTerm,
+              paymentMethod: item.paymentMethod,
+              paymentNote: item.paymentNote,
+              paymentDueAt: item.paymentDueAt?.toISOString() ?? null,
+              documentFileName: item.documentFileName,
+              requestedAmount: decimalToNumber(item.requestedAmount),
+              status: item.status,
+              createdAt: item.createdAt.toISOString(),
+              requesterName: null,
+              requesterUserId: item.requesterUserId,
+              category: { name: item.category.name },
+              offers: item.offers.map((offer: UserRequestOffer) => ({
+                id: offer.id,
+                providerName: offer.providerProfile.businessName,
+                quotedPrice: decimalToNumber(offer.quotedPrice) ?? 0,
+                currency: offer.currency,
+                status: offer.status,
+                canIssueQuotation: offer.canIssueQuotation,
+                canIssueEbm: offer.canIssueEbm
+              })),
+              booking: item.booking
+                ? {
+                    id: item.booking.id,
+                    status: item.booking.status,
+                    finalPrice: decimalToNumber(item.booking.finalPrice) ?? 0,
+                    currency: item.booking.currency
+                  }
+                : null
+            }))}
+            role={session.role}
+            vendorContext={buildVendorRequestContext(provider)}
+          />
+        ) : (
+          <article className="panel">
+            <p className="muted" style={{ margin: 0 }}>
+              {tr(
+                locale,
+                "Providers manage incoming requests from the Requests page.",
+                "업체는 요청서 페이지에서 들어온 요청을 관리합니다."
+              )}
+            </p>
+          </article>
+        )
+      ) : (
+        <article className="panel" id="vendor-request">
+          <p className="muted" style={{ margin: 0 }}>
+            {tr(locale, "Sign in to send a request to this vendor.", "로그인 후 이 업체에 요청을 보낼 수 있습니다.")}
+          </p>
+          <Link className="btn" href="/auth">
+            {tr(locale, "Go to Sign in", "로그인하러 가기")}
+          </Link>
+        </article>
+      )}
+
       <div id="vendor-chat">
-        <VendorChatBox locale={locale} vendorId={provider.id} vendorName={provider.businessName} />
+        <VendorChatBox
+          canSendPaymentInfo={isProviderOwner}
+          locale={locale}
+          paymentInfo={isProviderOwner ? paymentInfo : null}
+          vendorId={provider.id}
+          vendorName={provider.businessName}
+        />
       </div>
 
       <article className="panel">

@@ -61,8 +61,8 @@ export function InboxPanel({ locale }: InboxPanelProps) {
       <p className="muted">
         {tr(
           locale,
-          "Messages from the review team and system notifications appear here.",
-          "심사팀 및 시스템 알림 메시지를 확인할 수 있습니다."
+          "Messages from vendors, the review team, and system notifications appear here.",
+          "업체, 심사팀, 시스템 알림 메시지를 확인할 수 있습니다."
         )}
       </p>
 
