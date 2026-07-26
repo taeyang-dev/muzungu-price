@@ -5,7 +5,7 @@ import {
   buildReceivedRequestsWhere,
   buildSentRequestsWhere,
   countRequestsByType,
-  getProviderProfileIdForUser
+  loadVendorAccessForUser
 } from "@/lib/service-request-scope";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const sentCounts = await countRequestsByType(buildSentRequestsWhere(auth.session.userId));
 
-  const providerProfileId = await getProviderProfileIdForUser(auth.session.userId);
+  const { providerProfileId } = await loadVendorAccessForUser(auth.session.userId);
   const receivedCounts = providerProfileId
     ? await countRequestsByType(buildReceivedRequestsWhere(providerProfileId))
     : emptyCounts;

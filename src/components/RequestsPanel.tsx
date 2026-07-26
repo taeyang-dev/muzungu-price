@@ -45,6 +45,8 @@ interface RequestsPanelProps {
   mode?: "manage" | "create";
   boxFilter?: "sent" | "received";
   typeFilter?: "all" | "quotation" | "ebm";
+  receivedSetupRequired?: boolean;
+  isVendorAccount?: boolean;
   vendorContext?: VendorRequestContext | null;
   providerSelf?: QuotationTemplateDefaults | null;
 }
@@ -240,6 +242,8 @@ export function RequestsPanel({
   mode = "manage",
   boxFilter = "sent",
   typeFilter = "all",
+  receivedSetupRequired = false,
+  isVendorAccount = false,
   vendorContext = null,
   providerSelf = null
 }: RequestsPanelProps) {
@@ -945,6 +949,29 @@ export function RequestsPanel({
           </Link>
         </nav>
       </article>
+
+      {isReceivedView && receivedSetupRequired && (
+        <article className="panel">
+          <p className="muted" style={{ marginTop: 0 }}>
+            {isVendorAccount
+              ? tr(
+                  locale,
+                  "Complete your vendor profile setup to view received requests.",
+                  "수신 요청을 보려면 업체 프로필 등록을 완료해 주세요."
+                )
+              : tr(
+                  locale,
+                  "Switch to vendor mode and complete vendor profile setup to receive customer requests.",
+                  "고객 요청을 받으려면 벤더 모드로 전환한 뒤 업체 프로필 등록을 완료해 주세요."
+                )}
+          </p>
+          <Link className="btn" href="/provider">
+            {isVendorAccount
+              ? tr(locale, "Complete vendor profile", "업체 프로필 등록 완료하기")
+              : tr(locale, "Register as vendor", "벤더 등록")}
+          </Link>
+        </article>
+      )}
 
       <article className="panel">
         <h2 style={{ marginTop: 0 }}>

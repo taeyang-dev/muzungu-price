@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getSession } from "@/lib/auth";
+import { getSessionForApp } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RequestsPanel } from "@/components/RequestsPanel";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
@@ -7,7 +7,7 @@ import { tr } from "@/lib/i18n";
 import {
   buildReceivedRequestsWhere,
   buildSentRequestsWhere,
-  getProviderProfileIdForUser
+  loadVendorAccessForUser
 } from "@/lib/service-request-scope";
 import { mapServiceRequestItem, serviceRequestInclude } from "@/lib/service-request-mapper";
 
@@ -32,7 +32,7 @@ interface RequestsPageProps {
 }
 
 export default async function RequestsPage({ searchParams }: RequestsPageProps) {
-  const session = await getSession();
+  const session = await getSessionForApp();
   const locale = await getLocaleFromCookies();
   const params = await searchParams;
   const boxFilter = parseBoxFilter(typeof params.box === "string" ? params.box : null);
@@ -56,40 +56,16 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
     );
   }
 
-  const providerProfileId = await getProviderProfileIdForUser(session.userId);
-
-  if (boxFilter === "received" && !providerProfileId) {
-    return (
-      <section className="grid">
-        <h1 style={{ marginBottom: 0 }}>{tr(locale, "Requests", "요청서")}</h1>
-        <article className="panel">
-          <p className="muted" style={{ marginTop: 0 }}>
-            {session.role === "provider"
-              ? tr(
-                  locale,
-                  "Complete your vendor profile setup to view received requests.",
-                  "수신 요청을 보려면 업체 프로필 등록을 완료해 주세요."
-                )
-              : tr(
-                  locale,
-                  "Switch to vendor mode and complete vendor profile setup to receive customer requests.",
-                  "고객 요청을 받으려면 벤더 모드로 전환한 뒤 업체 프로필 등록을 완료해 주세요."
-                )}
-          </p>
-          <Link className="btn" href="/provider">
-            {session.role === "provider"
-              ? tr(locale, "Complete vendor profile", "업체 프로필 등록 완료하기")
-              : tr(locale, "Register as vendor", "벤더 등록")}
-          </Link>
-        </article>
-      </section>
-    );
-  }
+  const { dbRole, providerProfileId } = await loadVendorAccessForUser(session.userId);
+  const isVendorAccount = dbRole === "provider" || Boolean(providerProfileId);
+  const receivedSetupRequired = boxFilter === "received" && !providerProfileId;
 
   const where =
     boxFilter === "sent"
       ? buildSentRequestsWhere(session.userId)
-      : buildReceivedRequestsWhere(providerProfileId!);
+      : providerProfileId
+        ? buildReceivedRequestsWhere(providerProfileId)
+        : { id: "__none__" };
 
   const requests = await prisma.serviceRequest.findMany({
     where,
@@ -106,10 +82,12 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
 
   return (
     <RequestsPanel
-      key={`requests-${boxFilter}-${typeFilter}`}
+      key={`requests-${boxFilter}-${typeFilter}-${providerProfileId ?? "none"}`}
       boxFilter={boxFilter}
+      isVendorAccount={isVendorAccount}
       locale={locale}
       mode="manage"
+      receivedSetupRequired={receivedSetupRequired}
       requests={requests.map(mapServiceRequestItem)}
       role={session.role}
       typeFilter={typeFilter}

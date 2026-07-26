@@ -12,11 +12,35 @@ type ServiceRequestWhereInput = NonNullable<
 const ACTIVE_REQUEST_TYPES = ["quotation", "ebm"] as const;
 
 export async function getProviderProfileIdForUser(userId: string): Promise<string | null> {
-  const profile = await prisma.providerProfile.findUnique({
-    where: { userId },
-    select: { id: true }
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      providerProfile: {
+        select: { id: true }
+      }
+    }
   });
-  return profile?.id ?? null;
+  return user?.providerProfile?.id ?? null;
+}
+
+export async function loadVendorAccessForUser(userId: string): Promise<{
+  dbRole: string | null;
+  providerProfileId: string | null;
+}> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      role: true,
+      providerProfile: {
+        select: { id: true }
+      }
+    }
+  });
+
+  return {
+    dbRole: user?.role ?? null,
+    providerProfileId: user?.providerProfile?.id ?? null
+  };
 }
 
 export function buildSentRequestsWhere(userId: string): ServiceRequestWhereInput {
