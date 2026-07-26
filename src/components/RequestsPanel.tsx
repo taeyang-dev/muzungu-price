@@ -327,7 +327,11 @@ export function RequestsPanel({
   async function submitJson(
     event: FormEvent<HTMLFormElement>,
     url: string,
-    method: "POST" | "PATCH"
+    method: "POST" | "PATCH",
+    successMessage: { en: string; ko: string } = {
+      en: "Saved successfully.",
+      ko: "저장되었습니다."
+    }
   ): Promise<void> {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -360,7 +364,7 @@ export function RequestsPanel({
       setError(data.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
       return;
     }
-    setFeedback(tr(locale, "Saved successfully.", "저장되었습니다."));
+    setFeedback(tr(locale, successMessage.en, successMessage.ko));
     router.refresh();
     event.currentTarget.reset();
   }
@@ -485,16 +489,16 @@ export function RequestsPanel({
 
       const successMessageByType: Record<VendorRequestType, { en: string; ko: string }> = {
         quotation: {
-          en: "Request submitted. You will be notified when the vendor uploads quotation/EBM documents.",
-          ko: "요청이 접수되었습니다. 업체가 견적서/EBM 문서를 올리면 알림이 표시됩니다."
+          en: "Quotation request complete.",
+          ko: "견적서 요청 완료"
         },
         purchase: {
           en: "Purchase request complete.",
           ko: "구매/진행 요청 완료"
         },
         ebm: {
-          en: "Request submitted. You will be notified when the vendor uploads quotation/EBM documents.",
-          ko: "요청이 접수되었습니다. 업체가 견적서/EBM 문서를 올리면 알림이 표시됩니다."
+          en: "EBM request complete.",
+          ko: "EBM 요청 완료"
         }
       };
       const successMessage = successMessageByType[type];
@@ -638,8 +642,8 @@ export function RequestsPanel({
       setFeedback(
         tr(
           locale,
-          `${saved.fileName} uploaded. Requester will receive a notification.`,
-          `${saved.fileName} 등록 완료. 요청자에게 알림이 표시됩니다.`
+          type === "quotation" ? "Quotation sent." : "EBM sent.",
+          type === "quotation" ? "견적서 전송 완료" : "EBM 전송 완료"
         )
       );
       event.currentTarget.reset();
@@ -666,13 +670,7 @@ export function RequestsPanel({
         dataUrl: input.dataUrl,
         fileName: input.fileName
       });
-      setFeedback(
-        tr(
-          locale,
-          `${saved.fileName} sent from template. Requester will receive a notification.`,
-          `${saved.fileName} 양식 견적서가 전송되었습니다. 요청자에게 알림이 표시됩니다.`
-        )
-      );
+      setFeedback(tr(locale, "Quotation sent.", "견적서 전송 완료"));
     } catch {
       setError(tr(locale, "Failed to send quotation template.", "견적서 양식 전송에 실패했습니다."));
     } finally {
@@ -1092,7 +1090,12 @@ export function RequestsPanel({
                 <form
                   className="grid"
                   style={{ marginTop: "10px" }}
-                  onSubmit={(event) => submitJson(event, `/api/requests/${item.id}/offers`, "POST")}
+                  onSubmit={(event) =>
+                    void submitJson(event, `/api/requests/${item.id}/offers`, "POST", {
+                      en: "Offer submitted.",
+                      ko: "오퍼 제출 완료"
+                    })
+                  }
                 >
                   <div className="row">
                     <input
