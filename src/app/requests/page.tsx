@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getSessionForApp } from "@/lib/auth";
+import { getSessionForApp, writeSessionCookie, type SessionPayload } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RequestsPanel } from "@/components/RequestsPanel";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
@@ -56,9 +56,16 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
     );
   }
 
-  const { dbRole, providerProfileId } = await loadVendorAccessForUser(session.userId);
-  const isVendorAccount = dbRole === "provider" || Boolean(providerProfileId);
-  const receivedSetupRequired = boxFilter === "received" && !providerProfileId;
+  const { dbRole, providerProfileId, roleUpdated } = await loadVendorAccessForUser(
+    session.userId,
+    session.email
+  );
+
+  let effectiveSession: SessionPayload = session;
+  if (roleUpdated && dbRole === "provider") {
+    effectiveSession = { ...session, role: "provider" };
+    await writeSessionCookie(effectiveSession);
+  }
 
   const where =
     boxFilter === "sent"
@@ -84,12 +91,10 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
     <RequestsPanel
       key={`requests-${boxFilter}-${typeFilter}-${providerProfileId ?? "none"}`}
       boxFilter={boxFilter}
-      isVendorAccount={isVendorAccount}
       locale={locale}
       mode="manage"
-      receivedSetupRequired={receivedSetupRequired}
       requests={requests.map(mapServiceRequestItem)}
-      role={session.role}
+      role={effectiveSession.role}
       typeFilter={typeFilter}
       providerSelf={
         providerSelf
