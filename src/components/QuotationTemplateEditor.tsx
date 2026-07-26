@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Locale, tr } from "@/lib/i18n";
 import {
   QuotationTemplateData,
@@ -29,6 +29,22 @@ export function QuotationTemplateEditor({
   const drawingRef = useRef(false);
 
   const total = useMemo(() => calculateQuotationTotal(data.lineItems), [data.lineItems]);
+
+  function fillCanvasBackground(canvas: HTMLCanvasElement): void {
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      fillCanvasBackground(canvas);
+    }
+  }, []);
 
   function updateLineItem(
     id: string,
@@ -98,6 +114,7 @@ export function QuotationTemplateEditor({
       return;
     }
     context.clearRect(0, 0, canvas.width, canvas.height);
+    fillCanvasBackground(canvas);
     setData((current) => ({ ...current, signatureDataUrl: undefined }));
   }
 
@@ -298,7 +315,14 @@ export function QuotationTemplateEditor({
           onPointerLeave={stopDrawing}
           onPointerMove={draw}
           onPointerUp={stopDrawing}
-          style={{ width: "100%", maxWidth: "420px", border: "1px solid #ccc", borderRadius: "8px", touchAction: "none" }}
+          style={{
+            width: "100%",
+            maxWidth: "420px",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+            touchAction: "none",
+            backgroundColor: "#ffffff"
+          }}
           width={420}
         />
       </div>
