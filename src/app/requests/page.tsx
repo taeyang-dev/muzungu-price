@@ -11,6 +11,15 @@ type ServiceRequestWhereInput = NonNullable<
   Parameters<typeof prisma.serviceRequest.findMany>[0]
 >["where"];
 
+type RequestTypeFilter = "all" | "quotation" | "purchase" | "ebm";
+
+function parseTypeFilter(value: string | null): RequestTypeFilter {
+  if (value === "quotation" || value === "purchase" || value === "ebm") {
+    return value;
+  }
+  return "all";
+}
+
 interface RequestsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
@@ -19,7 +28,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
   const session = await getSession();
   const locale = await getLocaleFromCookies();
   const params = await searchParams;
-  const vendorId = typeof params.vendorId === "string" ? params.vendorId : null;
+  const typeFilter = parseTypeFilter(typeof params.type === "string" ? params.type : null);
 
   if (!session) {
     return (
@@ -28,8 +37,8 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
         <p>
           {tr(
             locale,
-            "Please sign in to create requests or submit offers.",
-            "요청서를 만들거나 오퍼를 제출하려면 로그인해 주세요."
+            "Please sign in to view and manage your requests.",
+            "요청 내역을 보고 관리하려면 로그인해 주세요."
           )}
         </p>
         <Link className="btn" href="/auth">
@@ -38,45 +47,6 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
       </section>
     );
   }
-
-  const canCreateVendorRequests = true;
-
-  const vendorDirectory = await (
-    canCreateVendorRequests
-      ? prisma.providerProfile.findMany({
-          select: { id: true, businessName: true },
-          orderBy: { businessName: "asc" }
-        })
-      : Promise.resolve([])
-  );
-
-  type VendorDirectoryItem = (typeof vendorDirectory)[number];
-
-  const selectedVendorId =
-    (vendorId && vendorDirectory.some((vendor: VendorDirectoryItem) => vendor.id === vendorId)
-      ? vendorId
-      : null) ??
-    vendorDirectory[0]?.id ??
-    null;
-  const vendorContext = selectedVendorId
-    ? await prisma.providerProfile.findUnique({
-        where: { id: selectedVendorId },
-        include: {
-          services: {
-            include: {
-              category: true,
-              priceCards: {
-                where: { isPublic: true },
-                orderBy: { basePrice: "asc" }
-              }
-            }
-          },
-          billingCapability: true
-        }
-      })
-    : null;
-
-  type VendorServiceItem = NonNullable<typeof vendorContext>["services"][number];
 
   const scopedWhere = await buildServiceRequestScopeWhere({
     userId: session.userId,
@@ -114,8 +84,9 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
 
   return (
     <RequestsPanel
-      key={`requests-${selectedVendorId ?? "none"}-${session.role}`}
+      key={`requests-${session.role}-${typeFilter}`}
       locale={locale}
+      mode="manage"
       requests={requests.map((item: ServiceRequestListItem) => ({
         id: item.id,
         title: item.title,
@@ -163,6 +134,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
           : null
       }))}
       role={session.role}
+      typeFilter={typeFilter}
       providerSelf={
         providerSelf
           ? {
@@ -181,46 +153,6 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
               bankSwiftCode: providerSelf.billingCapability?.bankSwiftCode ?? "",
               momoAccountName: providerSelf.billingCapability?.momoAccountName ?? "",
               momoNumber: providerSelf.billingCapability?.momoNumber ?? ""
-            }
-          : null
-      }
-      vendorContext={
-        vendorContext
-          ? {
-              id: vendorContext.id,
-              businessName: vendorContext.businessName,
-              contactPhone: vendorContext.contactPhone,
-              tinNumber: vendorContext.billingCapability?.vendorTinNumber ?? null,
-              paymentTerms: vendorContext.billingCapability?.paymentTermsCsv
-                ? vendorContext.billingCapability.paymentTermsCsv
-                    .split(",")
-                    .map((item) => item.trim())
-                    .filter(Boolean)
-                : [],
-              paymentMethods: vendorContext.billingCapability?.paymentMethodsCsv
-                ? vendorContext.billingCapability.paymentMethodsCsv
-                    .split(",")
-                    .map((item) => item.trim())
-                    .filter(Boolean)
-                : [],
-              paymentMethodOtherDetail: vendorContext.billingCapability?.paymentMethodOtherDetail ?? null,
-              momoAccountName: vendorContext.billingCapability?.momoAccountName ?? null,
-              momoNumber: vendorContext.billingCapability?.momoNumber ?? null,
-              bankName: vendorContext.billingCapability?.bankName ?? null,
-              bankAccountName: vendorContext.billingCapability?.bankAccountName ?? null,
-              bankAccountNumber: vendorContext.billingCapability?.bankAccountNumber ?? null,
-              bankSwiftCode: vendorContext.billingCapability?.bankSwiftCode ?? null,
-              services: vendorContext.services.map((service: VendorServiceItem) => ({
-                id: service.id,
-                title: service.title,
-                categoryId: service.categoryId,
-                categoryName: service.category.name,
-                baseAmount:
-                  service.priceCards.length > 0
-                    ? decimalToNumber(service.priceCards[0]?.basePrice) ?? null
-                    : null,
-                baseCurrency: service.priceCards[0]?.currency ?? "RWF"
-              }))
             }
           : null
       }

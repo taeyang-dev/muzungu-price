@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LogoutButton } from "@/components/LogoutButton";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
-import { getRequestedDocumentCounts } from "@/lib/request-documents-storage";
 import {
   getVendorStorageEventName,
   readChatVendors,
@@ -51,7 +50,6 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
   const [favorites, setFavorites] = useState<VendorReference[]>([]);
   const [recent, setRecent] = useState<VendorReference[]>([]);
   const [chatVendors, setChatVendors] = useState<VendorReference[]>([]);
-  const [requestDocCounts, setRequestDocCounts] = useState({ quotation: 0, ebm: 0 });
   const [requestCounts, setRequestCounts] = useState({ total: 0, quotation: 0, purchase: 0, ebm: 0 });
   const [unreadInboxCount, setUnreadInboxCount] = useState(0);
 
@@ -60,7 +58,6 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
       setFavorites(readFavoriteVendors());
       setRecent(readRecentVendors());
       setChatVendors(readChatVendors());
-      setRequestDocCounts(getRequestedDocumentCounts());
     }
 
     async function refreshRequestCounts(): Promise<void> {
@@ -205,9 +202,6 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
                 {tr(locale, "Inbox", "쪽지함")} ({unreadInboxCount})
               </Link>
             )}
-            <Link href="/requests" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "Requests", "요청서")} ({requestCounts.total})
-            </Link>
             <Link href="/" onClick={() => setMenuOpen(false)}>
               {tr(locale, "Browse vendors", "업체 둘러보기")}
             </Link>
@@ -220,30 +214,30 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
         </section>
 
         <section className="drawer-section">
+          <h3>{tr(locale, "Requests", "요청서")}</h3>
+          <nav className="drawer-nav">
+            <Link href="/requests" onClick={() => setMenuOpen(false)}>
+              {tr(locale, "All requests", "전체 요청")} ({requestCounts.total})
+            </Link>
+            <Link href="/requests?type=quotation" onClick={() => setMenuOpen(false)}>
+              {tr(locale, "Quotation requests", "견적서 요청")} ({requestCounts.quotation})
+            </Link>
+            <Link href="/requests?type=purchase" onClick={() => setMenuOpen(false)}>
+              {tr(locale, "Purchase requests", "구매/진행 요청")} ({requestCounts.purchase})
+            </Link>
+            <Link href="/requests?type=ebm" onClick={() => setMenuOpen(false)}>
+              {tr(locale, "EBM requests", "EBM 요청")} ({requestCounts.ebm})
+            </Link>
+          </nav>
+        </section>
+
+        <section className="drawer-section">
           <h3>{tr(locale, "Messages with vendors", "업체와 대화")}</h3>
           <VendorList
             items={chatVendors}
             emptyText={tr(locale, "No active chats yet.", "대화중인 업체가 없습니다.")}
             hrefSuffix="#vendor-chat"
           />
-        </section>
-
-        <section className="drawer-section">
-          <h3>{tr(locale, "Request documents", "요청 문서")}</h3>
-          <nav className="drawer-nav">
-            <Link href="/requests#requested-documents" onClick={() => setMenuOpen(false)}>
-              {session?.role === "provider"
-                ? tr(locale, "Quotation requests", "견적서 요청")
-                : tr(locale, "Requested quotations", "요청한 견적서")}{" "}
-              ({session ? requestCounts.quotation : requestDocCounts.quotation})
-            </Link>
-            <Link href="/requests#requested-documents" onClick={() => setMenuOpen(false)}>
-              {session?.role === "provider"
-                ? tr(locale, "EBM requests", "EBM 요청")
-                : tr(locale, "Requested EBM", "요청한 EBM")}{" "}
-              ({session ? requestCounts.ebm : requestDocCounts.ebm})
-            </Link>
-          </nav>
         </section>
 
         <section className="drawer-section">

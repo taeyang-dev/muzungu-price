@@ -11,8 +11,10 @@ import {
   RequestedDocument,
   saveRequestedDocument
 } from "@/lib/request-documents-storage";
+import Link from "next/link";
 import { QuotationTemplateEditor } from "@/components/QuotationTemplateEditor";
 import type { QuotationTemplateDefaults } from "@/lib/quotation-template";
+import type { VendorRequestContext } from "@/lib/vendor-request-context";
 import { getVendorStorageEventName } from "@/lib/vendor-storage";
 
 interface Offer {
@@ -62,35 +64,13 @@ interface RequestItem {
   booking: Booking | null;
 }
 
-interface VendorContext {
-  id: string;
-  businessName: string;
-  contactPhone: string | null;
-  tinNumber: string | null;
-  paymentTerms: string[];
-  paymentMethods: string[];
-  paymentMethodOtherDetail: string | null;
-  momoAccountName: string | null;
-  momoNumber: string | null;
-  bankName: string | null;
-  bankAccountName: string | null;
-  bankAccountNumber: string | null;
-  bankSwiftCode: string | null;
-  services: Array<{
-    id: string;
-    title: string;
-    categoryId: string;
-    categoryName: string;
-    baseAmount: number | null;
-    baseCurrency: string;
-  }>;
-}
-
 interface RequestsPanelProps {
   role: "customer" | "provider" | "org_buyer" | "admin";
   requests: RequestItem[];
   locale: Locale;
-  vendorContext: VendorContext | null;
+  mode?: "manage" | "create";
+  typeFilter?: "all" | "quotation" | "purchase" | "ebm";
+  vendorContext?: VendorRequestContext | null;
   providerSelf?: QuotationTemplateDefaults | null;
 }
 
@@ -229,7 +209,9 @@ export function RequestsPanel({
   role,
   requests,
   locale,
-  vendorContext,
+  mode = "manage",
+  typeFilter = "all",
+  vendorContext = null,
   providerSelf = null
 }: RequestsPanelProps) {
   const [feedback, setFeedback] = useState("");
@@ -270,6 +252,33 @@ export function RequestsPanel({
     ? selectedPaymentMethod
     : (availablePaymentMethods[0] ?? "bank_transfer");
   const effectiveServiceId = selectedServiceId || vendorContext?.services[0]?.id || "__other__";
+
+  const typeCounts = useMemo(
+    () => ({
+      all: requests.length,
+      quotation: requests.filter((item) => item.requestType === "quotation").length,
+      purchase: requests.filter((item) => item.requestType === "purchase").length,
+      ebm: requests.filter((item) => item.requestType === "ebm").length
+    }),
+    [requests]
+  );
+
+  const filteredRequests = useMemo(() => {
+    if (typeFilter === "all") {
+      return requests;
+    }
+    return requests.filter((item) => item.requestType === typeFilter);
+  }, [requests, typeFilter]);
+
+  const documentsByRequestId = useMemo(() => {
+    const grouped = new Map<string, RequestedDocument[]>();
+    for (const document of requestedDocs) {
+      const current = grouped.get(document.requestId) ?? [];
+      current.push(document);
+      grouped.set(document.requestId, current);
+    }
+    return grouped;
+  }, [requestedDocs]);
 
   useEffect(() => {
     const alertsKey = "muzungu_request_alerts";
@@ -732,33 +741,11 @@ export function RequestsPanel({
     };
   }
 
-  return (
-    <section className="grid">
-      <h1 style={{ marginBottom: 0 }}>{tr(locale, "Requests", "요청서")}</h1>
-      {error && <div className="flash error">{error}</div>}
-      {feedback && <div className="flash success">{feedback}</div>}
-
-      {requestAlerts.length > 0 && (
-        <article className="panel" id="request-alerts">
-          <h2 style={{ marginTop: 0 }}>{tr(locale, "Notifications", "알림")}</h2>
-          <ul className="doc-list">
-            {requestAlerts.slice(0, 5).map((item) => (
-              <li key={item.id}>
-                <div>
-                  <strong>{item.message}</strong>
-                  <p className="tiny muted">{new Date(item.createdAt).toLocaleString()}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </article>
-      )}
-
-      {canCreateRequest && vendorContext && (
-        <article className="panel" id="vendor-request">
-          <h2 style={{ marginTop: 0 }}>
-            {tr(locale, "Request this vendor", "이 업체에 요청 보내기")}: {vendorContext.businessName}
-          </h2>
+  const vendorRequestForm = vendorContext ? (
+    <article className="panel" id="vendor-request">
+      <h2 style={{ marginTop: 0 }}>
+        {tr(locale, "Request this vendor", "이 업체에 요청 보내기")}: {vendorContext.businessName}
+      </h2>
           <div>
             <label className="tiny">{tr(locale, "Request type", "요청 유형")}</label>
             <select
@@ -1003,66 +990,78 @@ export function RequestsPanel({
               </button>
             </form>
           )}
+    </article>
+  ) : null;
+
+  if (mode === "create") {
+    return (
+      <section className="grid">
+        {error && <div className="flash error">{error}</div>}
+        {feedback && <div className="flash success">{feedback}</div>}
+        {canCreateRequest ? (
+          vendorRequestForm
+        ) : (
+          <article className="panel">
+            <p className="muted" style={{ margin: 0 }}>
+              {tr(locale, "Providers manage incoming requests from the Requests page.", "업체는 요청서 페이지에서 들어온 요청을 관리합니다.")}
+            </p>
+          </article>
+        )}
+      </section>
+    );
+  }
+
+  return (
+    <section className="grid">
+      <h1 style={{ marginBottom: 0 }}>{tr(locale, "Requests", "요청서")}</h1>
+      <p className="muted" style={{ marginTop: "6px" }}>
+        {tr(
+          locale,
+          "Review request history, upload files, and download documents. To create a new request, open a vendor page and tap Request this vendor.",
+          "요청 내역을 확인하고 파일을 업로드·다운로드할 수 있습니다. 새 요청은 업체 상세 페이지에서 '이 업체에 요청 보내기'로만 보낼 수 있습니다."
+        )}
+      </p>
+      {error && <div className="flash error">{error}</div>}
+      {feedback && <div className="flash success">{feedback}</div>}
+
+      {requestAlerts.length > 0 && (
+        <article className="panel" id="request-alerts">
+          <h2 style={{ marginTop: 0 }}>{tr(locale, "Notifications", "알림")}</h2>
+          <ul className="doc-list">
+            {requestAlerts.slice(0, 5).map((item) => (
+              <li key={item.id}>
+                <div>
+                  <strong>{item.message}</strong>
+                  <p className="tiny muted">{new Date(item.createdAt).toLocaleString()}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
         </article>
       )}
 
-      {canCreateRequest && !vendorContext && (
-        <article className="panel">
-          <p className="muted" style={{ margin: 0 }}>
-            {tr(
-              locale,
-              "Open a vendor detail page first, then tap Request this vendor.",
-              "먼저 업체 상세 페이지에서 '이 업체에 요청 보내기'를 눌러주세요."
-            )}
-          </p>
-        </article>
-      )}
-
-      {canCreateRequest && (
-        <article className="panel" id="requested-documents">
-          <h2 style={{ marginTop: 0 }}>{tr(locale, "Requested / received documents", "요청/수신 문서")}</h2>
-          <p className="tiny muted">
-            {tr(
-              locale,
-              "Downloaded files default to VendorName_DocumentType_YYYY-MM-DD and can be renamed.",
-              "다운로드 시 기본 파일명은 벤더명_문서종류_날짜 형식이며 필요 시 변경할 수 있습니다."
-            )}
-          </p>
-          {requestedDocs.length === 0 ? (
-            <p className="muted">{tr(locale, "No documents yet.", "문서가 없습니다.")}</p>
-          ) : (
-            <ul className="doc-list">
-              {requestedDocs.map((doc) => (
-                <li key={doc.id}>
-                  <div>
-                    <strong>{doc.fileName}</strong>
-                    <p className="tiny muted">
-                      {doc.vendorName} · {toRequestTypeLabel(locale, doc.type)} ·{" "}
-                      {new Date(doc.createdAt).toLocaleString()}
-                    </p>
-                    <div className="row">
-                      <input
-                        className="input"
-                        onChange={(event) =>
-                          setRenameDrafts((current) => ({ ...current, [doc.id]: event.target.value }))
-                        }
-                        placeholder={tr(locale, "Rename file name", "파일명 변경")}
-                        value={renameDrafts[doc.id] ?? ""}
-                      />
-                      <button className="btn secondary" onClick={() => saveRenamedDocument(doc.id)} type="button">
-                        {tr(locale, "Rename", "이름 변경")}
-                      </button>
-                    </div>
-                  </div>
-                  <a className="btn" download={doc.fileName} href={doc.dataUrl}>
-                    {tr(locale, "Download", "다운로드")}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-        </article>
-      )}
+      <article className="panel">
+        <nav className="row tiny" style={{ flexWrap: "wrap", gap: "8px" }}>
+          <Link className={`doc-filter-tab ${typeFilter === "all" ? "active" : ""}`} href="/requests">
+            {tr(locale, "All requests", "전체 요청")} ({typeCounts.all})
+          </Link>
+          <Link
+            className={`doc-filter-tab ${typeFilter === "quotation" ? "active" : ""}`}
+            href="/requests?type=quotation"
+          >
+            {tr(locale, "Quotation requests", "견적서 요청")} ({typeCounts.quotation})
+          </Link>
+          <Link
+            className={`doc-filter-tab ${typeFilter === "purchase" ? "active" : ""}`}
+            href="/requests?type=purchase"
+          >
+            {tr(locale, "Purchase requests", "구매/진행 요청")} ({typeCounts.purchase})
+          </Link>
+          <Link className={`doc-filter-tab ${typeFilter === "ebm" ? "active" : ""}`} href="/requests?type=ebm">
+            {tr(locale, "EBM requests", "EBM 요청")} ({typeCounts.ebm})
+          </Link>
+        </nav>
+      </article>
 
       <article className="panel">
         <h2 style={{ marginTop: 0 }}>
@@ -1070,9 +1069,11 @@ export function RequestsPanel({
             ? tr(locale, "Open requests", "열린 요청서")
             : tr(locale, "My requests", "내 요청서")}
         </h2>
-        {requests.length === 0 && <p className="muted">{tr(locale, "No requests yet.", "요청서가 없습니다.")}</p>}
+        {filteredRequests.length === 0 && (
+          <p className="muted">{tr(locale, "No requests yet.", "요청서가 없습니다.")}</p>
+        )}
         <div className="grid">
-          {requests.map((item) => (
+          {filteredRequests.map((item) => (
             <div className="card" key={item.id}>
               <h3 style={{ marginTop: 0 }}>{item.title}</h3>
               <p className="tiny muted" style={{ marginTop: 0 }}>
@@ -1124,6 +1125,45 @@ export function RequestsPanel({
               </p>
               {item.needsQuotation && <span className="badge">{tr(locale, "Quotation required", "견적서 필요")}</span>}
               {item.needsEbm && <span className="badge">{tr(locale, "EBM required", "EBM 필요")}</span>}
+
+              {(documentsByRequestId.get(item.id) ?? []).length > 0 && (
+                <div className="panel" style={{ marginTop: "10px", padding: "10px" }}>
+                  <h4 style={{ marginTop: 0 }}>{tr(locale, "Documents", "첨부 문서")}</h4>
+                  <ul className="doc-list">
+                    {(documentsByRequestId.get(item.id) ?? []).map((doc) => (
+                      <li key={doc.id}>
+                        <div>
+                          <strong>{doc.fileName}</strong>
+                          <p className="tiny muted">
+                            {doc.vendorName} · {toRequestTypeLabel(locale, doc.type)} ·{" "}
+                            {new Date(doc.createdAt).toLocaleString()}
+                          </p>
+                          <div className="row">
+                            <input
+                              className="input"
+                              onChange={(event) =>
+                                setRenameDrafts((current) => ({ ...current, [doc.id]: event.target.value }))
+                              }
+                              placeholder={tr(locale, "Rename file name", "파일명 변경")}
+                              value={renameDrafts[doc.id] ?? ""}
+                            />
+                            <button
+                              className="btn secondary"
+                              onClick={() => saveRenamedDocument(doc.id)}
+                              type="button"
+                            >
+                              {tr(locale, "Rename", "이름 변경")}
+                            </button>
+                          </div>
+                        </div>
+                        <a className="btn" download={doc.fileName} href={doc.dataUrl}>
+                          {tr(locale, "Download", "다운로드")}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {role === "provider" &&
                 item.requestType !== "quotation" &&
