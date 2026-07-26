@@ -92,7 +92,7 @@ interface RequestsPanelProps {
 }
 
 interface ApiResult {
-  error?: { message: string };
+  error?: { message: string; code?: string };
   data?: {
     id?: string;
   };
