@@ -96,11 +96,17 @@ Main endpoints are under `/api`:
 2. Copy:
    - pooled connection string -> `DATABASE_URL`
    - direct connection string -> `DIRECT_URL`
-3. Push schema once from local (or any machine with the env vars):
+3. Push schema once from local (or any machine with the env vars). **After each schema change in git, run this again on production:**
 
 ```bash
 npm run db:push
 npm run db:seed
+```
+
+Or run the SQL patch in Supabase SQL Editor:
+
+```bash
+prisma/sql/add_purchase_code_updated_at.sql
 ```
 
 4. Push your branch to GitHub.

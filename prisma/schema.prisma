@@ -311,7 +311,6 @@ model ServiceRequest {
   needsEbm        Boolean         @default(false)
   status          RequestStatus   @default(open)
   createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
   purchaseCodeUpdatedAt DateTime?
   requester       User            @relation("Requester", fields: [requesterUserId], references: [id], onDelete: Cascade)
   organization    Organization?   @relation(fields: [organizationId], references: [id], onDelete: SetNull)
