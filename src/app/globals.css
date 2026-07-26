@@ -477,6 +477,31 @@ a {
   font-size: 0.84rem;
 }
 
+.request-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.request-card h3 {
+  margin: 0;
+  line-height: 1.3;
+}
+
+.request-card-body {
+  display: grid;
+  gap: 4px;
+}
+
+.request-card-body p {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.request-card-actions {
+  margin-top: 4px;
+}
+
 .hr {
   height: 1px;
   background: var(--line);

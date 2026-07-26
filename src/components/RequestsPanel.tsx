@@ -961,36 +961,37 @@ export function RequestsPanel({
             const servicePriceLabel = formatServicePrice(item, locale);
 
             return (
-            <div className="card" key={item.id}>
-              <h3 style={{ marginTop: 0 }}>{buildRequestCardTitle(item, boxFilter, locale)}</h3>
-              <p className="tiny muted" style={{ marginTop: 0 }}>
-                {new Date(item.createdAt).toLocaleString()}
-              </p>
-              {servicePriceLabel && (
-                <p className="tiny" style={{ marginBottom: "6px" }}>
-                  <strong>{tr(locale, "Service / price", "서비스 / 가격")}:</strong> {servicePriceLabel}
+            <div className="card request-card" key={item.id}>
+              <h3>{buildRequestCardTitle(item, boxFilter, locale)}</h3>
+              <div className="request-card-body">
+                <p className="tiny muted">
+                  <strong>{tr(locale, "Requested at", "요청 일시")}:</strong>{" "}
+                  {new Date(item.createdAt).toLocaleString()}
                 </p>
-              )}
-              {item.requirementText && (
-                <p className="tiny muted" style={{ marginBottom: "6px" }}>
-                  {item.requirementText}
-                </p>
-              )}
-              {isSentView && (item.requestType === "quotation" || item.requestType === "ebm") && (
-                <p className="tiny" style={{ marginBottom: "6px" }}>
-                  <strong>{tr(locale, "Status", "상태")}:</strong> {vendorOpenedLabel(item, locale)}
-                </p>
-              )}
-              {item.organizationName && (
-                <p className="tiny muted" style={{ marginBottom: "6px" }}>
-                  {tr(locale, "Organization", "소속 기관")}: {item.organizationName}
-                </p>
-              )}
-              {item.organizationTinNumber && (
-                <p className="tiny muted" style={{ marginBottom: "6px" }}>
-                  {tr(locale, "Organization TIN", "기관 TIN")}: {item.organizationTinNumber}
-                </p>
-              )}
+                {servicePriceLabel && (
+                  <p className="tiny">
+                    <strong>{tr(locale, "Service / price", "서비스 / 가격")}:</strong> {servicePriceLabel}
+                  </p>
+                )}
+                {item.requirementText && (
+                  <p className="tiny muted">{item.requirementText}</p>
+                )}
+                {isSentView && (item.requestType === "quotation" || item.requestType === "ebm") && (
+                  <p className="tiny">
+                    <strong>{tr(locale, "Status", "상태")}:</strong> {vendorOpenedLabel(item, locale)}
+                  </p>
+                )}
+                {item.organizationName && (
+                  <p className="tiny muted">
+                    {tr(locale, "Organization", "소속 기관")}: {item.organizationName}
+                  </p>
+                )}
+                {item.organizationTinNumber && (
+                  <p className="tiny muted">
+                    {tr(locale, "Organization TIN", "기관 TIN")}: {item.organizationTinNumber}
+                  </p>
+                )}
+              </div>
 
               {isSentView && requestDocuments.length > 0 && (
                 <div className="panel" style={{ marginTop: "10px", padding: "10px" }}>
@@ -1015,7 +1016,7 @@ export function RequestsPanel({
               )}
 
               {isReceivedView && item.requestType === "quotation" && (
-                <div className="grid" style={{ marginTop: "10px" }}>
+                <div className="grid request-card-actions" style={{ marginTop: "8px" }}>
                   <div className="row tiny">
                     <label>
                       <input
@@ -1089,8 +1090,8 @@ export function RequestsPanel({
 
               {isReceivedView && item.requestType === "ebm" && (
                 <form
-                  className="grid"
-                  style={{ marginTop: "10px" }}
+                  className="grid request-card-actions"
+                  style={{ marginTop: "8px" }}
                   onSubmit={(event) => void providerUploadDocument(item, "ebm", event)}
                 >
                   <label className="tiny">{tr(locale, "Upload EBM document", "EBM 문서 업로드")}</label>
@@ -1127,7 +1128,7 @@ export function RequestsPanel({
               )}
 
               {isReceivedView && (
-                <div className="row" style={{ marginTop: "10px" }}>
+                <div className="row request-card-actions" style={{ marginTop: "8px" }}>
                   <Link className="btn secondary" href="/inbox">
                     {tr(locale, "Message customer", "손님에게 메시지 보내기")}
                   </Link>
