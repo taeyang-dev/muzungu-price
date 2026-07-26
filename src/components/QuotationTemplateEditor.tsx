@@ -340,10 +340,11 @@ export function QuotationTemplateEditor({
             />
           </div>
           <div>
-            <label className="tiny">SWIFT</label>
+            <label className="tiny">{tr(locale, "Bank SWIFT code (optional)", "은행 SWIFT 코드 (선택)")}</label>
             <input
               className="input"
               onChange={(event) => setData((current) => ({ ...current, bankSwiftCode: event.target.value }))}
+              placeholder={tr(locale, "Optional", "선택 입력")}
               value={data.bankSwiftCode}
             />
           </div>
