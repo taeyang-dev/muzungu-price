@@ -4,8 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { RequestsPanel } from "@/components/RequestsPanel";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { tr } from "@/lib/i18n";
-import { buildServiceRequestScopeWhere } from "@/lib/service-request-scope";
+import {
+  buildReceivedRequestsWhere,
+  buildSentRequestsWhere,
+  getProviderProfileIdForUser
+} from "@/lib/service-request-scope";
 import { mapServiceRequestItem, serviceRequestInclude } from "@/lib/service-request-mapper";
+
+export const dynamic = "force-dynamic";
 
 type RequestBoxFilter = "sent" | "received";
 type RequestTypeFilter = "all" | "quotation" | "ebm";
@@ -50,45 +56,53 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
     );
   }
 
-  const scopedWhere = await buildServiceRequestScopeWhere(
-    {
-      userId: session.userId,
-      role: session.role
-    },
-    boxFilter
-  );
+  const providerProfileId = await getProviderProfileIdForUser(session.userId);
 
-  if (!scopedWhere && boxFilter === "received") {
+  if (boxFilter === "received" && !providerProfileId) {
     return (
-      <section className="panel">
-        <h1>{tr(locale, "Requests", "요청서")}</h1>
-        <p>
-          {tr(
-            locale,
-            "Register as a vendor to view received requests.",
-            "수신 요청을 보려면 벤더로 등록해 주세요."
-          )}
-        </p>
-        <Link className="btn" href="/provider">
-          {tr(locale, "Register as vendor", "벤더 등록")}
-        </Link>
+      <section className="grid">
+        <h1 style={{ marginBottom: 0 }}>{tr(locale, "Requests", "요청서")}</h1>
+        <article className="panel">
+          <p className="muted" style={{ marginTop: 0 }}>
+            {session.role === "provider"
+              ? tr(
+                  locale,
+                  "Complete your vendor profile setup to view received requests.",
+                  "수신 요청을 보려면 업체 프로필 등록을 완료해 주세요."
+                )
+              : tr(
+                  locale,
+                  "Switch to vendor mode and complete vendor profile setup to receive customer requests.",
+                  "고객 요청을 받으려면 벤더 모드로 전환한 뒤 업체 프로필 등록을 완료해 주세요."
+                )}
+          </p>
+          <Link className="btn" href="/provider">
+            {session.role === "provider"
+              ? tr(locale, "Complete vendor profile", "업체 프로필 등록 완료하기")
+              : tr(locale, "Register as vendor", "벤더 등록")}
+          </Link>
+        </article>
       </section>
     );
   }
 
+  const where =
+    boxFilter === "sent"
+      ? buildSentRequestsWhere(session.userId)
+      : buildReceivedRequestsWhere(providerProfileId!);
+
   const requests = await prisma.serviceRequest.findMany({
-    where: scopedWhere ?? { id: "__none__" },
+    where,
     include: serviceRequestInclude,
     orderBy: { createdAt: "desc" }
   });
 
-  const providerSelf =
-    session.role === "provider"
-      ? await prisma.providerProfile.findUnique({
-          where: { userId: session.userId },
-          include: { billingCapability: true }
-        })
-      : null;
+  const providerSelf = providerProfileId
+    ? await prisma.providerProfile.findUnique({
+        where: { id: providerProfileId },
+        include: { billingCapability: true }
+      })
+    : null;
 
   return (
     <RequestsPanel

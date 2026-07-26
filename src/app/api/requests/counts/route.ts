@@ -8,6 +8,8 @@ import {
   getProviderProfileIdForUser
 } from "@/lib/service-request-scope";
 
+export const dynamic = "force-dynamic";
+
 const emptyCounts = { total: 0, quotation: 0, ebm: 0 };
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
