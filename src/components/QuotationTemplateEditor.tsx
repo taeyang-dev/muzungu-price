@@ -15,6 +15,8 @@ interface QuotationTemplateEditorProps {
   locale: Locale;
   defaults: QuotationTemplateDefaults;
   disabled?: boolean;
+  submitting?: boolean;
+  completed?: boolean;
   onSubmit: (input: { fileName: string; dataUrl: string }) => void;
 }
 
@@ -22,6 +24,8 @@ export function QuotationTemplateEditor({
   locale,
   defaults,
   disabled = false,
+  submitting = false,
+  completed = false,
   onSubmit
 }: QuotationTemplateEditorProps) {
   const [data, setData] = useState<QuotationTemplateData>(() => createQuotationTemplateData(defaults));
@@ -328,8 +332,12 @@ export function QuotationTemplateEditor({
         />
       </div>
 
-      <button className="btn" disabled={disabled} type="submit">
-        {tr(locale, "Send quotation from template", "양식으로 견적서 보내기")}
+      <button className="btn" disabled={disabled || submitting || completed} type="submit">
+        {submitting
+          ? tr(locale, "Sending...", "전송 중...")
+          : completed
+            ? tr(locale, "Quotation sent", "견적서 전송 완료")
+            : tr(locale, "Send quotation from template", "양식으로 견적서 보내기")}
       </button>
     </form>
   );

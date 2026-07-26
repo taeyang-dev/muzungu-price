@@ -133,6 +133,24 @@ function notifyRequestsUpdated(): void {
   }
 }
 
+function getActionButtonLabel(
+  locale: Locale,
+  state: { loading: boolean; completed: boolean },
+  labels: {
+    pending: { en: string; ko: string };
+    loading: { en: string; ko: string };
+    done: { en: string; ko: string };
+  }
+): string {
+  if (state.loading) {
+    return tr(locale, labels.loading.en, labels.loading.ko);
+  }
+  if (state.completed) {
+    return tr(locale, labels.done.en, labels.done.ko);
+  }
+  return tr(locale, labels.pending.en, labels.pending.ko);
+}
+
 function toTermLabel(locale: Locale, value: string): string {
   const map: Record<string, { en: string; ko: string; fr: string; rw: string }> = {
     prepaid: { en: "Prepaid", ko: "선불", fr: "Prépayé", rw: "Yishyurwa mbere" },
@@ -237,6 +255,7 @@ export function RequestsPanel({
     vendorContext?.paymentMethods[0] ?? "bank_transfer"
   );
   const [uploadingByRequestId, setUploadingByRequestId] = useState<Record<string, boolean>>({});
+  const [completedRequestActions, setCompletedRequestActions] = useState<Record<string, boolean>>({});
   const [quotationModeByRequestId, setQuotationModeByRequestId] = useState<Record<string, "template" | "file">>({});
   const submittingVendorRequestRef = useRef(false);
   const availablePaymentTerms = ["prepaid", "postpaid", "deposit"];
@@ -334,9 +353,11 @@ export function RequestsPanel({
     event: FormEvent<HTMLFormElement>,
     url: string,
     method: "POST" | "PATCH",
-    successMessage: { en: string; ko: string } = {
-      en: "Saved successfully.",
-      ko: "저장되었습니다."
+    options: {
+      successMessage: { en: string; ko: string };
+      completedActionKey?: string;
+    } = {
+      successMessage: { en: "Saved successfully.", ko: "저장되었습니다." }
     }
   ): Promise<void> {
     event.preventDefault();
@@ -370,7 +391,11 @@ export function RequestsPanel({
       setError(data.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
       return;
     }
+    const { successMessage, completedActionKey } = options;
     setFeedback(tr(locale, successMessage.en, successMessage.ko));
+    if (completedActionKey) {
+      setCompletedRequestActions((current) => ({ ...current, [completedActionKey]: true }));
+    }
     notifyRequestsUpdated();
     router.refresh();
     event.currentTarget.reset();
@@ -654,6 +679,7 @@ export function RequestsPanel({
           type === "quotation" ? "견적서 전송 완료" : "EBM 전송 완료"
         )
       );
+      setCompletedRequestActions((current) => ({ ...current, [`document:${requestItem.id}`]: true }));
       notifyRequestsUpdated();
       event.currentTarget.reset();
     } catch {
@@ -680,6 +706,7 @@ export function RequestsPanel({
         fileName: input.fileName
       });
       setFeedback(tr(locale, "Quotation sent.", "견적서 전송 완료"));
+      setCompletedRequestActions((current) => ({ ...current, [`template:${requestItem.id}`]: true }));
       notifyRequestsUpdated();
     } catch {
       setError(tr(locale, "Failed to send quotation template.", "견적서 양식 전송에 실패했습니다."));
@@ -1102,8 +1129,11 @@ export function RequestsPanel({
                   style={{ marginTop: "10px" }}
                   onSubmit={(event) =>
                     void submitJson(event, `/api/requests/${item.id}/offers`, "POST", {
-                      en: "Offer submitted.",
-                      ko: "오퍼 제출 완료"
+                      successMessage: {
+                        en: "Offer submitted.",
+                        ko: "오퍼 제출 완료"
+                      },
+                      completedActionKey: `offer:${item.id}`
                     })
                   }
                 >
@@ -1130,8 +1160,23 @@ export function RequestsPanel({
                     <input defaultChecked name="canIssueEbm" type="checkbox" />{" "}
                     {tr(locale, "Can issue EBM", "EBM 발행 가능")}
                   </label>
-                  <button className="btn" disabled={loading} type="submit">
-                    {tr(locale, "Submit offer", "오퍼 제출")}
+                  <button
+                    className="btn"
+                    disabled={loading || completedRequestActions[`offer:${item.id}`]}
+                    type="submit"
+                  >
+                    {getActionButtonLabel(
+                      locale,
+                      {
+                        loading,
+                        completed: Boolean(completedRequestActions[`offer:${item.id}`])
+                      },
+                      {
+                        pending: { en: "Submit offer", ko: "오퍼 제출" },
+                        loading: { en: "Submitting...", ko: "제출 중..." },
+                        done: { en: "Offer submitted", ko: "오퍼 제출 완료" }
+                      }
+                    )}
                   </button>
                 </form>
               )}
@@ -1165,10 +1210,12 @@ export function RequestsPanel({
 
                   {(quotationModeByRequestId[item.id] ?? "file") === "template" ? (
                     <QuotationTemplateEditor
+                      completed={Boolean(completedRequestActions[`template:${item.id}`])}
                       defaults={buildQuotationDefaults(item)}
-                      disabled={uploadingByRequestId[item.id]}
+                      disabled={uploadingByRequestId[item.id] || completedRequestActions[`template:${item.id}`]}
                       locale={locale}
                       onSubmit={(input) => providerSubmitQuotationTemplate(item, input)}
+                      submitting={Boolean(uploadingByRequestId[item.id])}
                     />
                   ) : (
                     <form
@@ -1179,10 +1226,28 @@ export function RequestsPanel({
                         {tr(locale, "Upload quotation document", "견적서 문서 업로드")}
                       </label>
                       <input className="input" name="vendorDocument" type="file" />
-                      <button className="btn secondary" disabled={uploadingByRequestId[item.id]} type="submit">
-                        {uploadingByRequestId[item.id]
-                          ? tr(locale, "Uploading...", "업로드 중...")
-                          : tr(locale, "Notify requester with uploaded document", "요청자에게 문서 알림 보내기")}
+                      <button
+                        className="btn secondary"
+                        disabled={
+                          uploadingByRequestId[item.id] || completedRequestActions[`document:${item.id}`]
+                        }
+                        type="submit"
+                      >
+                        {getActionButtonLabel(
+                          locale,
+                          {
+                            loading: Boolean(uploadingByRequestId[item.id]),
+                            completed: Boolean(completedRequestActions[`document:${item.id}`])
+                          },
+                          {
+                            pending: {
+                              en: "Notify requester with uploaded document",
+                              ko: "요청자에게 문서 알림 보내기"
+                            },
+                            loading: { en: "Sending...", ko: "전송 중..." },
+                            done: { en: "Send complete", ko: "전송 완료" }
+                          }
+                        )}
                       </button>
                     </form>
                   )}
@@ -1204,10 +1269,26 @@ export function RequestsPanel({
                     )}
                   </p>
                   <input className="input" name="vendorDocument" type="file" />
-                  <button className="btn secondary" disabled={uploadingByRequestId[item.id]} type="submit">
-                    {uploadingByRequestId[item.id]
-                      ? tr(locale, "Uploading...", "업로드 중...")
-                      : tr(locale, "Notify requester with uploaded document", "요청자에게 문서 알림 보내기")}
+                  <button
+                    className="btn secondary"
+                    disabled={uploadingByRequestId[item.id] || completedRequestActions[`document:${item.id}`]}
+                    type="submit"
+                  >
+                    {getActionButtonLabel(
+                      locale,
+                      {
+                        loading: Boolean(uploadingByRequestId[item.id]),
+                        completed: Boolean(completedRequestActions[`document:${item.id}`])
+                      },
+                      {
+                        pending: {
+                          en: "Notify requester with uploaded document",
+                          ko: "요청자에게 문서 알림 보내기"
+                        },
+                        loading: { en: "Sending...", ko: "전송 중..." },
+                        done: { en: "Send complete", ko: "전송 완료" }
+                      }
+                    )}
                   </button>
                 </form>
               )}
