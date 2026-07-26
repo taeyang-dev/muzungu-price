@@ -511,6 +511,7 @@ export default async function ProviderDetailPage({
               status: item.status,
               createdAt: item.createdAt.toISOString(),
               requesterName: null,
+              requesterUserId: item.requesterUserId,
               category: { name: item.category.name },
               offers: item.offers.map((offer: UserRequestOffer) => ({
                 id: offer.id,

@@ -989,7 +989,22 @@ export function RequestsPanel({
 
             return (
             <div className="card request-card" key={item.id}>
-              <h3>{buildRequestCardTitle(item, boxFilter, locale)}</h3>
+              <div className="request-card-header">
+                <h3>{buildRequestCardTitle(item, boxFilter, locale)}</h3>
+                {isReceivedView &&
+                  item.requesterUserId &&
+                  (item.requestType === "quotation" || item.requestType === "ebm") && (
+                    <Link
+                      className="request-customer-chat-btn"
+                      href={`/messages/customers/${item.requesterUserId}?requestId=${item.id}`}
+                    >
+                      <span aria-hidden="true">💬</span>
+                      <span className="request-customer-chat-tooltip">
+                        {tr(locale, "Message this customer", "이 손님에게 메시지 보내기")}
+                      </span>
+                    </Link>
+                  )}
+              </div>
               <div className="request-card-body">
                 <p className="tiny muted">
                   <strong>{tr(locale, "Requested at", "요청 일시")}:</strong>{" "}
@@ -1152,14 +1167,6 @@ export function RequestsPanel({
                     )}
                   </button>
                 </form>
-              )}
-
-              {isReceivedView && (
-                <div className="row request-card-actions" style={{ marginTop: "8px" }}>
-                  <Link className="btn secondary" href="/inbox">
-                    {tr(locale, "Message customer", "손님에게 메시지 보내기")}
-                  </Link>
-                </div>
               )}
 
               {isSentView &&

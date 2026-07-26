@@ -30,6 +30,7 @@ export type MappedServiceRequestItem = {
   providerProfileId: string | null;
   providerName: string | null;
   requesterName: string | null;
+  requesterUserId: string | null;
   createdAt: string;
   serviceId: string | null;
   serviceTitle: string | null;
@@ -76,6 +77,7 @@ export function mapServiceRequestItem(item: ServiceRequestRecord): MappedService
     providerProfileId: item.providerProfileId,
     providerName: item.providerProfile?.businessName ?? null,
     requesterName: item.requester?.name ?? null,
+    requesterUserId: item.requesterUserId,
     createdAt: item.createdAt.toISOString(),
     serviceId: item.serviceId,
     serviceTitle: item.service?.title ?? null,
