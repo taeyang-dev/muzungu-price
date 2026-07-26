@@ -1,9 +1,12 @@
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
-import prismaClientPkg from "@prisma/client";
-import adapterPgPkg from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const { PrismaClient } = prismaClientPkg;
-const { PrismaPg } = adapterPgPkg;
+dotenv.config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../.env") });
+
 const connectionString =
   process.env.DIRECT_URL ??
   process.env.DATABASE_URL ??
@@ -26,6 +29,7 @@ async function main() {
     { slug: "art-experience", name: "Art Experience" },
     { slug: "furniture", name: "Furniture Making" },
     { slug: "electronics", name: "Electronics Sales" },
+    { slug: "general-services", name: "General Services" },
     { slug: "other", name: "Other Services" }
   ];
 

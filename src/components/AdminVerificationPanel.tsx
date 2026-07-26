@@ -32,7 +32,14 @@ interface AdminVerificationPanelProps {
 }
 
 interface ApiResult {
-  error?: { message: string };
+  error?: { message: string; code?: string };
+}
+
+function resolveDecisionDefault(status: string): "approved" | "on_hold" | "rejected" {
+  if (status === "approved" || status === "on_hold" || status === "rejected") {
+    return status;
+  }
+  return "approved";
 }
 
 export function AdminVerificationPanel({ cases, locale }: AdminVerificationPanelProps) {
@@ -44,7 +51,18 @@ export function AdminVerificationPanel({ cases, locale }: AdminVerificationPanel
   async function reviewCase(event: FormEvent<HTMLFormElement>, caseId: string): Promise<void> {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const payload = Object.fromEntries(formData.entries());
+    const payload = {
+      status: String(formData.get("status") ?? "approved"),
+      score: Number(formData.get("score") ?? 0),
+      level: String(formData.get("level") ?? "verified"),
+      notes: String(formData.get("notes") ?? "")
+    };
+
+    if (!["approved", "on_hold", "rejected"].includes(payload.status)) {
+      setError(tr(locale, "Choose a review decision before saving.", "저장 전에 심사 결정을 선택해 주세요."));
+      setLoadingId(null);
+      return;
+    }
 
     setLoadingId(caseId);
     setError("");
@@ -105,24 +123,39 @@ export function AdminVerificationPanel({ cases, locale }: AdminVerificationPanel
             <p className="tiny muted">{tr(locale, "No submitted documents.", "제출된 문서가 없습니다.")}</p>
           ) : (
             <div className="grid">
-              {item.documents.map((document) => (
+              {item.documents.map((document) => {
+                const viewUrl = `/api/admin/verification-documents/${document.id}`;
+                const isImage = document.fileUrl.startsWith("data:image/");
+                return (
                 <div className="card" key={document.id}>
                   <strong>{document.docType}</strong>
                   <p className="tiny muted">
                     {tr(locale, "Status", "상태")}: {document.status}
                   </p>
-                  <a className="tiny" href={document.fileUrl} rel="noreferrer" target="_blank">
-                    {tr(locale, "View evidence", "증빙 보기")}
-                  </a>
+                  {isImage && (
+                    <a href={viewUrl} rel="noreferrer" target="_blank">
+                      <img
+                        alt={document.docType}
+                        src={viewUrl}
+                        style={{ display: "block", marginTop: "8px", maxHeight: "180px", maxWidth: "100%", borderRadius: "8px" }}
+                      />
+                    </a>
+                  )}
+                  <p style={{ marginTop: "8px", marginBottom: 0 }}>
+                    <a className="tiny" href={viewUrl} rel="noreferrer" target="_blank">
+                      {tr(locale, "View evidence", "증빙 보기")}
+                    </a>
+                  </p>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
 
           <form className="grid grid-3" onSubmit={(event) => void reviewCase(event, item.id)}>
             <div>
               <label className="tiny">{tr(locale, "Decision", "결정")}</label>
-              <select className="select" defaultValue={item.status} name="status">
+              <select className="select" defaultValue={resolveDecisionDefault(item.status)} name="status">
                 <option value="approved">{tr(locale, "Approved", "승인")}</option>
                 <option value="on_hold">{tr(locale, "On hold", "보류")}</option>
                 <option value="rejected">{tr(locale, "Rejected", "반려")}</option>

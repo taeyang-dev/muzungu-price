@@ -6,6 +6,7 @@ import { FallbackImage } from "@/components/FallbackImage";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { Locale, localizeCopy, tr } from "@/lib/i18n";
 import { normalizeCityInput } from "@/lib/location";
+import { ensureDefaultServiceCategories } from "@/lib/service-categories-server";
 
 interface HomePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -221,6 +222,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   let databaseError: string | null = null;
 
   try {
+    await ensureDefaultServiceCategories();
     [providers, categories] = await Promise.all([loadProviders(), loadCategories()]);
   } catch (error) {
     databaseError = error instanceof Error ? error.message : "Database unavailable";
