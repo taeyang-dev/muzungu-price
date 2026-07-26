@@ -11,6 +11,8 @@ import {
   RequestedDocument,
   saveRequestedDocument
 } from "@/lib/request-documents-storage";
+import { QuotationTemplateEditor } from "@/components/QuotationTemplateEditor";
+import type { QuotationTemplateDefaults } from "@/lib/quotation-template";
 import { getVendorStorageEventName } from "@/lib/vendor-storage";
 
 interface Offer {
@@ -89,6 +91,7 @@ interface RequestsPanelProps {
   requests: RequestItem[];
   locale: Locale;
   vendorContext: VendorContext | null;
+  providerSelf?: QuotationTemplateDefaults | null;
 }
 
 interface ApiResult {
@@ -202,7 +205,8 @@ export function RequestsPanel({
   role,
   requests,
   locale,
-  vendorContext
+  vendorContext,
+  providerSelf = null
 }: RequestsPanelProps) {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
@@ -227,6 +231,7 @@ export function RequestsPanel({
     vendorContext?.paymentMethods[0] ?? "bank_transfer"
   );
   const [uploadingByRequestId, setUploadingByRequestId] = useState<Record<string, boolean>>({});
+  const [quotationModeByRequestId, setQuotationModeByRequestId] = useState<Record<string, "template" | "file">>({});
   const submittingVendorRequestRef = useRef(false);
   const availablePaymentTerms = ["prepaid", "postpaid", "deposit"];
   const availablePaymentMethods =
@@ -645,6 +650,49 @@ export function RequestsPanel({
     }
   }
 
+  function providerSubmitQuotationTemplate(
+    requestItem: RequestItem,
+    input: { fileName: string; dataUrl: string }
+  ): void {
+    setUploadingByRequestId((current) => ({ ...current, [requestItem.id]: true }));
+    setError("");
+    try {
+      const vendorName = requestItem.providerName ?? providerSelf?.businessName ?? tr(locale, "Vendor", "업체");
+      const saved = saveRequestedDocument({
+        requestId: requestItem.id,
+        vendorId: requestItem.providerProfileId ?? "provider",
+        vendorName,
+        type: "quotation",
+        dataUrl: input.dataUrl,
+        fileName: input.fileName
+      });
+      setFeedback(
+        tr(
+          locale,
+          `${saved.fileName} sent from template. Requester will receive a notification.`,
+          `${saved.fileName} 양식 견적서가 전송되었습니다. 요청자에게 알림이 표시됩니다.`
+        )
+      );
+    } catch {
+      setError(tr(locale, "Failed to send quotation template.", "견적서 양식 전송에 실패했습니다."));
+    } finally {
+      setUploadingByRequestId((current) => ({ ...current, [requestItem.id]: false }));
+    }
+  }
+
+  function buildQuotationDefaults(requestItem: RequestItem): QuotationTemplateDefaults {
+    return {
+      businessName: providerSelf?.businessName ?? requestItem.providerName ?? "",
+      email: providerSelf?.email ?? "",
+      phone: providerSelf?.phone ?? "",
+      address: providerSelf?.address ?? "",
+      bankName: providerSelf?.bankName ?? "",
+      bankAccountName: providerSelf?.bankAccountName ?? "",
+      bankAccountNumber: providerSelf?.bankAccountNumber ?? "",
+      projectName: requestItem.serviceTitle ? localizeCopy(locale, requestItem.serviceTitle) : requestItem.title
+    };
+  }
+
   return (
     <section className="grid">
       <h1 style={{ marginBottom: 0 }}>{tr(locale, "Requests", "요청서")}</h1>
@@ -1038,7 +1086,9 @@ export function RequestsPanel({
               {item.needsQuotation && <span className="badge">{tr(locale, "Quotation required", "견적서 필요")}</span>}
               {item.needsEbm && <span className="badge">{tr(locale, "EBM required", "EBM 필요")}</span>}
 
-              {role === "provider" && (
+              {role === "provider" &&
+                item.requestType !== "quotation" &&
+                item.requestType !== "ebm" && (
                 <form
                   className="grid"
                   style={{ marginTop: "10px" }}
@@ -1073,19 +1123,73 @@ export function RequestsPanel({
                 </form>
               )}
 
-              {role === "provider" && (item.requestType === "quotation" || item.requestType === "ebm") && (
+              {role === "provider" && item.requestType === "quotation" && (
+                <div className="grid" style={{ marginTop: "10px" }}>
+                  <div className="row tiny">
+                    <label>
+                      <input
+                        checked={(quotationModeByRequestId[item.id] ?? "file") === "template"}
+                        name={`quotation-mode-${item.id}`}
+                        onChange={() =>
+                          setQuotationModeByRequestId((current) => ({ ...current, [item.id]: "template" }))
+                        }
+                        type="radio"
+                      />{" "}
+                      {tr(locale, "Use app template (optional)", "앱 양식 사용 (선택)")}
+                    </label>
+                    <label>
+                      <input
+                        checked={(quotationModeByRequestId[item.id] ?? "file") === "file"}
+                        name={`quotation-mode-${item.id}`}
+                        onChange={() =>
+                          setQuotationModeByRequestId((current) => ({ ...current, [item.id]: "file" }))
+                        }
+                        type="radio"
+                      />{" "}
+                      {tr(locale, "Upload file", "파일 업로드")}
+                    </label>
+                  </div>
+
+                  {(quotationModeByRequestId[item.id] ?? "file") === "template" ? (
+                    <QuotationTemplateEditor
+                      defaults={buildQuotationDefaults(item)}
+                      disabled={uploadingByRequestId[item.id]}
+                      locale={locale}
+                      onSubmit={(input) => providerSubmitQuotationTemplate(item, input)}
+                    />
+                  ) : (
+                    <form
+                      className="grid"
+                      onSubmit={(event) => void providerUploadDocument(item, "quotation", event)}
+                    >
+                      <label className="tiny">
+                        {tr(locale, "Upload quotation document", "견적서 문서 업로드")}
+                      </label>
+                      <input className="input" name="vendorDocument" type="file" />
+                      <button className="btn secondary" disabled={uploadingByRequestId[item.id]} type="submit">
+                        {uploadingByRequestId[item.id]
+                          ? tr(locale, "Uploading...", "업로드 중...")
+                          : tr(locale, "Notify requester with uploaded document", "요청자에게 문서 알림 보내기")}
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              {role === "provider" && item.requestType === "ebm" && (
                 <form
                   className="grid"
                   style={{ marginTop: "10px" }}
-                  onSubmit={(event) =>
-                    void providerUploadDocument(item, item.requestType === "quotation" ? "quotation" : "ebm", event)
-                  }
+                  onSubmit={(event) => void providerUploadDocument(item, "ebm", event)}
                 >
-                  <label className="tiny">
-                    {item.requestType === "quotation"
-                      ? tr(locale, "Upload quotation document", "견적서 문서 업로드")
-                      : tr(locale, "Upload EBM document", "EBM 문서 업로드")}
-                  </label>
+                  <label className="tiny">{tr(locale, "Upload EBM document", "EBM 문서 업로드")}</label>
+                  <p className="tiny muted" style={{ margin: 0 }}>
+                    {tr(
+                      locale,
+                      "EBM is issued after the transaction. Upload the official receipt file only.",
+                      "EBM은 거래 완료 후 발행되는 영수증입니다. 공식 EBM 파일만 업로드해 주세요."
+                    )}
+                  </p>
                   <input className="input" name="vendorDocument" type="file" />
                   <button className="btn secondary" disabled={uploadingByRequestId[item.id]} type="submit">
                     {uploadingByRequestId[item.id]
