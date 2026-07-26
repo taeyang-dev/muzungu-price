@@ -23,7 +23,10 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
   }
 
   const { userId: recipientUserId } = await params;
-  const { providerProfileId } = await loadVendorAccessForUser(auth.session.userId);
+  const { providerProfileId } = await loadVendorAccessForUser(
+    auth.session.userId,
+    auth.session.email
+  );
   if (!providerProfileId) {
     return fail("Vendor profile is required to message customers", 403, "AUTH_002");
   }

@@ -405,10 +405,10 @@ export function QuotationTemplateEditor({
 
       <button className="btn" disabled={isBusy || completed} type="submit">
         {submitting || isGeneratingPdf
-          ? tr(locale, "Sending...", "전송 중...")
+          ? tr(locale, "Uploading...", "업로드 중...")
           : completed
-            ? tr(locale, "Quotation sent", "견적서 전송 완료")
-            : tr(locale, "Send quotation from template", "양식으로 견적서 보내기")}
+            ? tr(locale, "Upload complete", "업로드 완료")
+            : tr(locale, "Upload quotation", "견적서 업로드")}
       </button>
     </form>
   );

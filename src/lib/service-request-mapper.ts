@@ -37,6 +37,7 @@ export type MappedServiceRequestItem = {
   organizationName: string | null;
   organizationTinNumber: string | null;
   purchaseCode: string | null;
+  purchaseCodeUpdatedAt: string | null;
   paymentTerm: string | null;
   paymentMethod: string | null;
   paymentNote: string | null;
@@ -84,6 +85,7 @@ export function mapServiceRequestItem(item: ServiceRequestRecord): MappedService
     organizationName: item.organizationName,
     organizationTinNumber: item.organizationTinNumber,
     purchaseCode: item.purchaseCode,
+    purchaseCodeUpdatedAt: item.purchaseCodeUpdatedAt?.toISOString() ?? null,
     paymentTerm: item.paymentTerm,
     paymentMethod: item.paymentMethod,
     paymentNote: item.paymentNote,

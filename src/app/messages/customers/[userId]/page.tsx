@@ -36,7 +36,10 @@ export default async function CustomerMessagePage({
     );
   }
 
-  const { providerProfileId } = await loadVendorAccessForUser(session.userId);
+  const { providerProfileId } = await loadVendorAccessForUser(
+    session.userId,
+    session.email
+  );
   if (!providerProfileId) {
     return (
       <section className="panel">

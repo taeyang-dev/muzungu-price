@@ -141,6 +141,39 @@ function notifyRequestsUpdated(): void {
   }
 }
 
+const REQUEST_ACTION_STATE_KEY = "muzungu_request_action_state";
+
+function uploadActionKey(requestId: string, type: RequestDocumentType): string {
+  return `upload:${type}:${requestId}`;
+}
+
+function notifyActionKey(requestId: string, type: RequestDocumentType): string {
+  return `notify:${type}:${requestId}`;
+}
+
+function readRequestActionState(): Record<string, boolean> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  const raw = window.localStorage.getItem(REQUEST_ACTION_STATE_KEY);
+  if (!raw) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(raw) as Record<string, boolean>;
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistRequestActionState(state: Record<string, boolean>): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(REQUEST_ACTION_STATE_KEY, JSON.stringify(state));
+}
+
 function getActionButtonLabel(
   locale: Locale,
   state: { loading: boolean; completed: boolean },
@@ -262,7 +295,10 @@ export function RequestsPanel({
   const defaultServiceId = vendorContext?.services[0]?.id ?? "";
   const [selectedServiceId, setSelectedServiceId] = useState(defaultServiceId);
   const [uploadingByRequestId, setUploadingByRequestId] = useState<Record<string, boolean>>({});
-  const [completedRequestActions, setCompletedRequestActions] = useState<Record<string, boolean>>({});
+  const [notifyingByRequestId, setNotifyingByRequestId] = useState<Record<string, boolean>>({});
+  const [completedRequestActions, setCompletedRequestActions] = useState<Record<string, boolean>>(() =>
+    readRequestActionState()
+  );
   const [quotationModeByRequestId, setQuotationModeByRequestId] = useState<Record<string, "template" | "file">>({});
   const submittingVendorRequestRef = useRef(false);
   const effectiveServiceId = selectedServiceId || vendorContext?.services[0]?.id || "__other__";
@@ -292,6 +328,21 @@ export function RequestsPanel({
     }
     return grouped;
   }, [requestedDocs]);
+
+  function markRequestActionComplete(key: string): void {
+    setCompletedRequestActions((current) => {
+      const next = { ...current, [key]: true };
+      persistRequestActionState(next);
+      return next;
+    });
+  }
+
+  function hasUploadedDocument(requestId: string, type: RequestDocumentType): boolean {
+    if (completedRequestActions[uploadActionKey(requestId, type)]) {
+      return true;
+    }
+    return (documentsByRequestId.get(requestId) ?? []).some((doc) => doc.type === type);
+  }
 
   useEffect(() => {
     const alertsKey = "muzungu_request_alerts";
@@ -647,13 +698,12 @@ export function RequestsPanel({
     router.refresh();
   }
 
-  async function providerUploadDocument(
+  async function providerUploadDocumentOnly(
     requestItem: RequestItem,
     type: RequestDocumentType,
-    event: FormEvent<HTMLFormElement>
+    form: HTMLFormElement
   ): Promise<void> {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(form);
     const file = formData.get("vendorDocument");
     if (!(file instanceof File) || file.size === 0) {
       setError(tr(locale, "Please select a file.", "파일을 선택해 주세요."));
@@ -670,7 +720,7 @@ export function RequestsPanel({
         reader.readAsDataURL(file);
       });
 
-      const vendorName = requestItem.providerName ?? tr(locale, "Vendor", "업체");
+      const vendorName = requestItem.providerName ?? providerSelf?.businessName ?? tr(locale, "Vendor", "업체");
       saveRequestedDocument({
         requestId: requestItem.id,
         vendorId: requestItem.providerProfileId ?? "provider",
@@ -679,16 +729,11 @@ export function RequestsPanel({
         dataUrl,
         fileName: buildDefaultRequestedDocumentName(vendorName, type)
       });
-      setFeedback(
-        tr(
-          locale,
-          type === "quotation" ? "Quotation sent." : "EBM sent.",
-          type === "quotation" ? "견적서 전송 완료" : "EBM 전송 완료"
-        )
-      );
-      setCompletedRequestActions((current) => ({ ...current, [`document:${requestItem.id}`]: true }));
+      setRequestedDocs(readRequestedDocuments());
+      markRequestActionComplete(uploadActionKey(requestItem.id, type));
+      setFeedback(tr(locale, "Upload complete.", "업로드 완료"));
       notifyRequestsUpdated();
-      event.currentTarget.reset();
+      form.reset();
     } catch {
       setError(tr(locale, "Failed to upload document.", "문서 업로드에 실패했습니다."));
     } finally {
@@ -696,7 +741,7 @@ export function RequestsPanel({
     }
   }
 
-  function providerSubmitQuotationTemplate(
+  function providerUploadTemplateDocument(
     requestItem: RequestItem,
     input: { fileName: string; dataUrl: string }
   ): void {
@@ -712,13 +757,50 @@ export function RequestsPanel({
         dataUrl: input.dataUrl,
         fileName: input.fileName
       });
-      setFeedback(tr(locale, "Quotation sent.", "견적서 전송 완료"));
-      setCompletedRequestActions((current) => ({ ...current, [`template:${requestItem.id}`]: true }));
+      setRequestedDocs(readRequestedDocuments());
+      markRequestActionComplete(uploadActionKey(requestItem.id, "quotation"));
+      setFeedback(tr(locale, "Upload complete.", "업로드 완료"));
       notifyRequestsUpdated();
     } catch {
-      setError(tr(locale, "Failed to send quotation template.", "견적서 양식 전송에 실패했습니다."));
+      setError(tr(locale, "Failed to upload document.", "문서 업로드에 실패했습니다."));
     } finally {
       setUploadingByRequestId((current) => ({ ...current, [requestItem.id]: false }));
+    }
+  }
+
+  async function providerNotifyRequester(
+    requestItem: RequestItem,
+    type: RequestDocumentType
+  ): Promise<void> {
+    if (!hasUploadedDocument(requestItem.id, type)) {
+      setError(tr(locale, "Upload a document first.", "먼저 문서를 업로드해 주세요."));
+      return;
+    }
+
+    const doc = (documentsByRequestId.get(requestItem.id) ?? []).find((item) => item.type === type);
+    setNotifyingByRequestId((current) => ({ ...current, [requestItem.id]: true }));
+    setError("");
+    try {
+      const response = await fetch(`/api/requests/${requestItem.id}/notify-document`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          fileName: doc?.fileName
+        })
+      });
+      const data = (await response.json()) as { error?: { message: string } };
+      if (!response.ok) {
+        setError(data.error?.message ?? tr(locale, "Failed to notify requester.", "알림 전송에 실패했습니다."));
+        return;
+      }
+      markRequestActionComplete(notifyActionKey(requestItem.id, type));
+      setFeedback(tr(locale, "Notification sent.", "알림 전송 완료"));
+      router.refresh();
+    } catch {
+      setError(tr(locale, "Failed to notify requester.", "알림 전송에 실패했습니다."));
+    } finally {
+      setNotifyingByRequestId((current) => ({ ...current, [requestItem.id]: false }));
     }
   }
 
@@ -1006,6 +1088,17 @@ export function RequestsPanel({
                     {tr(locale, "Organization TIN", "기관 TIN")}: {item.organizationTinNumber}
                   </p>
                 )}
+                {isReceivedView && item.purchaseCode && (
+                  <p className="tiny">
+                    <strong>{tr(locale, "Purchase code", "Purchase code")}:</strong> {item.purchaseCode}
+                    {item.purchaseCodeUpdatedAt && (
+                      <span className="badge" style={{ marginLeft: "8px" }}>
+                        {tr(locale, "Updated", "업데이트됨")}{" "}
+                        {new Date(item.purchaseCodeUpdatedAt).toLocaleString()}
+                      </span>
+                    )}
+                  </p>
+                )}
               </div>
 
               {isSentView && requestDocuments.length > 0 && (
@@ -1058,46 +1151,100 @@ export function RequestsPanel({
                   </div>
 
                   {(quotationModeByRequestId[item.id] ?? "file") === "template" ? (
-                    <QuotationTemplateEditor
-                      completed={Boolean(completedRequestActions[`template:${item.id}`])}
-                      defaults={buildQuotationDefaults(item)}
-                      disabled={uploadingByRequestId[item.id] || completedRequestActions[`template:${item.id}`]}
-                      locale={locale}
-                      onSubmit={(input) => providerSubmitQuotationTemplate(item, input)}
-                      submitting={Boolean(uploadingByRequestId[item.id])}
-                    />
-                  ) : (
-                    <form
-                      className="grid"
-                      onSubmit={(event) => void providerUploadDocument(item, "quotation", event)}
-                    >
-                      <label className="tiny">
-                        {tr(locale, "Upload quotation document", "견적서 문서 업로드")}
-                      </label>
-                      <input className="input" name="vendorDocument" type="file" />
+                    <>
+                      <QuotationTemplateEditor
+                        completed={Boolean(completedRequestActions[uploadActionKey(item.id, "quotation")])}
+                        defaults={buildQuotationDefaults(item)}
+                        disabled={
+                          uploadingByRequestId[item.id] ||
+                          completedRequestActions[uploadActionKey(item.id, "quotation")]
+                        }
+                        locale={locale}
+                        onSubmit={(input) => providerUploadTemplateDocument(item, input)}
+                        submitting={Boolean(uploadingByRequestId[item.id])}
+                      />
                       <button
                         className="btn secondary"
                         disabled={
-                          uploadingByRequestId[item.id] || completedRequestActions[`document:${item.id}`]
+                          !hasUploadedDocument(item.id, "quotation") ||
+                          notifyingByRequestId[item.id] ||
+                          completedRequestActions[notifyActionKey(item.id, "quotation")]
                         }
-                        type="submit"
+                        onClick={() => void providerNotifyRequester(item, "quotation")}
+                        type="button"
                       >
                         {getActionButtonLabel(
                           locale,
                           {
-                            loading: Boolean(uploadingByRequestId[item.id]),
-                            completed: Boolean(completedRequestActions[`document:${item.id}`])
+                            loading: Boolean(notifyingByRequestId[item.id]),
+                            completed: Boolean(completedRequestActions[notifyActionKey(item.id, "quotation")])
                           },
                           {
-                            pending: {
-                              en: "Notify requester with uploaded document",
-                              ko: "요청자에게 문서 알림 보내기"
-                            },
-                            loading: { en: "Sending...", ko: "전송 중..." },
-                            done: { en: "Send complete", ko: "전송 완료" }
+                            pending: { en: "Notify requester", ko: "요청자에게 알림 보내기" },
+                            loading: { en: "Sending notification...", ko: "알림 전송 중..." },
+                            done: { en: "Notification sent", ko: "알림 전송 완료" }
                           }
                         )}
                       </button>
+                    </>
+                  ) : (
+                    <form className="grid" onSubmit={(event) => event.preventDefault()}>
+                      <label className="tiny">
+                        {tr(locale, "Upload quotation document", "견적서 문서 업로드")}
+                      </label>
+                      <input className="input" name="vendorDocument" type="file" />
+                      <div className="row tiny">
+                        <button
+                          className="btn secondary"
+                          disabled={
+                            uploadingByRequestId[item.id] ||
+                            completedRequestActions[uploadActionKey(item.id, "quotation")]
+                          }
+                          onClick={(event) => {
+                            const form = event.currentTarget.form;
+                            if (form) {
+                              void providerUploadDocumentOnly(item, "quotation", form);
+                            }
+                          }}
+                          type="button"
+                        >
+                          {getActionButtonLabel(
+                            locale,
+                            {
+                              loading: Boolean(uploadingByRequestId[item.id]),
+                              completed: Boolean(completedRequestActions[uploadActionKey(item.id, "quotation")])
+                            },
+                            {
+                              pending: { en: "Upload", ko: "업로드" },
+                              loading: { en: "Uploading...", ko: "업로드 중..." },
+                              done: { en: "Upload complete", ko: "업로드 완료" }
+                            }
+                          )}
+                        </button>
+                        <button
+                          className="btn secondary"
+                          disabled={
+                            !hasUploadedDocument(item.id, "quotation") ||
+                            notifyingByRequestId[item.id] ||
+                            completedRequestActions[notifyActionKey(item.id, "quotation")]
+                          }
+                          onClick={() => void providerNotifyRequester(item, "quotation")}
+                          type="button"
+                        >
+                          {getActionButtonLabel(
+                            locale,
+                            {
+                              loading: Boolean(notifyingByRequestId[item.id]),
+                              completed: Boolean(completedRequestActions[notifyActionKey(item.id, "quotation")])
+                            },
+                            {
+                              pending: { en: "Notify requester", ko: "요청자에게 알림 보내기" },
+                              loading: { en: "Sending notification...", ko: "알림 전송 중..." },
+                              done: { en: "Notification sent", ko: "알림 전송 완료" }
+                            }
+                          )}
+                        </button>
+                      </div>
                     </form>
                   )}
                 </div>
@@ -1107,7 +1254,7 @@ export function RequestsPanel({
                 <form
                   className="grid request-card-actions"
                   style={{ marginTop: "8px" }}
-                  onSubmit={(event) => void providerUploadDocument(item, "ebm", event)}
+                  onSubmit={(event) => event.preventDefault()}
                 >
                   <label className="tiny">{tr(locale, "Upload EBM document", "EBM 문서 업로드")}</label>
                   <p className="tiny muted" style={{ margin: 0 }}>
@@ -1118,27 +1265,58 @@ export function RequestsPanel({
                     )}
                   </p>
                   <input className="input" name="vendorDocument" type="file" />
-                  <button
-                    className="btn secondary"
-                    disabled={uploadingByRequestId[item.id] || completedRequestActions[`document:${item.id}`]}
-                    type="submit"
-                  >
-                    {getActionButtonLabel(
-                      locale,
-                      {
-                        loading: Boolean(uploadingByRequestId[item.id]),
-                        completed: Boolean(completedRequestActions[`document:${item.id}`])
-                      },
-                      {
-                        pending: {
-                          en: "Notify requester with uploaded document",
-                          ko: "요청자에게 문서 알림 보내기"
-                        },
-                        loading: { en: "Sending...", ko: "전송 중..." },
-                        done: { en: "Send complete", ko: "전송 완료" }
+                  <div className="row tiny">
+                    <button
+                      className="btn secondary"
+                      disabled={
+                        uploadingByRequestId[item.id] ||
+                        completedRequestActions[uploadActionKey(item.id, "ebm")]
                       }
-                    )}
-                  </button>
+                      onClick={(event) => {
+                        const form = event.currentTarget.form;
+                        if (form) {
+                          void providerUploadDocumentOnly(item, "ebm", form);
+                        }
+                      }}
+                      type="button"
+                    >
+                      {getActionButtonLabel(
+                        locale,
+                        {
+                          loading: Boolean(uploadingByRequestId[item.id]),
+                          completed: Boolean(completedRequestActions[uploadActionKey(item.id, "ebm")])
+                        },
+                        {
+                          pending: { en: "Upload", ko: "업로드" },
+                          loading: { en: "Uploading...", ko: "업로드 중..." },
+                          done: { en: "Upload complete", ko: "업로드 완료" }
+                        }
+                      )}
+                    </button>
+                    <button
+                      className="btn secondary"
+                      disabled={
+                        !hasUploadedDocument(item.id, "ebm") ||
+                        notifyingByRequestId[item.id] ||
+                        completedRequestActions[notifyActionKey(item.id, "ebm")]
+                      }
+                      onClick={() => void providerNotifyRequester(item, "ebm")}
+                      type="button"
+                    >
+                      {getActionButtonLabel(
+                        locale,
+                        {
+                          loading: Boolean(notifyingByRequestId[item.id]),
+                          completed: Boolean(completedRequestActions[notifyActionKey(item.id, "ebm")])
+                        },
+                        {
+                          pending: { en: "Notify requester", ko: "요청자에게 알림 보내기" },
+                          loading: { en: "Sending notification...", ko: "알림 전송 중..." },
+                          done: { en: "Notification sent", ko: "알림 전송 완료" }
+                        }
+                      )}
+                    </button>
+                  </div>
                 </form>
               )}
 

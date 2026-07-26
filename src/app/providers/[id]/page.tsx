@@ -502,6 +502,7 @@ export default async function ProviderDetailPage({
               organizationName: item.organizationName,
               organizationTinNumber: item.organizationTinNumber,
               purchaseCode: item.purchaseCode,
+              purchaseCodeUpdatedAt: item.purchaseCodeUpdatedAt?.toISOString() ?? null,
               paymentTerm: item.paymentTerm,
               paymentMethod: item.paymentMethod,
               paymentNote: item.paymentNote,
