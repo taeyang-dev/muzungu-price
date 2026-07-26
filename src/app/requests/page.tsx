@@ -99,6 +99,14 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
     orderBy: { createdAt: "desc" }
   });
 
+  const providerSelf =
+    session.role === "provider"
+      ? await prisma.providerProfile.findUnique({
+          where: { userId: session.userId },
+          include: { billingCapability: true }
+        })
+      : null;
+
   type ServiceRequestListItem = (typeof requests)[number];
   type ServiceRequestOffer = ServiceRequestListItem["offers"][number];
 
@@ -153,6 +161,19 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
           : null
       }))}
       role={session.role}
+      providerSelf={
+        providerSelf
+          ? {
+              businessName: providerSelf.businessName,
+              email: providerSelf.contactEmail ?? providerSelf.representativeEmail ?? "",
+              phone: providerSelf.contactPhone ?? providerSelf.representativePhone ?? "",
+              address: [providerSelf.city, providerSelf.country].filter(Boolean).join(", "),
+              bankName: providerSelf.billingCapability?.bankName ?? "",
+              bankAccountName: providerSelf.billingCapability?.bankAccountName ?? "",
+              bankAccountNumber: providerSelf.billingCapability?.bankAccountNumber ?? ""
+            }
+          : null
+      }
       vendorContext={
         vendorContext
           ? {
