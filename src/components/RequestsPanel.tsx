@@ -430,13 +430,23 @@ export function RequestsPanel({
       return;
     }
 
-    setFeedback(
-      tr(
-        locale,
-        "Request submitted. You will be notified when the vendor uploads quotation/EBM documents.",
-        "요청이 접수되었습니다. 업체가 견적서/EBM 문서를 올리면 알림이 표시됩니다."
-      )
-    );
+    const successMessageByType: Record<VendorRequestType, { en: string; ko: string }> = {
+      quotation: {
+        en: "Request submitted. You will be notified when the vendor uploads quotation/EBM documents.",
+        ko: "요청이 접수되었습니다. 업체가 견적서/EBM 문서를 올리면 알림이 표시됩니다."
+      },
+      purchase: {
+        en: "Purchase request complete.",
+        ko: "구매/진행 요청 완료"
+      },
+      ebm: {
+        en: "Request submitted. You will be notified when the vendor uploads quotation/EBM documents.",
+        ko: "요청이 접수되었습니다. 업체가 견적서/EBM 문서를 올리면 알림이 표시됩니다."
+      }
+    };
+    const successMessage = successMessageByType[type];
+
+    setFeedback(tr(locale, successMessage.en, successMessage.ko));
     router.refresh();
     event.currentTarget.reset();
   }
