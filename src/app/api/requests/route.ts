@@ -86,6 +86,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return fail("budgetMin cannot be greater than budgetMax", 400, "VAL_001");
     }
 
+    if (payload.serviceId && providerProfileId) {
+      const existingRequest = await prisma.serviceRequest.findFirst({
+        where: {
+          requesterUserId: auth.session.userId,
+          providerProfileId,
+          serviceId: payload.serviceId,
+          requestType: payload.requestType,
+          status: { notIn: ["completed", "cancelled"] }
+        },
+        select: { id: true }
+      });
+
+      if (existingRequest) {
+        return fail("This request already exists.", 409, "REQ_409");
+      }
+    }
+
     const created = await prisma.serviceRequest.create({
       data: {
         requesterUserId: auth.session.userId,
@@ -108,8 +125,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         documentFileName: payload.documentFileName?.trim() || null,
         requestedAmount: payload.requestedAmount ?? null,
         title: payload.title,
-      requirementText: payload.requirementText.trim(),
-      locationText: payload.locationText?.trim() || null,
+        requirementText: payload.requirementText.trim(),
+        locationText: payload.locationText?.trim() || null,
         budgetMin: payload.budgetMin,
         budgetMax: payload.budgetMax,
         currency: payload.currency?.toUpperCase(),
