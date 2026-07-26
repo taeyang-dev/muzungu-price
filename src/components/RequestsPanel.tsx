@@ -34,42 +34,17 @@ interface Booking {
   currency: string;
 }
 
-interface RequestItem {
-  id: string;
-  title: string;
-  requirementText: string;
-  locationText: string | null;
-  budgetMin: number | null;
-  budgetMax: number | null;
-  currency: string | null;
-  needsQuotation: boolean;
-  needsEbm: boolean;
-  requestType: string;
-  providerProfileId: string | null;
-  providerName: string | null;
-  serviceId: string | null;
-  serviceTitle: string | null;
-  organizationName: string | null;
-  organizationTinNumber: string | null;
-  purchaseCode: string | null;
-  paymentTerm: string | null;
-  paymentMethod: string | null;
-  paymentNote: string | null;
-  paymentDueAt: string | null;
-  documentFileName: string | null;
-  requestedAmount: number | null;
-  status: string;
-  category: { name: string };
-  offers: Offer[];
-  booking: Booking | null;
-}
+import type { MappedServiceRequestItem } from "@/lib/service-request-mapper";
+
+type RequestItem = MappedServiceRequestItem;
 
 interface RequestsPanelProps {
   role: "customer" | "provider" | "org_buyer" | "admin";
   requests: RequestItem[];
   locale: Locale;
   mode?: "manage" | "create";
-  typeFilter?: "all" | "quotation" | "purchase" | "ebm";
+  boxFilter?: "sent" | "received";
+  typeFilter?: "all" | "quotation" | "ebm";
   vendorContext?: VendorRequestContext | null;
   providerSelf?: QuotationTemplateDefaults | null;
 }
@@ -82,7 +57,60 @@ interface ApiResult {
   id?: string;
 }
 
-type VendorRequestType = "quotation" | "purchase" | "ebm";
+type VendorRequestType = "quotation" | "ebm";
+type RequestBoxFilter = "sent" | "received";
+type RequestTypeFilter = "all" | "quotation" | "ebm";
+
+function buildRequestsHref(box: RequestBoxFilter, type: RequestTypeFilter): string {
+  const params = new URLSearchParams();
+  if (box !== "sent") {
+    params.set("box", box);
+  }
+  if (type !== "all") {
+    params.set("type", type);
+  }
+  const query = params.toString();
+  return query ? `/requests?${query}` : "/requests";
+}
+
+function buildRequestCardTitle(
+  item: RequestItem,
+  boxFilter: RequestBoxFilter,
+  locale: Locale
+): string {
+  const counterparty =
+    boxFilter === "sent"
+      ? item.providerName ?? tr(locale, "Vendor", "업체")
+      : item.requesterName ?? tr(locale, "Customer", "손님");
+
+  if (item.requestType === "quotation") {
+    return tr(locale, `Quotation request: ${counterparty}`, `견적서 요청: ${counterparty}`);
+  }
+  if (item.requestType === "ebm") {
+    return tr(locale, `EBM request: ${counterparty}`, `EBM 요청: ${counterparty}`);
+  }
+  return item.title;
+}
+
+function vendorOpenedLabel(item: RequestItem, locale: Locale): string {
+  if (item.status === "open") {
+    return tr(locale, "Waiting for vendor to open", "업체 확인 대기");
+  }
+  return tr(locale, "Vendor opened your request", "업체가 요청을 확인했습니다");
+}
+
+function formatServicePrice(item: RequestItem, locale: Locale): string | null {
+  if (item.requestedAmount !== null && item.requestedAmount !== undefined) {
+    return `${item.currency ?? "RWF"} ${item.requestedAmount}`;
+  }
+  if (item.budgetMin && item.budgetMax) {
+    return `${item.currency ?? "RWF"} ${item.budgetMin} - ${item.budgetMax}`;
+  }
+  if (item.serviceTitle) {
+    return localizeCopy(locale, item.serviceTitle);
+  }
+  return null;
+}
 
 const ACTIVE_REQUEST_STATUSES = new Set(["open", "negotiating", "booked"]);
 
@@ -210,6 +238,7 @@ export function RequestsPanel({
   requests,
   locale,
   mode = "manage",
+  boxFilter = "sent",
   typeFilter = "all",
   vendorContext = null,
   providerSelf = null
@@ -227,37 +256,21 @@ export function RequestsPanel({
   const [purchaseCodeDrafts, setPurchaseCodeDrafts] = useState<Record<string, string>>({});
   const router = useRouter();
   const canCreateRequest = role !== "provider";
+  const isReceivedView = boxFilter === "received";
+  const isSentView = boxFilter === "sent";
 
   const defaultServiceId = vendorContext?.services[0]?.id ?? "";
   const [selectedServiceId, setSelectedServiceId] = useState(defaultServiceId);
-  const [selectedPaymentTerm, setSelectedPaymentTerm] = useState(
-    vendorContext?.paymentTerms[0] ?? "prepaid"
-  );
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
-    vendorContext?.paymentMethods[0] ?? "bank_transfer"
-  );
   const [uploadingByRequestId, setUploadingByRequestId] = useState<Record<string, boolean>>({});
   const [completedRequestActions, setCompletedRequestActions] = useState<Record<string, boolean>>({});
   const [quotationModeByRequestId, setQuotationModeByRequestId] = useState<Record<string, "template" | "file">>({});
   const submittingVendorRequestRef = useRef(false);
-  const availablePaymentTerms = ["prepaid", "postpaid", "deposit"];
-  const availablePaymentMethods =
-    vendorContext && vendorContext.paymentMethods.length > 0
-      ? vendorContext.paymentMethods
-      : ["bank_transfer", "momo", "cash", "card", "other"];
-  const effectivePaymentTerm = availablePaymentTerms.includes(selectedPaymentTerm)
-    ? selectedPaymentTerm
-    : (availablePaymentTerms[0] ?? "prepaid");
-  const effectivePaymentMethod = availablePaymentMethods.includes(selectedPaymentMethod)
-    ? selectedPaymentMethod
-    : (availablePaymentMethods[0] ?? "bank_transfer");
   const effectiveServiceId = selectedServiceId || vendorContext?.services[0]?.id || "__other__";
 
   const typeCounts = useMemo(
     () => ({
       all: requests.length,
       quotation: requests.filter((item) => item.requestType === "quotation").length,
-      purchase: requests.filter((item) => item.requestType === "purchase").length,
       ebm: requests.filter((item) => item.requestType === "ebm").length
     }),
     [requests]
@@ -441,12 +454,6 @@ export function RequestsPanel({
     const organizationTinNumber = String(formData.get("organizationTinNumber") ?? "").trim();
     const purchaseCode = String(formData.get("purchaseCode") ?? "").trim();
     const requirementText = String(formData.get("requirementText") ?? "").trim();
-    const paymentTerm = String(formData.get("paymentTerm") ?? effectivePaymentTerm);
-    const paymentMethod = String(formData.get("paymentMethod") ?? effectivePaymentMethod);
-    const paymentNote = String(formData.get("paymentNote") ?? "").trim();
-    const amountRaw = String(formData.get("requestedAmount") ?? "").trim();
-    const requestedAmount =
-      amountRaw.length > 0 ? Number.parseFloat(amountRaw) : service?.baseAmount ?? undefined;
     const fallbackCategoryId = vendorContext.services[0]?.categoryId ?? "";
     const resolvedCategoryId = service?.categoryId ?? fallbackCategoryId;
 
@@ -484,7 +491,6 @@ export function RequestsPanel({
 
     const titleByType: Record<VendorRequestType, string> = {
       quotation: `${vendorContext.businessName} ${serviceTitleForRequest} quotation request`,
-      purchase: `${vendorContext.businessName} ${serviceTitleForRequest} purchase request`,
       ebm: `${vendorContext.businessName} ${serviceTitleForRequest} EBM issuance request`
     };
 
@@ -500,11 +506,7 @@ export function RequestsPanel({
       needsEbm: type === "ebm",
       organizationName: organizationName || undefined,
       organizationTinNumber: organizationTinNumber || undefined,
-      purchaseCode: type === "ebm" && ebmPurchaseCodeTiming === "now" ? purchaseCode || undefined : undefined,
-      paymentTerm: type === "purchase" ? paymentTerm : undefined,
-      paymentMethod: type === "purchase" ? paymentMethod : undefined,
-      paymentNote: type === "purchase" ? paymentNote || undefined : undefined,
-      requestedAmount: type === "purchase" ? requestedAmount : undefined
+      purchaseCode: type === "ebm" && ebmPurchaseCodeTiming === "now" ? purchaseCode || undefined : undefined
     };
 
     setLoading(true);
@@ -532,10 +534,6 @@ export function RequestsPanel({
         quotation: {
           en: "Quotation request complete.",
           ko: "견적서 요청 완료"
-        },
-        purchase: {
-          en: "Purchase request complete.",
-          ko: "구매/진행 요청 완료"
         },
         ebm: {
           en: "EBM request complete.",
@@ -754,7 +752,6 @@ export function RequestsPanel({
               value={vendorRequestType}
             >
               <option value="quotation">{tr(locale, "Quotation request", "견적서 요청")}</option>
-              <option value="purchase">{tr(locale, "Purchase request", "구매/진행 요청")}</option>
               <option value="ebm">{tr(locale, "EBM request", "EBM 요청")}</option>
             </select>
           </div>
@@ -794,134 +791,6 @@ export function RequestsPanel({
               </div>
               <button className="btn" disabled={loading} type="submit">
                 {tr(locale, "Send quotation request", "견적서 요청 보내기")}
-              </button>
-            </form>
-          )}
-
-          {vendorRequestType === "purchase" && (
-            <form className="grid grid-3" onSubmit={(event) => void submitVendorRequest(event, "purchase")}>
-              <div>
-                <label className="tiny">{tr(locale, "Service", "서비스")}</label>
-                <select
-                  className="select"
-                  name="serviceId"
-                  onChange={(event) => setSelectedServiceId(event.target.value)}
-                  required
-                  value={effectiveServiceId}
-                >
-                  {vendorContext.services.map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {localizeCopy(locale, service.title)}
-                    </option>
-                  ))}
-                  <option value="__other__">{tr(locale, "Other (manual input)", "기타 (직접 입력)")}</option>
-                </select>
-              </div>
-              {selectedServiceId === "__other__" && (
-                <div>
-                  <label className="tiny">{tr(locale, "Other service name", "기타 서비스명")}</label>
-                  <input className="input" name="customServiceName" required />
-                </div>
-              )}
-              <div>
-                <label className="tiny">{tr(locale, "Payment term", "결제 조건")}</label>
-                <select
-                  className="select"
-                  name="paymentTerm"
-                  onChange={(event) => setSelectedPaymentTerm(event.target.value)}
-                  required
-                  value={effectivePaymentTerm}
-                >
-                  {availablePaymentTerms.map((term) => (
-                    <option key={term} value={term}>
-                      {toTermLabel(locale, term)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="tiny">{tr(locale, "Payment method", "결제 수단")}</label>
-                <select
-                  className="select"
-                  name="paymentMethod"
-                  onChange={(event) => setSelectedPaymentMethod(event.target.value)}
-                  required
-                  value={effectivePaymentMethod}
-                >
-                  {availablePaymentMethods.map((method) => (
-                    <option key={method} value={method}>
-                      {toMethodLabel(locale, method)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="tiny">{tr(locale, "Amount", "결제 금액")}</label>
-                <input
-                  className="input"
-                  defaultValue={selectedService?.baseAmount ?? ""}
-                  name="requestedAmount"
-                  required
-                  type="number"
-                />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label className="tiny">{tr(locale, "Purchase notes", "구매 요청 메모")}</label>
-                <textarea className="textarea" name="paymentNote" />
-              </div>
-              {(effectivePaymentTerm === "prepaid" || effectivePaymentTerm === "deposit") && (
-                <p className="tiny muted" style={{ gridColumn: "1 / -1", margin: 0 }}>
-                  {tr(
-                    locale,
-                    "For prepaid or deposit terms, payment should be completed within 2 hours.",
-                    "선불/부분 선지급의 경우 결제는 2시간 내 완료되어야 합니다."
-                  )}
-                </p>
-              )}
-              <div className="panel" style={{ gridColumn: "1 / -1", padding: "12px" }}>
-                <p className="tiny" style={{ marginTop: 0 }}>
-                  <strong>{tr(locale, "Vendor", "업체")}:</strong> {vendorContext.businessName}
-                </p>
-                <p className="tiny">
-                  <strong>{tr(locale, "Phone", "휴대폰")}:</strong>{" "}
-                  {vendorContext.contactPhone ?? tr(locale, "Not provided", "미입력")}
-                </p>
-                <p className="tiny">
-                  <strong>TIN:</strong> {vendorContext.tinNumber ?? tr(locale, "Not provided", "미입력")}
-                </p>
-                {effectivePaymentMethod === "momo" && (
-                  <p className="tiny">
-                    <strong>MoMo:</strong> {vendorContext.momoNumber ?? "-"}{" "}
-                    {vendorContext.momoAccountName ? `(${vendorContext.momoAccountName})` : ""}
-                  </p>
-                )}
-                {effectivePaymentMethod === "bank_transfer" && (
-                  <div className="tiny">
-                    <p>
-                      <strong>{tr(locale, "Bank", "은행")}:</strong> {vendorContext.bankName ?? "-"}
-                    </p>
-                    <p>
-                      <strong>{tr(locale, "Account name", "예금주")}:</strong>{" "}
-                      {vendorContext.bankAccountName ?? "-"}
-                    </p>
-                    <p>
-                      <strong>{tr(locale, "Account number", "계좌번호")}:</strong>{" "}
-                      {vendorContext.bankAccountNumber ?? "-"}
-                    </p>
-                    <p>
-                      <strong>SWIFT:</strong> {vendorContext.bankSwiftCode ?? "-"}
-                    </p>
-                  </div>
-                )}
-                {effectivePaymentMethod === "other" && (
-                  <p className="tiny">
-                    <strong>{tr(locale, "Other payment method", "기타 결제 수단")}:</strong>{" "}
-                    {vendorContext.paymentMethodOtherDetail ?? "-"}
-                  </p>
-                )}
-              </div>
-              <button className="btn" disabled={loading} type="submit">
-                {tr(locale, "Send purchase request", "구매/진행 요청 보내기")}
               </button>
             </form>
           )}
@@ -1041,23 +910,37 @@ export function RequestsPanel({
       )}
 
       <article className="panel">
+        <nav className="row tiny" style={{ flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
+          <Link
+            className={`doc-filter-tab ${boxFilter === "sent" ? "active" : ""}`}
+            href={buildRequestsHref("sent", typeFilter)}
+          >
+            {tr(locale, "Sent", "발신")}
+          </Link>
+          <Link
+            className={`doc-filter-tab ${boxFilter === "received" ? "active" : ""}`}
+            href={buildRequestsHref("received", typeFilter)}
+          >
+            {tr(locale, "Received", "수신")}
+          </Link>
+        </nav>
         <nav className="row tiny" style={{ flexWrap: "wrap", gap: "8px" }}>
-          <Link className={`doc-filter-tab ${typeFilter === "all" ? "active" : ""}`} href="/requests">
+          <Link
+            className={`doc-filter-tab ${typeFilter === "all" ? "active" : ""}`}
+            href={buildRequestsHref(boxFilter, "all")}
+          >
             {tr(locale, "All requests", "전체 요청")} ({typeCounts.all})
           </Link>
           <Link
             className={`doc-filter-tab ${typeFilter === "quotation" ? "active" : ""}`}
-            href="/requests?type=quotation"
+            href={buildRequestsHref(boxFilter, "quotation")}
           >
             {tr(locale, "Quotation requests", "견적서 요청")} ({typeCounts.quotation})
           </Link>
           <Link
-            className={`doc-filter-tab ${typeFilter === "purchase" ? "active" : ""}`}
-            href="/requests?type=purchase"
+            className={`doc-filter-tab ${typeFilter === "ebm" ? "active" : ""}`}
+            href={buildRequestsHref(boxFilter, "ebm")}
           >
-            {tr(locale, "Purchase requests", "구매/진행 요청")} ({typeCounts.purchase})
-          </Link>
-          <Link className={`doc-filter-tab ${typeFilter === "ebm" ? "active" : ""}`} href="/requests?type=ebm">
             {tr(locale, "EBM requests", "EBM 요청")} ({typeCounts.ebm})
           </Link>
         </nav>
@@ -1065,29 +948,37 @@ export function RequestsPanel({
 
       <article className="panel">
         <h2 style={{ marginTop: 0 }}>
-          {role === "provider"
-            ? tr(locale, "Open requests", "열린 요청서")
-            : tr(locale, "My requests", "내 요청서")}
+          {isReceivedView
+            ? tr(locale, "Received requests", "수신 요청")
+            : tr(locale, "Sent requests", "발신 요청")}
         </h2>
         {filteredRequests.length === 0 && (
           <p className="muted">{tr(locale, "No requests yet.", "요청서가 없습니다.")}</p>
         )}
         <div className="grid">
-          {filteredRequests.map((item) => (
+          {filteredRequests.map((item) => {
+            const requestDocuments = documentsByRequestId.get(item.id) ?? [];
+            const servicePriceLabel = formatServicePrice(item, locale);
+
+            return (
             <div className="card" key={item.id}>
-              <h3 style={{ marginTop: 0 }}>{item.title}</h3>
+              <h3 style={{ marginTop: 0 }}>{buildRequestCardTitle(item, boxFilter, locale)}</h3>
               <p className="tiny muted" style={{ marginTop: 0 }}>
-                {item.category.name} · {item.locationText ?? tr(locale, "No location", "위치 없음")} ·{" "}
-                {tr(locale, "Status", "상태")}: {item.status}
+                {new Date(item.createdAt).toLocaleString()}
               </p>
-              <div className="row tiny">
-                <span className="badge">{toRequestTypeLabel(locale, item.requestType)}</span>
-                {item.providerName && <span>{tr(locale, "Vendor", "업체")}: {item.providerName}</span>}
-                {item.serviceTitle && <span>{tr(locale, "Service", "서비스")}: {localizeCopy(locale, item.serviceTitle)}</span>}
-              </div>
-              {item.documentFileName && (
+              {servicePriceLabel && (
+                <p className="tiny" style={{ marginBottom: "6px" }}>
+                  <strong>{tr(locale, "Service / price", "서비스 / 가격")}:</strong> {servicePriceLabel}
+                </p>
+              )}
+              {item.requirementText && (
                 <p className="tiny muted" style={{ marginBottom: "6px" }}>
-                  {tr(locale, "Document file", "문서 파일")}: {item.documentFileName}
+                  {item.requirementText}
+                </p>
+              )}
+              {isSentView && (item.requestType === "quotation" || item.requestType === "ebm") && (
+                <p className="tiny" style={{ marginBottom: "6px" }}>
+                  <strong>{tr(locale, "Status", "상태")}:</strong> {vendorOpenedLabel(item, locale)}
                 </p>
               )}
               {item.organizationName && (
@@ -1100,37 +991,12 @@ export function RequestsPanel({
                   {tr(locale, "Organization TIN", "기관 TIN")}: {item.organizationTinNumber}
                 </p>
               )}
-              {item.paymentTerm && (
-                <p className="tiny muted" style={{ marginBottom: "6px" }}>
-                  {tr(locale, "Payment", "결제")}: {toTermLabel(locale, item.paymentTerm)} /{" "}
-                  {item.paymentMethod ? toMethodLabel(locale, item.paymentMethod) : "-"}
-                </p>
-              )}
-              {item.requestedAmount !== null && item.requestedAmount !== undefined && (
-                <p className="tiny muted" style={{ marginBottom: "6px" }}>
-                  {tr(locale, "Amount", "금액")}: {item.currency ?? "RWF"} {item.requestedAmount}
-                </p>
-              )}
-              {item.paymentDueAt && (
-                <p className="tiny muted" style={{ marginBottom: "6px" }}>
-                  {tr(locale, "Payment due by", "결제 마감")}: {new Date(item.paymentDueAt).toLocaleString()}
-                </p>
-              )}
-              <p>{item.requirementText}</p>
-              <p className="tiny">
-                {tr(locale, "Budget", "예산")}:{" "}
-                {item.budgetMin && item.budgetMax
-                  ? `${item.currency ?? "RWF"} ${item.budgetMin} - ${item.budgetMax}`
-                  : tr(locale, "Not specified", "미기재")}
-              </p>
-              {item.needsQuotation && <span className="badge">{tr(locale, "Quotation required", "견적서 필요")}</span>}
-              {item.needsEbm && <span className="badge">{tr(locale, "EBM required", "EBM 필요")}</span>}
 
-              {(documentsByRequestId.get(item.id) ?? []).length > 0 && (
+              {isSentView && requestDocuments.length > 0 && (
                 <div className="panel" style={{ marginTop: "10px", padding: "10px" }}>
                   <h4 style={{ marginTop: 0 }}>{tr(locale, "Documents", "첨부 문서")}</h4>
                   <ul className="doc-list">
-                    {(documentsByRequestId.get(item.id) ?? []).map((doc) => (
+                    {requestDocuments.map((doc) => (
                       <li key={doc.id}>
                         <div>
                           <strong>{doc.fileName}</strong>
@@ -1138,23 +1004,6 @@ export function RequestsPanel({
                             {doc.vendorName} · {toRequestTypeLabel(locale, doc.type)} ·{" "}
                             {new Date(doc.createdAt).toLocaleString()}
                           </p>
-                          <div className="row">
-                            <input
-                              className="input"
-                              onChange={(event) =>
-                                setRenameDrafts((current) => ({ ...current, [doc.id]: event.target.value }))
-                              }
-                              placeholder={tr(locale, "Rename file name", "파일명 변경")}
-                              value={renameDrafts[doc.id] ?? ""}
-                            />
-                            <button
-                              className="btn secondary"
-                              onClick={() => saveRenamedDocument(doc.id)}
-                              type="button"
-                            >
-                              {tr(locale, "Rename", "이름 변경")}
-                            </button>
-                          </div>
                         </div>
                         <a className="btn" download={doc.fileName} href={doc.dataUrl}>
                           {tr(locale, "Download", "다운로드")}
@@ -1165,67 +1014,7 @@ export function RequestsPanel({
                 </div>
               )}
 
-              {role === "provider" &&
-                item.requestType !== "quotation" &&
-                item.requestType !== "ebm" && (
-                <form
-                  className="grid"
-                  style={{ marginTop: "10px" }}
-                  onSubmit={(event) =>
-                    void submitJson(event, `/api/requests/${item.id}/offers`, "POST", {
-                      successMessage: {
-                        en: "Offer submitted.",
-                        ko: "오퍼 제출 완료"
-                      },
-                      completedActionKey: `offer:${item.id}`
-                    })
-                  }
-                >
-                  <div className="row">
-                    <input
-                      className="input"
-                      name="quotedPrice"
-                      placeholder={tr(locale, "Quoted price", "제안 가격")}
-                      required
-                      type="number"
-                    />
-                    <input className="input" defaultValue="RWF" maxLength={3} name="currency" />
-                  </div>
-                  <textarea
-                    className="textarea"
-                    name="scopeText"
-                    placeholder={tr(locale, "Scope and assumptions", "작업 범위 및 가정")}
-                  />
-                  <label className="tiny">
-                    <input defaultChecked name="canIssueQuotation" type="checkbox" />{" "}
-                    {tr(locale, "Can issue quotation", "견적서 발행 가능")}
-                  </label>
-                  <label className="tiny">
-                    <input defaultChecked name="canIssueEbm" type="checkbox" />{" "}
-                    {tr(locale, "Can issue EBM", "EBM 발행 가능")}
-                  </label>
-                  <button
-                    className="btn"
-                    disabled={loading || completedRequestActions[`offer:${item.id}`]}
-                    type="submit"
-                  >
-                    {getActionButtonLabel(
-                      locale,
-                      {
-                        loading,
-                        completed: Boolean(completedRequestActions[`offer:${item.id}`])
-                      },
-                      {
-                        pending: { en: "Submit offer", ko: "오퍼 제출" },
-                        loading: { en: "Submitting...", ko: "제출 중..." },
-                        done: { en: "Offer submitted", ko: "오퍼 제출 완료" }
-                      }
-                    )}
-                  </button>
-                </form>
-              )}
-
-              {role === "provider" && item.requestType === "quotation" && (
+              {isReceivedView && item.requestType === "quotation" && (
                 <div className="grid" style={{ marginTop: "10px" }}>
                   <div className="row tiny">
                     <label>
@@ -1298,7 +1087,7 @@ export function RequestsPanel({
                 </div>
               )}
 
-              {role === "provider" && item.requestType === "ebm" && (
+              {isReceivedView && item.requestType === "ebm" && (
                 <form
                   className="grid"
                   style={{ marginTop: "10px" }}
@@ -1337,48 +1126,16 @@ export function RequestsPanel({
                 </form>
               )}
 
-              {role !== "provider" && (
-                <>
-                  <div className="hr" />
-                  <h4>
-                    {tr(locale, "Offers", "오퍼")} ({item.offers.length})
-                  </h4>
-                  {item.offers.map((offer) => (
-                    <div className="card" key={offer.id} style={{ marginBottom: "8px" }}>
-                      <div className="row tiny">
-                        <strong>{offer.providerName}</strong>
-                        <span>
-                          {offer.currency} {offer.quotedPrice}
-                        </span>
-                        <span>
-                          {tr(locale, "Status", "상태")}: {offer.status}
-                        </span>
-                      </div>
-                      <div className="tiny">
-                        {offer.canIssueQuotation
-                          ? tr(locale, "Quotation yes", "견적서 가능")
-                          : tr(locale, "Quotation no", "견적서 불가")}{" "}
-                        ·{" "}
-                        {offer.canIssueEbm
-                          ? tr(locale, "EBM yes", "EBM 가능")
-                          : tr(locale, "EBM no", "EBM 불가")}
-                      </div>
-                      {offer.status === "sent" && !item.booking && (
-                        <button
-                          className="btn"
-                          disabled={loading}
-                          onClick={() => void acceptOffer(offer.id)}
-                          type="button"
-                        >
-                          {tr(locale, "Accept offer", "오퍼 수락")}
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </>
+              {isReceivedView && (
+                <div className="row" style={{ marginTop: "10px" }}>
+                  <Link className="btn secondary" href="/inbox">
+                    {tr(locale, "Message customer", "손님에게 메시지 보내기")}
+                  </Link>
+                </div>
               )}
 
-              {canCreateRequest &&
+              {isSentView &&
+                canCreateRequest &&
                 item.requestType === "ebm" &&
                 !item.purchaseCode && (
                   <div className="panel" style={{ marginTop: "10px", padding: "10px" }}>
@@ -1485,7 +1242,8 @@ export function RequestsPanel({
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </article>
     </section>

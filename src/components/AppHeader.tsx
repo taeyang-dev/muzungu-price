@@ -50,7 +50,10 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
   const [favorites, setFavorites] = useState<VendorReference[]>([]);
   const [recent, setRecent] = useState<VendorReference[]>([]);
   const [chatVendors, setChatVendors] = useState<VendorReference[]>([]);
-  const [requestCounts, setRequestCounts] = useState({ total: 0, quotation: 0, purchase: 0, ebm: 0 });
+  const [requestCounts, setRequestCounts] = useState({
+    sent: { total: 0, quotation: 0, ebm: 0 },
+    received: { total: 0, quotation: 0, ebm: 0 }
+  });
   const [unreadInboxCount, setUnreadInboxCount] = useState(0);
 
   useEffect(() => {
@@ -62,7 +65,10 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
 
     async function refreshRequestCounts(): Promise<void> {
       if (!session) {
-        setRequestCounts({ total: 0, quotation: 0, purchase: 0, ebm: 0 });
+        setRequestCounts({
+          sent: { total: 0, quotation: 0, ebm: 0 },
+          received: { total: 0, quotation: 0, ebm: 0 }
+        });
         return;
       }
       try {
@@ -71,13 +77,19 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
           return;
         }
         const payload = (await response.json()) as {
-          data?: { total: number; quotation: number; purchase: number; ebm: number };
+          data?: {
+            sent: { total: number; quotation: number; ebm: number };
+            received: { total: number; quotation: number; ebm: number };
+          };
         };
         if (payload.data) {
           setRequestCounts(payload.data);
         }
       } catch {
-        setRequestCounts({ total: 0, quotation: 0, purchase: 0, ebm: 0 });
+        setRequestCounts({
+          sent: { total: 0, quotation: 0, ebm: 0 },
+          received: { total: 0, quotation: 0, ebm: 0 }
+        });
       }
     }
 
@@ -216,17 +228,11 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
         <section className="drawer-section">
           <h3>{tr(locale, "Requests", "요청서")}</h3>
           <nav className="drawer-nav">
-            <Link href="/requests" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "All requests", "전체 요청")} ({requestCounts.total})
+            <Link href="/requests?box=sent" onClick={() => setMenuOpen(false)}>
+              {tr(locale, "Sent", "발신")} ({requestCounts.sent.total})
             </Link>
-            <Link href="/requests?type=quotation" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "Quotation requests", "견적서 요청")} ({requestCounts.quotation})
-            </Link>
-            <Link href="/requests?type=purchase" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "Purchase requests", "구매/진행 요청")} ({requestCounts.purchase})
-            </Link>
-            <Link href="/requests?type=ebm" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "EBM requests", "EBM 요청")} ({requestCounts.ebm})
+            <Link href="/requests?box=received" onClick={() => setMenuOpen(false)}>
+              {tr(locale, "Received", "수신")} ({requestCounts.received.total})
             </Link>
           </nav>
         </section>

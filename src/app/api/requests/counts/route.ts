@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ok } from "@/lib/api";
 import { requireSession } from "@/lib/guards";
-import { buildServiceRequestScopeWhere } from "@/lib/service-request-scope";
-import { prisma } from "@/lib/prisma";
+import {
+  buildReceivedRequestsWhere,
+  buildSentRequestsWhere,
+  countRequestsByType,
+  getProviderProfileIdForUser
+} from "@/lib/service-request-scope";
+
+const emptyCounts = { total: 0, quotation: 0, ebm: 0 };
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const auth = await requireSession(request);
@@ -10,17 +16,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return auth.error as NextResponse;
   }
 
-  const where = await buildServiceRequestScopeWhere(auth.session);
-  if (!where) {
-    return ok({ total: 0, quotation: 0, purchase: 0, ebm: 0 });
-  }
+  const sentCounts = await countRequestsByType(buildSentRequestsWhere(auth.session.userId));
 
-  const [total, quotation, purchase, ebm] = await Promise.all([
-    prisma.serviceRequest.count({ where }),
-    prisma.serviceRequest.count({ where: { ...where, requestType: "quotation" } }),
-    prisma.serviceRequest.count({ where: { ...where, requestType: "purchase" } }),
-    prisma.serviceRequest.count({ where: { ...where, requestType: "ebm" } })
-  ]);
+  const providerProfileId = await getProviderProfileIdForUser(auth.session.userId);
+  const receivedCounts = providerProfileId
+    ? await countRequestsByType(buildReceivedRequestsWhere(providerProfileId))
+    : emptyCounts;
 
-  return ok({ total, quotation, purchase, ebm });
+  return ok({ sent: sentCounts, received: receivedCounts });
 }

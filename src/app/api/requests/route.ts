@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { decimalToNumber, fail, ok } from "@/lib/api";
+import { fail, ok } from "@/lib/api";
 import { requireSession } from "@/lib/guards";
+import { mapServiceRequestItem, serviceRequestInclude } from "@/lib/service-request-mapper";
 import { buildServiceRequestScopeWhere } from "@/lib/service-request-scope";
 import { prisma } from "@/lib/prisma";
 
@@ -61,12 +62,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     if (payload.requestType === "purchase") {
-      if (!payload.serviceId || !selectedService) {
-        return fail("Select a valid service for purchase request", 400, "VAL_001");
-      }
-      if (!payload.paymentTerm || !payload.paymentMethod) {
-        return fail("paymentTerm and paymentMethod are required for purchase request", 400, "VAL_001");
-      }
+      return fail("Purchase requests are no longer supported", 400, "VAL_001");
     }
 
     if (payload.requestType === "ebm") {
@@ -114,11 +110,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         paymentTerm: payload.paymentTerm ?? null,
         paymentMethod: payload.paymentMethod ?? null,
         paymentNote: payload.paymentNote?.trim() || null,
-        paymentDueAt:
-          payload.requestType === "purchase" &&
-          (payload.paymentTerm === "prepaid" || payload.paymentTerm === "deposit")
-            ? new Date(Date.now() + 2 * 60 * 60 * 1000)
-            : null,
+        paymentDueAt: null,
         documentFileName: payload.documentFileName?.trim() || null,
         requestedAmount: payload.requestedAmount ?? null,
         title: payload.title,
@@ -146,76 +138,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return auth.error as NextResponse;
   }
 
-  const where = await buildServiceRequestScopeWhere(auth.session);
+  const boxParam = request.nextUrl.searchParams.get("box");
+  const box = boxParam === "received" ? "received" : "sent";
+  const where = await buildServiceRequestScopeWhere(auth.session, box);
   if (!where) {
     return ok([], { total: 0 });
   }
 
   const requests = await prisma.serviceRequest.findMany({
     where,
-    include: {
-      category: true,
-      providerProfile: true,
-      service: true,
-      offers: {
-        include: {
-          providerProfile: true
-        },
-        orderBy: { createdAt: "desc" }
-      },
-      booking: true
-    },
+    include: serviceRequestInclude,
     orderBy: { createdAt: "desc" }
   });
 
-  type ServiceRequestListItem = (typeof requests)[number];
-  type ServiceRequestOffer = ServiceRequestListItem["offers"][number];
-
   return ok(
-    requests.map((item: ServiceRequestListItem) => ({
-      id: item.id,
-      title: item.title,
-      requirementText: item.requirementText,
-      locationText: item.locationText,
-      budgetMin: decimalToNumber(item.budgetMin),
-      budgetMax: decimalToNumber(item.budgetMax),
-      currency: item.currency,
-      needsQuotation: item.needsQuotation,
-      needsEbm: item.needsEbm,
-      requestType: item.requestType,
-      providerProfileId: item.providerProfileId,
-      providerName: item.providerProfile?.businessName ?? null,
-      serviceId: item.serviceId,
-      serviceTitle: item.service?.title ?? null,
-      organizationName: item.organizationName,
-      organizationTinNumber: item.organizationTinNumber,
-      purchaseCode: item.purchaseCode,
-      paymentTerm: item.paymentTerm,
-      paymentMethod: item.paymentMethod,
-      paymentNote: item.paymentNote,
-      paymentDueAt: item.paymentDueAt,
-      documentFileName: item.documentFileName,
-      requestedAmount: decimalToNumber(item.requestedAmount),
-      status: item.status,
-      category: item.category,
-      offers: item.offers.map((offer: ServiceRequestOffer) => ({
-        id: offer.id,
-        providerName: offer.providerProfile.businessName,
-        quotedPrice: decimalToNumber(offer.quotedPrice),
-        currency: offer.currency,
-        status: offer.status,
-        canIssueQuotation: offer.canIssueQuotation,
-        canIssueEbm: offer.canIssueEbm
-      })),
-      booking: item.booking
-        ? {
-            id: item.booking.id,
-            status: item.booking.status,
-            finalPrice: decimalToNumber(item.booking.finalPrice),
-            currency: item.booking.currency
-          }
-        : null
-    })),
+    requests.map(mapServiceRequestItem),
     { total: requests.length }
   );
 }

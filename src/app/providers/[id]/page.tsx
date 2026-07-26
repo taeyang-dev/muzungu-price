@@ -322,6 +322,25 @@ export default async function ProviderDetailPage({
   type UserRequestItem = (typeof userRequests)[number];
   type UserRequestOffer = UserRequestItem["offers"][number];
 
+  const isProviderOwner = session?.userId === provider.userId;
+  const paymentInfo = {
+    businessName: provider.businessName,
+    phone: provider.contactPhone ?? provider.representativePhone ?? "",
+    tinNumber: provider.billingCapability?.vendorTinNumber ?? "",
+    paymentMethods: [
+      provider.billingCapability?.paymentMethodsCsv,
+      provider.billingCapability?.paymentMethodOtherDetail
+    ]
+      .filter(Boolean)
+      .join(", "),
+    momoAccountName: provider.billingCapability?.momoAccountName ?? "",
+    momoNumber: provider.billingCapability?.momoNumber ?? "",
+    bankName: provider.billingCapability?.bankName ?? "",
+    bankAccountName: provider.billingCapability?.bankAccountName ?? "",
+    bankAccountNumber: provider.billingCapability?.bankAccountNumber ?? "",
+    bankSwiftCode: provider.billingCapability?.bankSwiftCode ?? ""
+  };
+
   return (
     <section className="grid provider-detail-page">
       <article className="panel provider-hero">
@@ -490,6 +509,8 @@ export default async function ProviderDetailPage({
               documentFileName: item.documentFileName,
               requestedAmount: decimalToNumber(item.requestedAmount),
               status: item.status,
+              createdAt: item.createdAt.toISOString(),
+              requesterName: null,
               category: { name: item.category.name },
               offers: item.offers.map((offer: UserRequestOffer) => ({
                 id: offer.id,
@@ -535,7 +556,13 @@ export default async function ProviderDetailPage({
       )}
 
       <div id="vendor-chat">
-        <VendorChatBox locale={locale} vendorId={provider.id} vendorName={provider.businessName} />
+        <VendorChatBox
+          canSendPaymentInfo={isProviderOwner}
+          locale={locale}
+          paymentInfo={isProviderOwner ? paymentInfo : null}
+          vendorId={provider.id}
+          vendorName={provider.businessName}
+        />
       </div>
 
       <article className="panel">
