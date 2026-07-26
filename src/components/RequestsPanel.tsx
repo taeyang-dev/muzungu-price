@@ -721,9 +721,13 @@ export function RequestsPanel({
       email: providerSelf?.email ?? "",
       phone: providerSelf?.phone ?? "",
       address: providerSelf?.address ?? "",
+      paymentMethod: providerSelf?.paymentMethod,
       bankName: providerSelf?.bankName ?? "",
       bankAccountName: providerSelf?.bankAccountName ?? "",
       bankAccountNumber: providerSelf?.bankAccountNumber ?? "",
+      bankSwiftCode: providerSelf?.bankSwiftCode ?? "",
+      momoAccountName: providerSelf?.momoAccountName ?? "",
+      momoNumber: providerSelf?.momoNumber ?? "",
       projectName: requestItem.serviceTitle ? localizeCopy(locale, requestItem.serviceTitle) : requestItem.title
     };
   }

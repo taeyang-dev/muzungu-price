@@ -170,9 +170,17 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
               email: providerSelf.contactEmail ?? providerSelf.representativeEmail ?? "",
               phone: providerSelf.contactPhone ?? providerSelf.representativePhone ?? "",
               address: [providerSelf.city, providerSelf.country].filter(Boolean).join(", "),
+              paymentMethod: providerSelf.billingCapability?.momoNumber?.trim()
+                ? providerSelf.billingCapability?.bankAccountNumber?.trim()
+                  ? undefined
+                  : "momo"
+                : "bank_transfer",
               bankName: providerSelf.billingCapability?.bankName ?? "",
               bankAccountName: providerSelf.billingCapability?.bankAccountName ?? "",
-              bankAccountNumber: providerSelf.billingCapability?.bankAccountNumber ?? ""
+              bankAccountNumber: providerSelf.billingCapability?.bankAccountNumber ?? "",
+              bankSwiftCode: providerSelf.billingCapability?.bankSwiftCode ?? "",
+              momoAccountName: providerSelf.billingCapability?.momoAccountName ?? "",
+              momoNumber: providerSelf.billingCapability?.momoNumber ?? ""
             }
           : null
       }
