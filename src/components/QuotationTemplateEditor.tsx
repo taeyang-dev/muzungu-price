@@ -206,13 +206,14 @@ export function QuotationTemplateEditor({
             {tr(locale, "Add row", "행 추가")}
           </button>
         </div>
-        {data.lineItems.map((item, index) => (
+        {data.lineItems.map((item) => (
           <div className="grid grid-3" key={item.id} style={{ marginBottom: "8px" }}>
             <div>
-              <label className="tiny">No. {index + 1}</label>
+              <label className="tiny">{tr(locale, "Item name", "항목명")}</label>
               <textarea
                 className="textarea"
                 onChange={(event) => updateLineItem(item.id, { description: event.target.value })}
+                placeholder={tr(locale, "Describe the item", "항목을 입력해 주세요")}
                 rows={2}
                 value={item.description}
               />

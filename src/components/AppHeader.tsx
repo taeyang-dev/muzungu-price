@@ -52,6 +52,7 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
   const [recent, setRecent] = useState<VendorReference[]>([]);
   const [chatVendors, setChatVendors] = useState<VendorReference[]>([]);
   const [requestDocCounts, setRequestDocCounts] = useState({ quotation: 0, ebm: 0 });
+  const [requestCounts, setRequestCounts] = useState({ total: 0, quotation: 0, purchase: 0, ebm: 0 });
   const [unreadInboxCount, setUnreadInboxCount] = useState(0);
 
   useEffect(() => {
@@ -60,6 +61,27 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
       setRecent(readRecentVendors());
       setChatVendors(readChatVendors());
       setRequestDocCounts(getRequestedDocumentCounts());
+    }
+
+    async function refreshRequestCounts(): Promise<void> {
+      if (!session) {
+        setRequestCounts({ total: 0, quotation: 0, purchase: 0, ebm: 0 });
+        return;
+      }
+      try {
+        const response = await fetch("/api/requests/counts");
+        if (!response.ok) {
+          return;
+        }
+        const payload = (await response.json()) as {
+          data?: { total: number; quotation: number; purchase: number; ebm: number };
+        };
+        if (payload.data) {
+          setRequestCounts(payload.data);
+        }
+      } catch {
+        setRequestCounts({ total: 0, quotation: 0, purchase: 0, ebm: 0 });
+      }
     }
 
     async function refreshInbox(): Promise<void> {
@@ -78,14 +100,17 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
     }
 
     refresh();
+    void refreshRequestCounts();
     void refreshInbox();
     const eventName = getVendorStorageEventName();
     window.addEventListener(eventName, refresh);
     window.addEventListener("storage", refresh);
+    window.addEventListener("requests-updated", () => void refreshRequestCounts());
     window.addEventListener("inbox-updated", () => void refreshInbox());
     return () => {
       window.removeEventListener(eventName, refresh);
       window.removeEventListener("storage", refresh);
+      window.removeEventListener("requests-updated", () => void refreshRequestCounts());
       window.removeEventListener("inbox-updated", () => void refreshInbox());
     };
   }, [session]);
@@ -181,7 +206,7 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
               </Link>
             )}
             <Link href="/requests" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "Requests", "요청서")} ({requestDocCounts.quotation + requestDocCounts.ebm})
+              {tr(locale, "Requests", "요청서")} ({requestCounts.total})
             </Link>
             <Link href="/" onClick={() => setMenuOpen(false)}>
               {tr(locale, "Browse vendors", "업체 둘러보기")}

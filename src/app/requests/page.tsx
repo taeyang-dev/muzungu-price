@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { RequestsPanel } from "@/components/RequestsPanel";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { tr } from "@/lib/i18n";
+import { buildServiceRequestScopeWhere } from "@/lib/service-request-scope";
 
 type ServiceRequestWhereInput = NonNullable<
   Parameters<typeof prisma.serviceRequest.findMany>[0]
@@ -77,10 +78,11 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
 
   type VendorServiceItem = NonNullable<typeof vendorContext>["services"][number];
 
-  const where: ServiceRequestWhereInput =
-    session.role === "provider"
-      ? { OR: [{ status: "open" }, { status: "negotiating" }] }
-      : { requesterUserId: session.userId };
+  const scopedWhere = await buildServiceRequestScopeWhere({
+    userId: session.userId,
+    role: session.role
+  });
+  const where = (scopedWhere ?? { id: "__none__" }) as ServiceRequestWhereInput;
 
   const requests = await prisma.serviceRequest.findMany({
     where,

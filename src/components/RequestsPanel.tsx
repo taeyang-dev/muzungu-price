@@ -127,6 +127,12 @@ function hasDuplicateVendorRequest(
   );
 }
 
+function notifyRequestsUpdated(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("requests-updated"));
+  }
+}
+
 function toTermLabel(locale: Locale, value: string): string {
   const map: Record<string, { en: string; ko: string; fr: string; rw: string }> = {
     prepaid: { en: "Prepaid", ko: "선불", fr: "Prépayé", rw: "Yishyurwa mbere" },
@@ -365,6 +371,7 @@ export function RequestsPanel({
       return;
     }
     setFeedback(tr(locale, successMessage.en, successMessage.ko));
+    notifyRequestsUpdated();
     router.refresh();
     event.currentTarget.reset();
   }
@@ -504,6 +511,7 @@ export function RequestsPanel({
       const successMessage = successMessageByType[type];
 
       setFeedback(tr(locale, successMessage.en, successMessage.ko));
+      notifyRequestsUpdated();
       router.refresh();
       event.currentTarget.reset();
     } finally {
@@ -631,7 +639,7 @@ export function RequestsPanel({
       });
 
       const vendorName = requestItem.providerName ?? tr(locale, "Vendor", "업체");
-      const saved = saveRequestedDocument({
+      saveRequestedDocument({
         requestId: requestItem.id,
         vendorId: requestItem.providerProfileId ?? "provider",
         vendorName,
@@ -646,6 +654,7 @@ export function RequestsPanel({
           type === "quotation" ? "견적서 전송 완료" : "EBM 전송 완료"
         )
       );
+      notifyRequestsUpdated();
       event.currentTarget.reset();
     } catch {
       setError(tr(locale, "Failed to upload document.", "문서 업로드에 실패했습니다."));
@@ -662,7 +671,7 @@ export function RequestsPanel({
     setError("");
     try {
       const vendorName = requestItem.providerName ?? providerSelf?.businessName ?? tr(locale, "Vendor", "업체");
-      const saved = saveRequestedDocument({
+      saveRequestedDocument({
         requestId: requestItem.id,
         vendorId: requestItem.providerProfileId ?? "provider",
         vendorName,
@@ -671,6 +680,7 @@ export function RequestsPanel({
         fileName: input.fileName
       });
       setFeedback(tr(locale, "Quotation sent.", "견적서 전송 완료"));
+      notifyRequestsUpdated();
     } catch {
       setError(tr(locale, "Failed to send quotation template.", "견적서 양식 전송에 실패했습니다."));
     } finally {
