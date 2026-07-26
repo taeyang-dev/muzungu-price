@@ -232,10 +232,16 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
           <h3>{tr(locale, "Request documents", "요청 문서")}</h3>
           <nav className="drawer-nav">
             <Link href="/requests#requested-documents" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "Requested quotations", "요청한 견적서")} ({requestDocCounts.quotation})
+              {session?.role === "provider"
+                ? tr(locale, "Quotation requests", "견적서 요청")
+                : tr(locale, "Requested quotations", "요청한 견적서")}{" "}
+              ({session ? requestCounts.quotation : requestDocCounts.quotation})
             </Link>
             <Link href="/requests#requested-documents" onClick={() => setMenuOpen(false)}>
-              {tr(locale, "Requested EBM", "요청한 EBM")} ({requestDocCounts.ebm})
+              {session?.role === "provider"
+                ? tr(locale, "EBM requests", "EBM 요청")
+                : tr(locale, "Requested EBM", "요청한 EBM")}{" "}
+              ({session ? requestCounts.ebm : requestDocCounts.ebm})
             </Link>
           </nav>
         </section>
