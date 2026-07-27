@@ -1163,29 +1163,31 @@ export function RequestsPanel({
                         onSubmit={(input) => providerUploadTemplateDocument(item, input)}
                         submitting={Boolean(uploadingByRequestId[item.id])}
                       />
-                      <button
-                        className="btn secondary"
-                        disabled={
-                          !hasUploadedDocument(item.id, "quotation") ||
-                          notifyingByRequestId[item.id] ||
-                          completedRequestActions[notifyActionKey(item.id, "quotation")]
-                        }
-                        onClick={() => void providerNotifyRequester(item, "quotation")}
-                        type="button"
-                      >
-                        {getActionButtonLabel(
-                          locale,
-                          {
-                            loading: Boolean(notifyingByRequestId[item.id]),
-                            completed: Boolean(completedRequestActions[notifyActionKey(item.id, "quotation")])
-                          },
-                          {
-                            pending: { en: "Notify requester", ko: "요청자에게 알림 보내기" },
-                            loading: { en: "Sending notification...", ko: "알림 전송 중..." },
-                            done: { en: "Notification sent", ko: "알림 전송 완료" }
+                      <div className="request-action-row">
+                        <button
+                          className="btn secondary"
+                          disabled={
+                            !hasUploadedDocument(item.id, "quotation") ||
+                            notifyingByRequestId[item.id] ||
+                            completedRequestActions[notifyActionKey(item.id, "quotation")]
                           }
-                        )}
-                      </button>
+                          onClick={() => void providerNotifyRequester(item, "quotation")}
+                          type="button"
+                        >
+                          {getActionButtonLabel(
+                            locale,
+                            {
+                              loading: Boolean(notifyingByRequestId[item.id]),
+                              completed: Boolean(completedRequestActions[notifyActionKey(item.id, "quotation")])
+                            },
+                            {
+                              pending: { en: "Notify requester", ko: "요청자에게 알림 보내기" },
+                              loading: { en: "Sending notification...", ko: "알림 전송 중..." },
+                              done: { en: "Notification sent", ko: "알림 전송 완료" }
+                            }
+                          )}
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <form className="grid" onSubmit={(event) => event.preventDefault()}>
@@ -1193,9 +1195,9 @@ export function RequestsPanel({
                         {tr(locale, "Upload quotation document", "견적서 문서 업로드")}
                       </label>
                       <input className="input" name="vendorDocument" type="file" />
-                      <div className="row tiny">
+                      <div className="request-action-row">
                         <button
-                          className="btn secondary"
+                          className="btn"
                           disabled={
                             uploadingByRequestId[item.id] ||
                             completedRequestActions[uploadActionKey(item.id, "quotation")]
@@ -1265,9 +1267,9 @@ export function RequestsPanel({
                     )}
                   </p>
                   <input className="input" name="vendorDocument" type="file" />
-                  <div className="row tiny">
+                  <div className="request-action-row">
                     <button
-                      className="btn secondary"
+                      className="btn"
                       disabled={
                         uploadingByRequestId[item.id] ||
                         completedRequestActions[uploadActionKey(item.id, "ebm")]
