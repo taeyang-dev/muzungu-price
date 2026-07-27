@@ -51,136 +51,28 @@ function formatRwf(amount: number | null): string {
   }).format(amount);
 }
 
-function splitByWeights(total: number, weights: number[]): number[] {
-  if (total <= 0 || weights.length === 0) {
-    return weights.map(() => 0);
-  }
-
-  const raw = weights.map((weight) => (total * weight) / 100);
-  const base = raw.map((value) => Math.floor(value));
-  let remainder = total - base.reduce((sum, value) => sum + value, 0);
-
-  const order = raw
-    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
-    .sort((a, b) => b.fraction - a.fraction);
-
-  let pointer = 0;
-  while (remainder > 0) {
-    const target = order[pointer % order.length];
-    base[target.index] += 1;
-    remainder -= 1;
-    pointer += 1;
-  }
-
-  return base;
-}
-
-function getBreakdown(
-  baseRwf: number | null,
+function buildVendorBreakdownLines(
+  price: { inclusions: string | null; exclusions: string | null },
   locale: Locale
 ): BreakdownLine[] {
-  if (!baseRwf) {
-    return [];
+  const lines: BreakdownLine[] = [];
+  const inclusions = price.inclusions?.trim();
+  const exclusions = price.exclusions?.trim();
+
+  if (inclusions) {
+    lines.push({
+      label: tr(locale, "Includes", "포함"),
+      value: localizeCopy(locale, inclusions)
+    });
+  }
+  if (exclusions) {
+    lines.push({
+      label: tr(locale, "Excludes", "미포함"),
+      value: localizeCopy(locale, exclusions)
+    });
   }
 
-  const baseCostWeights = [34, 27, 11, 8, 6, 5, 5, 4];
-  const [
-    laborCost,
-    materialsCost,
-    equipmentCost,
-    planningCost,
-    qualityCost,
-    safetyCost,
-    coordinationCost,
-    documentationCost
-  ] = splitByWeights(Math.round(baseRwf), baseCostWeights);
-
-  const logisticsCost = Math.max(5000, Math.round(baseRwf * 0.035));
-  const sitePrepCost = Math.max(3500, Math.round(baseRwf * 0.02));
-  const afterHoursSupportCost = Math.max(2500, Math.round(baseRwf * 0.015));
-  const riskReserveCost = Math.max(3000, Math.round(baseRwf * 0.025));
-
-  const subtotalBeforeTax =
-    baseRwf + logisticsCost + sitePrepCost + afterHoursSupportCost + riskReserveCost;
-  const vat = Math.round(subtotalBeforeTax * 0.18);
-  const total = subtotalBeforeTax + vat;
-
-  return [
-    {
-      label: tr(locale, "Base quote composition", "기본 견적 구성"),
-      value: "",
-      tone: "section"
-    },
-    {
-      label: tr(locale, "On-site technical labor (34%)", "현장 기술 인건비 (34%)"),
-      value: formatRwf(laborCost)
-    },
-    {
-      label: tr(locale, "Core materials/components (27%)", "핵심 자재/부품비 (27%)"),
-      value: formatRwf(materialsCost)
-    },
-    {
-      label: tr(locale, "Equipment and tool utilization (11%)", "장비 및 공구 사용료 (11%)"),
-      value: formatRwf(equipmentCost)
-    },
-    {
-      label: tr(locale, "Planning & project supervision (8%)", "기획 및 프로젝트 관리 (8%)"),
-      value: formatRwf(planningCost)
-    },
-    {
-      label: tr(locale, "Quality assurance checks (6%)", "품질 검수 비용 (6%)"),
-      value: formatRwf(qualityCost)
-    },
-    {
-      label: tr(locale, "Safety compliance & PPE (5%)", "안전관리 및 보호장비 (5%)"),
-      value: formatRwf(safetyCost)
-    },
-    {
-      label: tr(locale, "Admin & coordination (5%)", "행정 및 커뮤니케이션 (5%)"),
-      value: formatRwf(coordinationCost)
-    },
-    {
-      label: tr(locale, "Documentation pack (quotation/EBM) (4%)", "문서 패키지(견적서/EBM) (4%)"),
-      value: formatRwf(documentationCost)
-    },
-    {
-      label: tr(locale, "Base quote subtotal", "기본 견적 소계"),
-      value: formatRwf(baseRwf),
-      tone: "subtotal"
-    },
-    {
-      label: tr(locale, "Additional project charges", "추가 프로젝트 비용"),
-      value: "",
-      tone: "section"
-    },
-    {
-      label: tr(locale, "Logistics & transportation", "물류 및 운송비"),
-      value: formatRwf(logisticsCost)
-    },
-    {
-      label: tr(locale, "Site preparation & setup", "현장 준비 및 세팅비"),
-      value: formatRwf(sitePrepCost)
-    },
-    {
-      label: tr(locale, "After-hours support buffer", "야간/추가 지원 버퍼"),
-      value: formatRwf(afterHoursSupportCost)
-    },
-    {
-      label: tr(locale, "Contingency reserve", "예비비"),
-      value: formatRwf(riskReserveCost)
-    },
-    {
-      label: tr(locale, "Subtotal before VAT", "부가세 전 소계"),
-      value: formatRwf(subtotalBeforeTax),
-      tone: "subtotal"
-    },
-    { label: tr(locale, "VAT (18%)", "부가세 (18%)"), value: formatRwf(vat) },
-    {
-      label: tr(locale, "Estimated payable total", "예상 결제 총액"),
-      value: formatRwf(total),
-      tone: "total"
-    }
-  ];
+  return lines;
 }
 
 function extractMinimumOrder(locale: Locale, value: string | null): string | null {
@@ -596,7 +488,10 @@ export default async function ProviderDetailPage({
               {service.priceCards.length === 0 && (
                 <p className="tiny muted">{tr(locale, "No price cards yet.", "가격 카드가 없습니다.")}</p>
               )}
-              {service.priceCards.map((price: ProviderPriceItem) => (
+              {service.priceCards.map((price: ProviderPriceItem) => {
+                const vendorBreakdown = buildVendorBreakdownLines(price, locale);
+
+                return (
                 <div className="price-row" key={price.id}>
                   <details className="price-breakdown">
                     <summary className="row tiny">
@@ -604,24 +499,28 @@ export default async function ProviderDetailPage({
                       <span>{formatRwf(toRwf(decimalToNumber(price.basePrice), price.currency))}</span>
                       <span>({unitLabel(locale, price.unit)})</span>
                     </summary>
-                    <p className="price-breakdown-hint">
-                      {tr(
-                        locale,
-                        "Detailed quote breakdown (click to expand)",
-                        "상세 견적 내역 (클릭해서 펼치기)"
-                      )}
-                    </p>
-                    <ul>
-                      {getBreakdown(toRwf(decimalToNumber(price.basePrice), price.currency), locale).map((item) => (
-                        <li
-                          className={`price-breakdown-item ${item.tone ?? "normal"}`}
-                          key={`${price.id}-${item.label}`}
-                        >
-                          <span>{item.label}</span>
-                          <span>{item.value}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    {vendorBreakdown.length > 0 && (
+                      <>
+                        <p className="price-breakdown-hint">
+                          {tr(
+                            locale,
+                            "Detailed quote breakdown (click to expand)",
+                            "상세 견적 내역 (클릭해서 펼치기)"
+                          )}
+                        </p>
+                        <ul>
+                          {vendorBreakdown.map((item) => (
+                            <li
+                              className={`price-breakdown-item ${item.tone ?? "normal"}`}
+                              key={`${price.id}-${item.label}`}
+                            >
+                              <span>{item.label}</span>
+                              <span>{item.value}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
                   </details>
                   <div className="tiny muted">
                     {tr(locale, "Includes", "포함")}:{" "}
@@ -636,7 +535,8 @@ export default async function ProviderDetailPage({
                     </p>
                   )}
                 </div>
-              ))}
+              );
+              })}
             </div>
           ))}
         </div>

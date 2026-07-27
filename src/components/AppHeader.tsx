@@ -158,7 +158,16 @@ export function AppHeader({ session, locale, theme }: AppHeaderProps) {
             ☰
           </button>
           <Link className="headline" href="/">
-            <img alt="This not Muzungu Price logo" className="brand-mark" src="/brand-mark.svg" />
+            <img
+              alt="This not Muzungu Price logo"
+              className="brand-mark brand-mark--dark"
+              src="/brand-mark.svg"
+            />
+            <img
+              alt="This not Muzungu Price logo"
+              className="brand-mark brand-mark--light"
+              src="/brand-mark-light.svg"
+            />
           </Link>
           <div className="topbar-actions">
             <ThemeSwitcher locale={locale} theme={theme} />

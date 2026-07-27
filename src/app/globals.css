@@ -20,6 +20,11 @@
   --backdrop: rgba(15, 23, 42, 0.38);
   --shadow-soft: rgba(15, 23, 42, 0.05);
   --chat-shadow: rgba(0, 0, 0, 0.45);
+  --price-summary-bg: #2c2406;
+  --price-summary-border: #7c6a00;
+  --price-summary-text: #fef9c3;
+  --price-hint-text: #fde68a;
+  --price-accent-text: #fde68a;
 }
 
 [data-theme="light"] {
@@ -43,6 +48,11 @@
   --backdrop: rgba(15, 23, 42, 0.2);
   --shadow-soft: rgba(15, 23, 42, 0.08);
   --chat-shadow: rgba(15, 23, 42, 0.12);
+  --price-summary-bg: #fffbeb;
+  --price-summary-border: #eab308;
+  --price-summary-text: #713f12;
+  --price-hint-text: #92400e;
+  --price-accent-text: #a16207;
 }
 
 * {
@@ -111,6 +121,18 @@ a {
   width: 240px;
   height: 56px;
   object-fit: contain;
+}
+
+.brand-mark--light {
+  display: none;
+}
+
+[data-theme="light"] .brand-mark--dark {
+  display: none;
+}
+
+[data-theme="light"] .brand-mark--light {
+  display: inline-block;
 }
 
 .topbar-actions {
@@ -759,7 +781,7 @@ a {
 
 .service-starting-price {
   margin: -2px 0 0 0;
-  color: #fde68a;
+  color: var(--price-accent-text);
   font-weight: 700;
 }
 
@@ -781,10 +803,10 @@ a {
 .price-breakdown summary {
   list-style: none;
   cursor: pointer;
-  padding: 2px 0;
-  border: 1px solid #7c6a00;
+  border: 1px solid var(--price-summary-border);
   border-radius: 8px;
-  background: #2c2406;
+  background: var(--price-summary-bg);
+  color: var(--price-summary-text);
   padding: 8px 10px;
 }
 
@@ -803,7 +825,7 @@ a {
 
 .price-breakdown-hint {
   margin: 8px 0 4px 0;
-  color: #fde68a;
+  color: var(--price-hint-text);
   font-size: 0.75rem;
 }
 
@@ -811,6 +833,13 @@ a {
   display: flex;
   justify-content: space-between;
   gap: 8px;
+  align-items: flex-start;
+}
+
+.price-breakdown-item span:last-child {
+  text-align: right;
+  max-width: 62%;
+  white-space: pre-wrap;
 }
 
 .price-breakdown-item.section {
@@ -826,21 +855,21 @@ a {
 }
 
 .price-breakdown-item.subtotal {
-  color: #fde68a;
+  color: var(--price-accent-text);
   font-weight: 700;
 }
 
 .price-breakdown-item.total {
-  color: #facc15;
+  color: var(--price-accent-text);
   font-size: 0.88rem;
   font-weight: 800;
-  border-top: 1px solid #7c6a00;
+  border-top: 1px solid var(--price-summary-border);
   padding-top: 6px;
 }
 
 .service-min-order-line {
   margin: 6px 0 0 0;
-  color: #fef3c7;
+  color: var(--price-hint-text);
 }
 
 .category-checkbox-grid {
@@ -995,6 +1024,10 @@ a {
   color: var(--text);
 }
 
+.chat-message.vendor p {
+  color: var(--text);
+}
+
 .chat-message span {
   display: block;
   margin-top: 4px;
@@ -1026,8 +1059,17 @@ a {
 
 .chat-message.user {
   margin-left: auto;
-  background: #3b2f00;
-  border-color: #eab308;
+  background: var(--chat-user-bg, #3b2f00);
+  border-color: var(--accent);
+}
+
+[data-theme="light"] .chat-message.user {
+  --chat-user-bg: #fef9c3;
+  color: var(--text);
+}
+
+[data-theme="light"] .chat-message.user p {
+  color: #111827;
 }
 
 .vendor-title-row {
@@ -1367,23 +1409,6 @@ a {
 [data-theme="light"] .provider-logo-placeholder {
   background: linear-gradient(125deg, #e5e7eb, #d1d5db);
   color: #374151;
-}
-
-[data-theme="light"] .price-breakdown-item.section {
-  color: #4b5563;
-}
-
-[data-theme="light"] .price-breakdown-item.subtotal {
-  color: #92400e;
-}
-
-[data-theme="light"] .price-breakdown-item.total {
-  color: #a16207;
-  border-top-color: #fde68a;
-}
-
-[data-theme="light"] .service-min-order-line {
-  color: #92400e;
 }
 
 [data-theme="light"] .chat-widget-panel {
