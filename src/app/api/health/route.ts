@@ -15,6 +15,9 @@ export async function GET(): Promise<NextResponse> {
       await prisma.serviceRequest.findFirst({
         select: { id: true, purchaseCodeUpdatedAt: true, documentNotifiedAt: true }
       });
+      await prisma.providerProfile.findFirst({
+        select: { id: true, categoryOtherDetail: true }
+      });
     } catch (schemaError) {
       schemaReady = false;
       schemaMessage =
