@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getSessionForApp } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
+import { getThemeFromCookies } from "@/lib/theme-server";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,13 +16,15 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await getSessionForApp();
   const locale = await getLocaleFromCookies();
+  const theme = await getThemeFromCookies();
 
   return (
-    <html lang={locale}>
+    <html data-theme={theme} lang={locale} suppressHydrationWarning>
       <body>
         <AppHeader
           locale={locale}
           session={session ? { name: session.name, role: session.role } : null}
+          theme={theme}
         />
         <main className="container section">{children}</main>
       </body>
