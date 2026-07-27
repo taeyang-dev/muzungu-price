@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LogoutButton } from "@/components/LogoutButton";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import {
   getVendorStorageEventName,
   readChatVendors,
@@ -12,6 +13,7 @@ import {
   VendorReference
 } from "@/lib/vendor-storage";
 import { Locale, tr } from "@/lib/i18n";
+import { AppTheme } from "@/lib/theme";
 
 interface AppHeaderProps {
   session: {
@@ -19,6 +21,7 @@ interface AppHeaderProps {
     role: string;
   } | null;
   locale: Locale;
+  theme: AppTheme;
 }
 
 function VendorList({
@@ -45,7 +48,7 @@ function VendorList({
   );
 }
 
-export function AppHeader({ session, locale }: AppHeaderProps) {
+export function AppHeader({ session, locale, theme }: AppHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [favorites, setFavorites] = useState<VendorReference[]>([]);
   const [recent, setRecent] = useState<VendorReference[]>([]);
@@ -158,6 +161,7 @@ export function AppHeader({ session, locale }: AppHeaderProps) {
             <img alt="This not Muzungu Price logo" className="brand-mark" src="/brand-mark.svg" />
           </Link>
           <div className="topbar-actions">
+            <ThemeSwitcher locale={locale} theme={theme} />
             <LocaleSwitcher locale={locale} />
             <Link className="btn browse-btn" href="/">
               {tr(locale, "Browse vendors", "업체 둘러보기")}
