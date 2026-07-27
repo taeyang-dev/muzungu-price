@@ -515,7 +515,7 @@ a {
 
 .vendor-tagline {
   margin: 0;
-  color: #c7d1e3;
+  color: var(--muted);
   font-size: 0.9rem;
 }
 
@@ -739,7 +739,7 @@ a {
 
 .provider-tagline {
   margin: 0 0 6px 0;
-  color: #e2e8f0;
+  color: var(--muted);
   font-size: 0.95rem;
 }
 

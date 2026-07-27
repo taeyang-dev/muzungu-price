@@ -395,6 +395,7 @@ export default async function ProviderDetailPage({
               organizationTinNumber: item.organizationTinNumber,
               purchaseCode: item.purchaseCode,
               purchaseCodeUpdatedAt: item.purchaseCodeUpdatedAt?.toISOString() ?? null,
+              documentNotifiedAt: item.documentNotifiedAt?.toISOString() ?? null,
               paymentTerm: item.paymentTerm,
               paymentMethod: item.paymentMethod,
               paymentNote: item.paymentNote,
@@ -452,6 +453,7 @@ export default async function ProviderDetailPage({
       <div id="vendor-chat">
         <VendorChatBox
           canSendPaymentInfo={isProviderOwner}
+          chatUserId={session && session.role !== "provider" ? session.userId : null}
           locale={locale}
           paymentInfo={isProviderOwner ? paymentInfo : null}
           vendorId={provider.id}

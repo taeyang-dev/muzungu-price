@@ -140,39 +140,6 @@ function notifyRequestsUpdated(): void {
   }
 }
 
-const REQUEST_ACTION_STATE_KEY = "muzungu_request_action_state";
-
-function uploadActionKey(requestId: string, type: RequestDocumentType): string {
-  return `upload:${type}:${requestId}`;
-}
-
-function notifyActionKey(requestId: string, type: RequestDocumentType): string {
-  return `notify:${type}:${requestId}`;
-}
-
-function readRequestActionState(): Record<string, boolean> {
-  if (typeof window === "undefined") {
-    return {};
-  }
-  const raw = window.localStorage.getItem(REQUEST_ACTION_STATE_KEY);
-  if (!raw) {
-    return {};
-  }
-  try {
-    const parsed = JSON.parse(raw) as Record<string, boolean>;
-    return typeof parsed === "object" && parsed !== null ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function persistRequestActionState(state: Record<string, boolean>): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.localStorage.setItem(REQUEST_ACTION_STATE_KEY, JSON.stringify(state));
-}
-
 function mergeRequestedDocuments(
   serverDocs: RequestedDocument[],
   localDocs: RequestedDocument[]
@@ -331,9 +298,6 @@ export function RequestsPanel({
   const [selectedServiceId, setSelectedServiceId] = useState(defaultServiceId);
   const [uploadingByRequestId, setUploadingByRequestId] = useState<Record<string, boolean>>({});
   const [notifyingByRequestId, setNotifyingByRequestId] = useState<Record<string, boolean>>({});
-  const [completedRequestActions, setCompletedRequestActions] = useState<Record<string, boolean>>(() =>
-    readRequestActionState()
-  );
   const [quotationModeByRequestId, setQuotationModeByRequestId] = useState<Record<string, "template" | "file">>({});
   const submittingVendorRequestRef = useRef(false);
   const effectiveServiceId = selectedServiceId || vendorContext?.services[0]?.id || "__other__";
@@ -364,19 +328,12 @@ export function RequestsPanel({
     return grouped;
   }, [requestedDocs]);
 
-  function markRequestActionComplete(key: string): void {
-    setCompletedRequestActions((current) => {
-      const next = { ...current, [key]: true };
-      persistRequestActionState(next);
-      return next;
-    });
+  function hasUploadedDocument(requestId: string, type: RequestDocumentType): boolean {
+    return (documentsByRequestId.get(requestId) ?? []).some((doc) => doc.type === type);
   }
 
-  function hasUploadedDocument(requestId: string, type: RequestDocumentType): boolean {
-    if (completedRequestActions[uploadActionKey(requestId, type)]) {
-      return true;
-    }
-    return (documentsByRequestId.get(requestId) ?? []).some((doc) => doc.type === type);
+  function hasNotifiedRequester(requestItem: RequestItem): boolean {
+    return Boolean(requestItem.documentNotifiedAt);
   }
 
   useEffect(() => {
@@ -476,7 +433,6 @@ export function RequestsPanel({
     method: "POST" | "PATCH",
     options: {
       successMessage: { en: string; ko: string };
-      completedActionKey?: string;
     } = {
       successMessage: { en: "Saved successfully.", ko: "저장되었습니다." }
     }
@@ -512,11 +468,8 @@ export function RequestsPanel({
       setError(data.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
       return;
     }
-    const { successMessage, completedActionKey } = options;
+    const { successMessage } = options;
     setFeedback(tr(locale, successMessage.en, successMessage.ko));
-    if (completedActionKey) {
-      setCompletedRequestActions((current) => ({ ...current, [completedActionKey]: true }));
-    }
     notifyRequestsUpdated();
     router.refresh();
     event.currentTarget.reset();
@@ -805,7 +758,6 @@ export function RequestsPanel({
         fileName: buildDefaultRequestedDocumentName(vendorName, type)
       });
       upsertRequestedDocument(saved);
-      markRequestActionComplete(uploadActionKey(requestItem.id, type));
       setFeedback(tr(locale, "Upload complete.", "업로드 완료"));
       notifyRequestsUpdated();
       form.reset();
@@ -833,7 +785,6 @@ export function RequestsPanel({
         fileName: input.fileName
       });
       upsertRequestedDocument(saved);
-      markRequestActionComplete(uploadActionKey(requestItem.id, "quotation"));
       setFeedback(tr(locale, "Upload complete.", "업로드 완료"));
       notifyRequestsUpdated();
     } catch (uploadError) {
@@ -873,7 +824,6 @@ export function RequestsPanel({
         setError(data.error?.message ?? tr(locale, "Failed to notify requester.", "알림 전송에 실패했습니다."));
         return;
       }
-      markRequestActionComplete(notifyActionKey(requestItem.id, type));
       setFeedback(tr(locale, "Notification sent.", "알림 전송 완료"));
       router.refresh();
     } catch {
@@ -1232,11 +1182,11 @@ export function RequestsPanel({
                   {(quotationModeByRequestId[item.id] ?? "file") === "template" ? (
                     <>
                       <QuotationTemplateEditor
-                        completed={Boolean(completedRequestActions[uploadActionKey(item.id, "quotation")])}
+                        completed={hasUploadedDocument(item.id, "quotation")}
                         defaults={buildQuotationDefaults(item)}
                         disabled={
                           uploadingByRequestId[item.id] ||
-                          completedRequestActions[uploadActionKey(item.id, "quotation")]
+                          hasUploadedDocument(item.id, "quotation")
                         }
                         locale={locale}
                         onSubmit={(input) => providerUploadTemplateDocument(item, input)}
@@ -1248,7 +1198,7 @@ export function RequestsPanel({
                           disabled={
                             !hasUploadedDocument(item.id, "quotation") ||
                             notifyingByRequestId[item.id] ||
-                            completedRequestActions[notifyActionKey(item.id, "quotation")]
+                            hasNotifiedRequester(item)
                           }
                           onClick={() => void providerNotifyRequester(item, "quotation")}
                           type="button"
@@ -1257,7 +1207,7 @@ export function RequestsPanel({
                             locale,
                             {
                               loading: Boolean(notifyingByRequestId[item.id]),
-                              completed: Boolean(completedRequestActions[notifyActionKey(item.id, "quotation")])
+                              completed: hasNotifiedRequester(item)
                             },
                             {
                               pending: { en: "Notify requester", ko: "요청자에게 알림 보내기" },
@@ -1279,7 +1229,7 @@ export function RequestsPanel({
                           className="btn"
                           disabled={
                             uploadingByRequestId[item.id] ||
-                            completedRequestActions[uploadActionKey(item.id, "quotation")]
+                            hasUploadedDocument(item.id, "quotation")
                           }
                           onClick={(event) => {
                             const form = event.currentTarget.form;
@@ -1293,7 +1243,7 @@ export function RequestsPanel({
                             locale,
                             {
                               loading: Boolean(uploadingByRequestId[item.id]),
-                              completed: Boolean(completedRequestActions[uploadActionKey(item.id, "quotation")])
+                              completed: hasUploadedDocument(item.id, "quotation")
                             },
                             {
                               pending: { en: "Upload", ko: "업로드" },
@@ -1307,7 +1257,7 @@ export function RequestsPanel({
                           disabled={
                             !hasUploadedDocument(item.id, "quotation") ||
                             notifyingByRequestId[item.id] ||
-                            completedRequestActions[notifyActionKey(item.id, "quotation")]
+                            hasNotifiedRequester(item)
                           }
                           onClick={() => void providerNotifyRequester(item, "quotation")}
                           type="button"
@@ -1316,7 +1266,7 @@ export function RequestsPanel({
                             locale,
                             {
                               loading: Boolean(notifyingByRequestId[item.id]),
-                              completed: Boolean(completedRequestActions[notifyActionKey(item.id, "quotation")])
+                              completed: hasNotifiedRequester(item)
                             },
                             {
                               pending: { en: "Notify requester", ko: "요청자에게 알림 보내기" },
@@ -1351,7 +1301,7 @@ export function RequestsPanel({
                       className="btn"
                       disabled={
                         uploadingByRequestId[item.id] ||
-                        completedRequestActions[uploadActionKey(item.id, "ebm")]
+                        hasUploadedDocument(item.id, "ebm")
                       }
                       onClick={(event) => {
                         const form = event.currentTarget.form;
@@ -1365,7 +1315,7 @@ export function RequestsPanel({
                         locale,
                         {
                           loading: Boolean(uploadingByRequestId[item.id]),
-                          completed: Boolean(completedRequestActions[uploadActionKey(item.id, "ebm")])
+                          completed: hasUploadedDocument(item.id, "ebm")
                         },
                         {
                           pending: { en: "Upload", ko: "업로드" },
@@ -1379,7 +1329,7 @@ export function RequestsPanel({
                       disabled={
                         !hasUploadedDocument(item.id, "ebm") ||
                         notifyingByRequestId[item.id] ||
-                        completedRequestActions[notifyActionKey(item.id, "ebm")]
+                        hasNotifiedRequester(item)
                       }
                       onClick={() => void providerNotifyRequester(item, "ebm")}
                       type="button"
@@ -1388,7 +1338,7 @@ export function RequestsPanel({
                         locale,
                         {
                           loading: Boolean(notifyingByRequestId[item.id]),
-                          completed: Boolean(completedRequestActions[notifyActionKey(item.id, "ebm")])
+                          completed: hasNotifiedRequester(item)
                         },
                         {
                           pending: { en: "Notify requester", ko: "요청자에게 알림 보내기" },

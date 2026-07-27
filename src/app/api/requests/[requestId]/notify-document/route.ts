@@ -77,7 +77,12 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
       });
     }
 
-    return ok({ notified: true });
+    await prisma.serviceRequest.update({
+      where: { id: requestId },
+      data: { documentNotifiedAt: new Date() }
+    });
+
+    return ok({ notified: true, documentNotifiedAt: new Date().toISOString() });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return fail(error.issues[0]?.message ?? "Invalid payload", 400, "VAL_001");

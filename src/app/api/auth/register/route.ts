@@ -31,6 +31,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return fail("Email already exists", 409, "AUTH_003");
     }
 
+    if (payload.verificationChannel === "whatsapp") {
+      return fail("WhatsApp verification is not available yet.", 400, "AUTH_WHATSAPP_DISABLED");
+    }
+
     const destination =
       payload.verificationChannel === "email" ? normalizedEmail : normalizedPhone;
     if (!destination) {
