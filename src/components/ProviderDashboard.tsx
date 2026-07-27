@@ -137,7 +137,6 @@ export function ProviderDashboard({
 }: ProviderDashboardProps) {
   const [feedback, setFeedback] = useState<string>("");
   const [error, setError] = useState<string>("");
-  const [loading, setLoading] = useState(false);
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>(
     billing?.paymentMethods ?? []
   );
@@ -174,6 +173,14 @@ export function ProviderDashboard({
   const [cityInput, setCityInput] = useState(profile?.city ?? "");
   const [countryInput, setCountryInput] = useState(profile?.country ?? "Rwanda");
   const [completedActions, setCompletedActions] = useState<Partial<Record<SaveAction, boolean>>>({});
+  const [draftSaved, setDraftSaved] = useState(() => Boolean(profile?.id));
+  const [reviewRequested, setReviewRequested] = useState(
+    verificationStatus === "pending" ||
+      verificationStatus === "on_hold" ||
+      verificationStatus === "approved"
+  );
+  const [submittingDraft, setSubmittingDraft] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
   const [documentRows, setDocumentRows] = useState<DocumentUploadRow[]>([createDocumentRow()]);
   const [uploadedDocumentRowIds, setUploadedDocumentRowIds] = useState<Set<string>>(new Set());
   const [uploadingDocumentRowId, setUploadingDocumentRowId] = useState<string | null>(null);
@@ -224,6 +231,26 @@ export function ProviderDashboard({
       return tr(locale, "Upload complete", "업로드 완료");
     }
     return tr(locale, "Upload document", "서류 업로드");
+  }
+
+  function getDraftButtonLabel(): string {
+    if (submittingDraft) {
+      return tr(locale, "Saving...", "저장 중...");
+    }
+    if (draftSaved) {
+      return tr(locale, "Draft saved", "임시 저장 완료");
+    }
+    return tr(locale, "Save draft", "임시 저장");
+  }
+
+  function getReviewButtonLabel(): string {
+    if (submittingReview) {
+      return tr(locale, "Submitting review request...", "심사 요청 중...");
+    }
+    if (reviewRequested) {
+      return tr(locale, "Review requested", "심사 요청 완료");
+    }
+    return tr(locale, "Request review", "심사 요청");
   }
 
   function updateDocumentRowDocType(rowId: string, docType: string): void {
@@ -363,7 +390,9 @@ export function ProviderDashboard({
 
     const { profilePayload, billingPayload } = await buildRegistrationPayload(form, draft);
 
-    setLoading(true);
+    if (draft) {
+      setSubmittingDraft(true);
+    }
     setError("");
     setFeedback("");
 
@@ -374,7 +403,9 @@ export function ProviderDashboard({
     });
     const profileData = (await profileResponse.json()) as ApiResult;
     if (!profileResponse.ok) {
-      setLoading(false);
+      if (draft) {
+        setSubmittingDraft(false);
+      }
       setError(profileData.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
       scrollToRegistrationMessage();
       return false;
@@ -386,7 +417,9 @@ export function ProviderDashboard({
       body: JSON.stringify(billingPayload)
     });
     const billingData = (await billingResponse.json()) as ApiResult;
-    setLoading(false);
+    if (draft) {
+      setSubmittingDraft(false);
+    }
 
     if (!billingResponse.ok) {
       setError(billingData.error?.message ?? tr(locale, "Failed to save billing settings", "발행 설정 저장에 실패했습니다."));
@@ -396,6 +429,9 @@ export function ProviderDashboard({
     }
 
     setCompletedActions((current) => ({ ...current, profile: true, billing: true }));
+    if (draft) {
+      setDraftSaved(true);
+    }
     setFeedback(
       draft
         ? tr(locale, "Draft saved.", "임시 저장되었습니다.")
@@ -437,8 +473,10 @@ export function ProviderDashboard({
       return;
     }
 
+    setSubmittingReview(true);
     const saved = await saveRegistration(false);
     if (!saved) {
+      setSubmittingReview(false);
       return;
     }
 
@@ -448,12 +486,12 @@ export function ProviderDashboard({
       const ensureData = (await ensureResponse.json()) as ApiResult & { data?: { id: string } };
       if (!ensureResponse.ok || !ensureData.data?.id) {
         setError(ensureData.error?.message ?? tr(locale, "Failed to prepare review case", "심사 케이스 준비에 실패했습니다."));
+        scrollToRegistrationMessage();
         return;
       }
       caseId = ensureData.data.id;
     }
 
-    setLoading(true);
     setError("");
     setFeedback("");
 
@@ -461,13 +499,16 @@ export function ProviderDashboard({
       method: "POST"
     });
     const data = (await response.json()) as ApiResult;
-    setLoading(false);
+    setSubmittingReview(false);
 
     if (!response.ok) {
       setError(data.error?.message ?? tr(locale, "Failed to submit review request", "심사 요청에 실패했습니다."));
       scrollToRegistrationMessage();
       return;
     }
+
+    setReviewRequested(true);
+    setFeedback(tr(locale, "Review request submitted.", "심사 요청이 접수되었습니다."));
 
     router.push("/provider/setup");
     router.refresh();
@@ -955,21 +996,19 @@ export function ProviderDashboard({
           <div className="row" style={{ flexWrap: "wrap", gap: "10px" }}>
             <button
               className="btn secondary"
-              disabled={loading}
+              disabled={submittingDraft || submittingReview || draftSaved}
               onClick={() => void saveRegistration(true)}
               type="button"
             >
-              {loading ? tr(locale, "Saving...", "저장 중...") : tr(locale, "Save draft", "임시 저장")}
+              {getDraftButtonLabel()}
             </button>
             <button
               className="btn"
-              disabled={loading}
+              disabled={submittingDraft || submittingReview || reviewRequested}
               onClick={() => void submitForReview()}
               type="button"
             >
-              {loading
-                ? tr(locale, "Submitting review request...", "심사 요청 중...")
-                : tr(locale, "Request review", "심사 요청")}
+              {getReviewButtonLabel()}
             </button>
           </div>
           {!allSectionsComplete && (
