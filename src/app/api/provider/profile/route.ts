@@ -82,7 +82,8 @@ const profileSchemaBase = z.object({
   ),
   country: z.string().optional(),
   city: z.string().optional(),
-  categoryIds: z.array(z.string()).optional()
+  categoryIds: z.array(z.string()).optional(),
+  categoryOtherDetail: z.string().max(120).optional()
 });
 
 function validateConditionalOtherFields(
@@ -107,6 +108,26 @@ function validateConditionalOtherFields(
       path: ["businessActivityOther"]
     });
   }
+}
+
+async function validateCategorySelection(
+  categoryIds: string[] | undefined,
+  categoryOtherDetail: string | null | undefined
+): Promise<string | null> {
+  if (!categoryIds || categoryIds.length === 0) {
+    return null;
+  }
+
+  const otherCategory = await prisma.serviceCategory.findUnique({
+    where: { slug: "other" },
+    select: { id: true }
+  });
+
+  if (otherCategory && categoryIds.includes(otherCategory.id) && !categoryOtherDetail?.trim()) {
+    return "Please enter your service category when selecting Other.";
+  }
+
+  return null;
 }
 
 const createSchema = profileSchemaBase
@@ -159,6 +180,7 @@ function buildProfileData(
   yearsInBusiness: number | null | undefined;
   country: string | null;
   city: string | null;
+  categoryOtherDetail: string | null | undefined;
 } {
   const representativeEmail = payload.representativeEmail?.trim() || null;
   const representativePhone = payload.representativePhone?.trim() || null;
@@ -189,7 +211,11 @@ function buildProfileData(
     websiteUrl: payload.websiteUrl || null,
     yearsInBusiness: payload.yearsInBusiness,
     country: payload.country ? normalizeCountryInput(payload.country) : null,
-    city: payload.city ? normalizeCityInput(payload.city) : null
+    city: payload.city ? normalizeCityInput(payload.city) : null,
+    categoryOtherDetail:
+      payload.categoryOtherDetail === undefined
+        ? undefined
+        : payload.categoryOtherDetail?.trim() || null
   };
 }
 
@@ -205,6 +231,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     delete requestBody.draft;
     const payload = isDraft ? draftCreateSchema.parse(requestBody) : createSchema.parse(requestBody);
     const categoryIds = payload.categoryIds?.filter((item) => item.length > 0) ?? [];
+    const categoryError = await validateCategorySelection(categoryIds, payload.categoryOtherDetail);
+    if (categoryError) {
+      return fail(categoryError, 400, "VAL_001");
+    }
     const existing = await prisma.providerProfile.findUnique({
       where: { userId: auth.session.userId }
     });
@@ -252,6 +282,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     delete requestBody.draft;
     const payload = isDraft ? draftUpdateSchema.parse(requestBody) : updateSchema.parse(requestBody);
     const categoryIds = payload.categoryIds?.filter((item) => item.length > 0);
+    const categoryError = await validateCategorySelection(categoryIds, payload.categoryOtherDetail);
+    if (categoryError) {
+      return fail(categoryError, 400, "VAL_001");
+    }
     const profile = await prisma.providerProfile.findUnique({
       where: { userId: auth.session.userId }
     });
@@ -290,7 +324,8 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             websiteUrl: draftData?.websiteUrl,
             yearsInBusiness: draftData?.yearsInBusiness,
             country: draftData?.country,
-            city: draftData?.city
+            city: draftData?.city,
+            categoryOtherDetail: draftData?.categoryOtherDetail
           }
         : {
         businessName: payload.businessName ?? undefined,
@@ -350,7 +385,11 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         yearsInBusiness: payload.yearsInBusiness ?? undefined,
         country:
           payload.country === undefined ? undefined : normalizeCountryInput(payload.country),
-        city: payload.city === undefined ? undefined : normalizeCityInput(payload.city)
+        city: payload.city === undefined ? undefined : normalizeCityInput(payload.city),
+        categoryOtherDetail:
+          payload.categoryOtherDetail === undefined
+            ? undefined
+            : payload.categoryOtherDetail.trim() || null
           }
     });
 

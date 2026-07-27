@@ -156,6 +156,7 @@ model ProviderProfile {
   businessActivityCode  String?
   businessActivityDetail String?
   businessActivityOther String?
+  categoryOtherDetail   String?
   officialBusinessAddress String?
   representativeName    String?
   representativeNationality String?

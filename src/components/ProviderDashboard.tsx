@@ -10,7 +10,6 @@ import {
   PHONE_COUNTRY_CODES,
   splitPhoneNumber
 } from "@/lib/phone-country-codes";
-import { isMarketplaceCategorySlug } from "@/lib/service-categories";
 
 const SHOW_VERIFICATION_DOCUMENTS = false;
 
@@ -124,8 +123,7 @@ export function ProviderDashboard({
       profile.businessName !== "임시 저장" &&
       profile.city &&
       profile.country &&
-      profile.representativeName &&
-      (profile.categoryIds.length ?? 0) > 0
+      profile.representativeName
   );
   const billingSectionComplete = Boolean(
     billing && (billing.quotationAvailable || billing.ebmAvailable || billing.vendorTinNumber)
@@ -190,7 +188,6 @@ export function ProviderDashboard({
     { value: "tour_operations", labelEn: "Tour operations", labelKo: "투어 운영" },
     { value: "other", labelEn: "Other", labelKo: "기타" }
   ] as const;
-  const marketplaceCategories = categories.filter((category) => isMarketplaceCategorySlug(category.slug));
 
   function getUploadButtonLabel(rowId: string): string {
     if (uploadingDocumentRowId === rowId) {
@@ -715,32 +712,6 @@ export function ProviderDashboard({
                 style={{ flex: 1 }}
                 value={phoneLocalNumber}
               />
-            </div>
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">
-              {tr(locale, "Service categories", "제공 서비스 카테고리")}
-            </label>
-            <p className="tiny muted" style={{ margin: "4px 0 8px" }}>
-              {tr(
-                locale,
-                "Select the categories that best describe your business.",
-                "업체가 제공하는 서비스 카테고리를 선택해 주세요."
-              )}
-            </p>
-            <div className="category-checkbox-grid">
-              <input name="categoryIds" type="hidden" value="" />
-              {marketplaceCategories.map((category) => (
-                <label className="category-check" key={category.id}>
-                  <input
-                    defaultChecked={profile?.categoryIds.includes(category.id) ?? false}
-                    name="categoryIds"
-                    type="checkbox"
-                    value={category.id}
-                  />{" "}
-                  {category.name}
-                </label>
-              ))}
             </div>
           </div>
         </div>

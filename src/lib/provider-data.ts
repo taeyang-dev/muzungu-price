@@ -43,6 +43,7 @@ export interface ProviderPageProfile {
   websiteUrl: string | null;
   yearsInBusiness: number | null;
   categoryIds: string[];
+  categoryOtherDetail: string | null;
 }
 
 export interface ProviderPageBilling {
@@ -125,7 +126,8 @@ export async function loadProviderPageData(userId: string): Promise<ProviderPage
           contactPhone: profile.contactPhone,
           websiteUrl: profile.websiteUrl,
           yearsInBusiness: profile.yearsInBusiness,
-          categoryIds: profile.categories.map((entry) => entry.categoryId)
+          categoryIds: profile.categories.map((entry) => entry.categoryId),
+          categoryOtherDetail: profile.categoryOtherDetail
         }
       : null,
     billing: profile?.billingCapability

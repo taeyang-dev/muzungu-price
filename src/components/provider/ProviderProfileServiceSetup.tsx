@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Locale, tr } from "@/lib/i18n";
 import { ProviderPageCategory, ProviderPageProfile } from "@/lib/provider-data";
-import { isMarketplaceCategorySlug } from "@/lib/service-categories";
+import { formatCategoryDisplayName } from "@/lib/service-categories";
 
 interface ApiResult {
   error?: { message: string };
@@ -32,15 +32,33 @@ export function ProviderProfileServiceSetup({
   const [loading, setLoading] = useState(false);
   const [completedActions, setCompletedActions] = useState<Partial<Record<SaveAction, boolean>>>({});
   const router = useRouter();
-  const marketplaceCategories = categories.filter((category) => isMarketplaceCategorySlug(category.slug));
+  const otherCategory = categories.find((category) => category.slug === "other") ?? null;
+  const selectableCategories = categories;
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(profile.categoryIds);
+  const [categoryOtherDetail, setCategoryOtherDetail] = useState(profile.categoryOtherDetail ?? "");
+  const includesOtherCategory = otherCategory ? selectedCategoryIds.includes(otherCategory.id) : false;
   const vendorCategories = useMemo(
-    () =>
-      profile.categoryIds.length > 0
-        ? marketplaceCategories.filter((category) => profile.categoryIds.includes(category.id))
-        : marketplaceCategories,
-    [marketplaceCategories, profile.categoryIds]
+    () => categories.filter((category) => selectedCategoryIds.includes(category.id)),
+    [categories, selectedCategoryIds]
   );
-  const usesVendorScope = profile.categoryIds.length > 0;
+  const usesVendorScope = selectedCategoryIds.length > 0;
+
+  function toggleCategory(categoryId: string, checked: boolean): void {
+    setSelectedCategoryIds((current) => {
+      const next = new Set(current);
+      if (checked) {
+        next.add(categoryId);
+      } else {
+        next.delete(categoryId);
+      }
+      return Array.from(next);
+    });
+  }
+
+  useEffect(() => {
+    setSelectedCategoryIds(profile.categoryIds);
+    setCategoryOtherDetail(profile.categoryOtherDetail ?? "");
+  }, [profile.categoryIds, profile.categoryOtherDetail]);
 
   async function fileToDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -72,6 +90,22 @@ export function ProviderProfileServiceSetup({
     const payload: Record<string, unknown> = Object.fromEntries(
       Array.from(formData.entries()).filter(([, value]) => !(value instanceof File))
     );
+
+    payload.categoryIds = selectedCategoryIds;
+    payload.categoryOtherDetail = includesOtherCategory ? categoryOtherDetail.trim() : "";
+
+    if (selectedCategoryIds.length === 0) {
+      setError(
+        tr(locale, "Select at least one service category.", "서비스 카테고리를 1개 이상 선택해 주세요.")
+      );
+      return;
+    }
+    if (includesOtherCategory && !categoryOtherDetail.trim()) {
+      setError(
+        tr(locale, "Enter your service category for Other.", "기타를 선택한 경우 카테고리를 직접 입력해 주세요.")
+      );
+      return;
+    }
 
     const logoFile = formData.get("logoFile");
     const coverFile = formData.get("coverFile");
@@ -197,6 +231,45 @@ export function ProviderProfileServiceSetup({
 
       <div className="grid" style={{ gap: "24px" }}>
         <section>
+          <h3 style={{ marginTop: 0 }}>{tr(locale, "Service categories", "서비스 카테고리")}</h3>
+          <p className="tiny muted">
+            {tr(
+              locale,
+              "Choose the marketplace categories that best describe your business. You can select more than one.",
+              "업체가 제공하는 서비스 카테고리를 선택해 주세요. 여러 개 선택할 수 있습니다."
+            )}
+          </p>
+          <div className="category-checkbox-grid">
+            {selectableCategories.map((category) => (
+              <label className="category-check" key={category.id}>
+                <input
+                  checked={selectedCategoryIds.includes(category.id)}
+                  onChange={(event) => toggleCategory(category.id, event.target.checked)}
+                  type="checkbox"
+                />{" "}
+                {category.slug === "other"
+                  ? tr(locale, "Other", "기타")
+                  : category.name}
+              </label>
+            ))}
+          </div>
+          {includesOtherCategory && (
+            <div style={{ marginTop: "12px" }}>
+              <label className="tiny">{tr(locale, "Other category (custom)", "기타 카테고리 (직접 입력)")}</label>
+              <input
+                className="input"
+                onChange={(event) => setCategoryOtherDetail(event.target.value)}
+                placeholder={tr(locale, "Describe your service category", "서비스 카테고리를 입력하세요")}
+                required
+                value={categoryOtherDetail}
+              />
+            </div>
+          )}
+        </section>
+
+        <div className="hr" />
+
+        <section>
           <h3 style={{ marginTop: 0 }}>{tr(locale, "Public profile", "사용자 노출 프로필")}</h3>
           <form className="grid grid-3" onSubmit={(event) => void submitPublicProfile(event)}>
             <div>
@@ -261,21 +334,21 @@ export function ProviderProfileServiceSetup({
             {usesVendorScope
               ? tr(
                   locale,
-                  "Choose one of your vendor registration categories for this service. Create separate services for each offering.",
-                  "벤더 등록 시 선택한 업종 카테고리 중 이 서비스에 맞는 항목을 고르세요. 서비스마다 하나씩 등록하면 됩니다."
+                  "Choose one of your selected service categories for this offering.",
+                  "선택한 서비스 카테고리 중 이 서비스에 맞는 항목을 고르세요."
                 )
               : tr(
                   locale,
-                  "Pick the closest marketplace category. If your business spans many areas, select multiple categories in vendor registration first.",
-                  "가장 가까운 마켓플레이스 카테고리를 선택하세요. 업종이 넓다면 벤더 등록에서 여러 카테고리를 먼저 선택해 주세요."
+                  "Save your service categories in the section above before adding services.",
+                  "서비스를 등록하기 전에 위에서 서비스 카테고리를 먼저 저장해 주세요."
                 )}
           </p>
           {vendorCategories.length === 0 ? (
             <div className="flash error">
               {tr(
                 locale,
-                "No categories available yet. Update your vendor registration and select at least one marketplace category.",
-                "선택 가능한 카테고리가 없습니다. 벤더 등록에서 마켓플레이스 카테고리를 1개 이상 선택해 주세요."
+                "No categories selected yet. Choose at least one service category above and save your public profile.",
+                "선택된 카테고리가 없습니다. 위에서 서비스 카테고리를 선택하고 노출 프로필을 저장해 주세요."
               )}
             </div>
           ) : (
@@ -286,7 +359,11 @@ export function ProviderProfileServiceSetup({
                 <option value="">{tr(locale, "Choose category", "카테고리 선택")}</option>
                 {vendorCategories.map((category) => (
                   <option key={category.id} value={category.id}>
-                    {category.name}
+                    {formatCategoryDisplayName(
+                      category.name,
+                      category.slug,
+                      category.slug === "other" ? categoryOtherDetail : null
+                    )}
                   </option>
                 ))}
               </select>
