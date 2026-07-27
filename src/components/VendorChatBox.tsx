@@ -33,6 +33,7 @@ interface VendorChatBoxProps {
   vendorId: string;
   vendorName: string;
   locale: Locale;
+  chatUserId?: string | null;
   canSendPaymentInfo?: boolean;
   paymentInfo?: VendorPaymentInfo | null;
 }
@@ -108,6 +109,57 @@ function writeChat(vendorId: string, messages: ChatMessage[]): void {
     return;
   }
   window.localStorage.setItem(getStorageKey(vendorId), JSON.stringify(messages.slice(-30)));
+}
+
+async function fetchServerChat(vendorId: string): Promise<ChatMessage[] | null> {
+  try {
+    const response = await fetch(`/api/providers/${vendorId}/chat`);
+    if (response.status === 401) {
+      return null;
+    }
+    const payload = (await response.json()) as { data?: ChatMessage[] };
+    if (!response.ok || !Array.isArray(payload.data)) {
+      return null;
+    }
+    return payload.data;
+  } catch {
+    return null;
+  }
+}
+
+async function saveServerChatMessage(
+  vendorId: string,
+  message: ChatMessage,
+  customerUserId?: string
+): Promise<ChatMessage | null> {
+  try {
+    const response = await fetch(`/api/providers/${vendorId}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sender: message.sender,
+        text: message.text,
+        attachments: message.attachments,
+        translations: message.translations,
+        customerUserId
+      })
+    });
+    const payload = (await response.json()) as { data?: ChatMessage };
+    if (!response.ok || !payload.data) {
+      return null;
+    }
+    return payload.data;
+  } catch {
+    return null;
+  }
+}
+
+function hasPaymentInfoMessage(messages: ChatMessage[]): boolean {
+  return messages.some(
+    (message) =>
+      message.sender === "vendor" &&
+      (message.text.includes("Payment information") || message.text.includes("결제 정보"))
+  );
 }
 
 function hasHangul(text: string): boolean {
@@ -198,6 +250,7 @@ export function VendorChatBox({
   vendorId,
   vendorName,
   locale,
+  chatUserId = null,
   canSendPaymentInfo = false,
   paymentInfo = null
 }: VendorChatBoxProps) {
@@ -233,28 +286,54 @@ export function VendorChatBox({
   const [attachmentNotice, setAttachmentNotice] = useState("");
   const [saveNotice, setSaveNotice] = useState("");
   const [paymentInfoSent, setPaymentInfoSent] = useState(false);
+  const usesServerChat = Boolean(chatUserId);
 
   useEffect(() => {
-    const timerId = window.setTimeout(() => {
+    let cancelled = false;
+
+    async function loadChat(): Promise<void> {
+      if (usesServerChat) {
+        const serverMessages = await fetchServerChat(vendorId);
+        if (cancelled) {
+          return;
+        }
+        if (serverMessages) {
+          setMessages(serverMessages.length > 0 ? serverMessages : initialMessage);
+          setPaymentInfoSent(hasPaymentInfoMessage(serverMessages));
+          setLoadedVendorId(vendorId);
+          const storedOpen = window.localStorage.getItem(getChatOpenStorageKey(vendorId));
+          setIsOpen(storedOpen !== "0");
+          return;
+        }
+      }
+
       const stored = readChat(vendorId);
+      if (cancelled) {
+        return;
+      }
       setMessages(stored.length > 0 ? stored : initialMessage);
+      setPaymentInfoSent(hasPaymentInfoMessage(stored));
       setLoadedVendorId(vendorId);
       const storedOpen = window.localStorage.getItem(getChatOpenStorageKey(vendorId));
       setIsOpen(storedOpen !== "0");
-    }, 0);
-    return () => window.clearTimeout(timerId);
-  }, [vendorId, initialMessage]);
+    }
+
+    void loadChat();
+    return () => {
+      cancelled = true;
+    };
+  }, [vendorId, initialMessage, usesServerChat]);
 
   useEffect(() => {
     window.localStorage.setItem(getChatOpenStorageKey(vendorId), isOpen ? "1" : "0");
   }, [vendorId, isOpen]);
 
   useEffect(() => {
-    if (loadedVendorId !== vendorId) {
+    if (loadedVendorId !== vendorId || usesServerChat) {
       return;
     }
     writeChat(vendorId, messages);
-  }, [vendorId, messages, loadedVendorId]);
+  }, [vendorId, messages, loadedVendorId, usesServerChat]);
 
   useEffect(() => {
     recordChatVendor({ id: vendorId, name: vendorName });
@@ -426,6 +505,25 @@ export function VendorChatBox({
     );
   }
 
+  async function persistMessages(nextMessages: ChatMessage[]): Promise<ChatMessage[]> {
+    if (!usesServerChat) {
+      return nextMessages;
+    }
+
+    const existingIds = new Set(messages.map((message) => message.id));
+    const freshMessages = nextMessages.filter(
+      (message) => !existingIds.has(message.id) && message.id !== "welcome-message"
+    );
+    const savedMessages = [...messages];
+
+    for (const message of freshMessages) {
+      const saved = await saveServerChatMessage(vendorId, message, chatUserId ?? undefined);
+      savedMessages.push(saved ?? message);
+    }
+
+    return savedMessages;
+  }
+
   async function appendVendorMessage(text: string, attachments?: ChatAttachment[]): Promise<void> {
     const now = new Date().toISOString();
     const vendorMessage: ChatMessage = {
@@ -446,7 +544,9 @@ export function VendorChatBox({
       rw: vendorTranslations[2]
     };
 
-    setMessages((current) => [...current, vendorMessage]);
+    const nextMessages = [...messages, vendorMessage];
+    const persisted = await persistMessages(nextMessages);
+    setMessages(persisted);
     recordChatVendor({ id: vendorId, name: vendorName });
   }
 
@@ -536,7 +636,9 @@ export function VendorChatBox({
       rw: vendorTranslations[2]
     };
 
-    setMessages((current) => [...current, userMessage, vendorMessage]);
+    const nextMessages = [...messages, userMessage, vendorMessage];
+    const persisted = await persistMessages(nextMessages);
+    setMessages(persisted);
     recordChatVendor({ id: vendorId, name: vendorName });
     setInput("");
     setPendingAttachments([]);

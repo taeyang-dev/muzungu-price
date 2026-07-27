@@ -13,7 +13,7 @@ export async function GET(): Promise<NextResponse> {
     let schemaMessage: string | null = null;
     try {
       await prisma.serviceRequest.findFirst({
-        select: { id: true, purchaseCodeUpdatedAt: true }
+        select: { id: true, purchaseCodeUpdatedAt: true, documentNotifiedAt: true }
       });
     } catch (schemaError) {
       schemaReady = false;

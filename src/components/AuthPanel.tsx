@@ -162,7 +162,9 @@ export function AuthPanel({ locale }: AuthPanelProps) {
               >
                 <option value="email">{tr(locale, "Email verification", "이메일 인증")}</option>
                 <option value="sms">{tr(locale, "SMS verification", "SMS 인증")}</option>
-                <option value="whatsapp">{tr(locale, "WhatsApp verification", "왓츠앱 인증")}</option>
+                <option disabled value="whatsapp">
+                  {tr(locale, "WhatsApp verification (coming soon)", "왓츠앱 인증 (준비 중)")}
+                </option>
               </select>
             </div>
             {verificationChannel !== "email" ? (

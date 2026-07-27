@@ -37,6 +37,11 @@ function maskDestination(channel: "email" | "sms" | "whatsapp", destination: str
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const payload = schema.parse(await request.json());
+
+    if (payload.purpose === "register" && payload.channel === "whatsapp") {
+      return fail("WhatsApp verification is not available yet.", 400, "AUTH_WHATSAPP_DISABLED");
+    }
+
     const normalizedEmail = payload.email.trim().toLowerCase();
     const normalizedPhone = normalizePhone(payload.phone);
     const user = await prisma.user.findUnique({
