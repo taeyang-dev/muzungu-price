@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
 import { Locale, tr } from "@/lib/i18n";
 
 interface BecomeProviderButtonProps {
@@ -12,6 +13,8 @@ export function BecomeProviderButton({ locale }: BecomeProviderButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  useSyncAppLoading(loading);
 
   async function activateProvider(): Promise<void> {
     setLoading(true);

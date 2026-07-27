@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Locale, localizeCopy, tr } from "@/lib/i18n";
+import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
 import {
   buildDefaultRequestedDocumentName,
   readRequestedDocuments,
@@ -301,6 +302,12 @@ export function RequestsPanel({
   const [quotationModeByRequestId, setQuotationModeByRequestId] = useState<Record<string, "template" | "file">>({});
   const submittingVendorRequestRef = useRef(false);
   const effectiveServiceId = selectedServiceId || vendorContext?.services[0]?.id || "__other__";
+  const isRequestActionLoading =
+    loading ||
+    Object.values(uploadingByRequestId).some(Boolean) ||
+    Object.values(notifyingByRequestId).some(Boolean);
+
+  useSyncAppLoading(isRequestActionLoading);
 
   const typeCounts = useMemo(
     () => ({

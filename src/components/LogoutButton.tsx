@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Locale, tr } from "@/lib/i18n";
+import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
 
 interface LogoutButtonProps {
   locale: Locale;
@@ -12,6 +13,8 @@ export function LogoutButton({ locale }: LogoutButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useSyncAppLoading(loading);
 
   async function handleLogout(): Promise<void> {
     setError("");

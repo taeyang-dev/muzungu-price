@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
 import { Locale, tr } from "@/lib/i18n";
 
 interface CustomerMessageComposerProps {
@@ -25,6 +26,8 @@ export function CustomerMessageComposer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
+
+  useSyncAppLoading(loading);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();

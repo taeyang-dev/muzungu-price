@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
 import { Locale, tr } from "@/lib/i18n";
 import { recordChatVendor } from "@/lib/vendor-storage";
 import { RequestDocumentType, saveRequestedDocument } from "@/lib/request-documents-storage";
@@ -281,12 +282,15 @@ export function VendorChatBox({
   );
   const [translatingMessageId, setTranslatingMessageId] = useState<string | null>(null);
   const [isBulkTranslating, setIsBulkTranslating] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const [attachmentNotice, setAttachmentNotice] = useState("");
   const [saveNotice, setSaveNotice] = useState("");
   const [paymentInfoSent, setPaymentInfoSent] = useState(false);
   const usesServerChat = Boolean(chatUserId);
+
+  useSyncAppLoading(isSending || isBulkTranslating || translatingMessageId !== null);
 
   useEffect(() => {
     let cancelled = false;
@@ -551,28 +555,35 @@ export function VendorChatBox({
   }
 
   async function sendPaymentInfo(): Promise<void> {
-    if (!paymentInfo || paymentInfoSent) {
+    if (!paymentInfo || paymentInfoSent || isSending) {
       return;
     }
 
-    const text = buildPaymentInfoMessage(paymentInfo, locale);
-    const attachment = createTextAttachment(
-      `payment-info-${Date.now()}`,
-      "payment-information.txt",
-      text
-    );
-    await appendVendorMessage(text, [attachment]);
-    setPaymentInfoSent(true);
-    setSaveNotice(tr(locale, "Payment information sent.", "결제 정보를 전송했습니다."));
+    setIsSending(true);
+    try {
+      const text = buildPaymentInfoMessage(paymentInfo, locale);
+      const attachment = createTextAttachment(
+        `payment-info-${Date.now()}`,
+        "payment-information.txt",
+        text
+      );
+      await appendVendorMessage(text, [attachment]);
+      setPaymentInfoSent(true);
+      setSaveNotice(tr(locale, "Payment information sent.", "결제 정보를 전송했습니다."));
+    } finally {
+      setIsSending(false);
+    }
   }
 
   async function sendMessage(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const trimmed = input.trim();
-    if (!trimmed && pendingAttachments.length === 0) {
+    if ((!trimmed && pendingAttachments.length === 0) || isSending) {
       return;
     }
 
+    setIsSending(true);
+    try {
     const now = new Date().toISOString();
     const userMessage: ChatMessage = {
       id: `user-${now}`,
@@ -643,6 +654,9 @@ export function VendorChatBox({
     setInput("");
     setPendingAttachments([]);
     setAttachmentNotice("");
+    } finally {
+      setIsSending(false);
+    }
   }
 
   return (

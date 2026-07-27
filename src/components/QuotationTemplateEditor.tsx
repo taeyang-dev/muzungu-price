@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
 import { Locale, tr } from "@/lib/i18n";
 import {
   QuotationTemplateData,
@@ -31,6 +32,8 @@ export function QuotationTemplateEditor({
   const [data, setData] = useState<QuotationTemplateData>(() => createQuotationTemplateData(defaults));
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useSyncAppLoading(submitting || isGeneratingPdf);
   const drawingRef = useRef(false);
 
   const total = useMemo(() => calculateQuotationTotal(data.lineItems), [data.lineItems]);
