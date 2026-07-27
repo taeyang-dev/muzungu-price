@@ -11,6 +11,8 @@ import {
   createQuotationTemplateData
 } from "@/lib/quotation-template";
 
+const QUOTATION_WHITE_BG_KEY = "muzungu_quotation_template_white_bg";
+
 interface QuotationTemplateEditorProps {
   locale: Locale;
   defaults: QuotationTemplateDefaults;
@@ -29,6 +31,7 @@ export function QuotationTemplateEditor({
   onSubmit
 }: QuotationTemplateEditorProps) {
   const [data, setData] = useState<QuotationTemplateData>(() => createQuotationTemplateData(defaults));
+  const [useWhiteBackground, setUseWhiteBackground] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);
@@ -50,6 +53,18 @@ export function QuotationTemplateEditor({
       fillCanvasBackground(canvas);
     }
   }, []);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(QUOTATION_WHITE_BG_KEY);
+    if (saved === "true") {
+      setUseWhiteBackground(true);
+    }
+  }, []);
+
+  function handleBackgroundToggle(checked: boolean): void {
+    setUseWhiteBackground(checked);
+    window.localStorage.setItem(QUOTATION_WHITE_BG_KEY, checked ? "true" : "false");
+  }
 
   function updateLineItem(
     id: string,
@@ -140,7 +155,21 @@ export function QuotationTemplateEditor({
   const isBusy = disabled || submitting || isGeneratingPdf;
 
   return (
-    <form className="grid" onSubmit={(event) => void handleSubmit(event)}>
+    <form
+      className={`grid quotation-template-editor${useWhiteBackground ? " quotation-template-editor--white" : ""}`}
+      onSubmit={(event) => void handleSubmit(event)}
+    >
+      <label className="row tiny quotation-template-bg-toggle">
+        <input
+          checked={useWhiteBackground}
+          onChange={(event) => handleBackgroundToggle(event.target.checked)}
+          type="checkbox"
+        />
+        <span>
+          {tr(locale, "Use white template background", "양식 전체 배경을 흰색으로 보기")}
+        </span>
+      </label>
+
       <p className="tiny muted" style={{ margin: 0 }}>
         {tr(
           locale,

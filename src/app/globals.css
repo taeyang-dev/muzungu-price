@@ -502,6 +502,51 @@ a {
   margin-top: 4px;
 }
 
+.quotation-template-editor--white {
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  gap: 12px;
+}
+
+.quotation-template-editor--white .input,
+.quotation-template-editor--white .select,
+.quotation-template-editor--white .textarea {
+  background: #ffffff;
+  color: #111827;
+  border-color: #d1d5db;
+}
+
+.quotation-template-editor--white .panel {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.quotation-template-editor--white .tiny.muted {
+  color: #6b7280;
+}
+
+.quotation-template-editor--white .btn.secondary {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.quotation-template-bg-toggle {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.quotation-template-editor--white .quotation-template-bg-toggle {
+  border-color: #e5e7eb;
+  background: #f9fafb;
+}
+
+
 .request-action-row {
   display: flex;
   gap: 12px;
