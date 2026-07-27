@@ -99,6 +99,33 @@ function createDocumentRow(docType = "rdb_certificate"): DocumentUploadRow {
   return { id: crypto.randomUUID(), docType };
 }
 
+function focusFirstInvalidField(form: HTMLFormElement): void {
+  const invalid = form.querySelector(":invalid");
+  if (invalid instanceof HTMLElement) {
+    invalid.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (typeof invalid.focus === "function") {
+      invalid.focus({ preventScroll: true });
+    }
+  }
+}
+
+function isBillingSectionCompleteFromForm(form: HTMLFormElement): boolean {
+  const formData = new FormData(form);
+  const quotation = formData.get("quotationAvailable") === "on";
+  const ebm = formData.get("ebmAvailable") === "on";
+  const tin = String(formData.get("vendorTinNumber") ?? "").trim();
+  return quotation || ebm || tin.length > 0;
+}
+
+function scrollToRegistrationMessage(): void {
+  window.requestAnimationFrame(() => {
+    document.getElementById("vendor-registration-top")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  });
+}
+
 export function ProviderDashboard({
   locale,
   categories,
@@ -326,6 +353,11 @@ export function ProviderDashboard({
     }
 
     if (!draft && !form.reportValidity()) {
+      setError(
+        tr(locale, "Please complete all required fields above.", "위의 필수 항목을 모두 입력해 주세요.")
+      );
+      focusFirstInvalidField(form);
+      scrollToRegistrationMessage();
       return false;
     }
 
@@ -344,6 +376,7 @@ export function ProviderDashboard({
     if (!profileResponse.ok) {
       setLoading(false);
       setError(profileData.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
+      scrollToRegistrationMessage();
       return false;
     }
 
@@ -357,6 +390,7 @@ export function ProviderDashboard({
 
     if (!billingResponse.ok) {
       setError(billingData.error?.message ?? tr(locale, "Failed to save billing settings", "발행 설정 저장에 실패했습니다."));
+      scrollToRegistrationMessage();
       router.refresh();
       return false;
     }
@@ -372,14 +406,34 @@ export function ProviderDashboard({
   }
 
   async function submitForReview(): Promise<void> {
-    if (!allSectionsComplete) {
+    const form = formRef.current;
+    if (!form) {
+      setError(tr(locale, "Form not found", "양식을 찾을 수 없습니다."));
+      return;
+    }
+
+    setError("");
+    setFeedback("");
+
+    if (!form.reportValidity()) {
+      setError(
+        tr(locale, "Please complete all required fields above.", "위의 필수 항목을 모두 입력해 주세요.")
+      );
+      focusFirstInvalidField(form);
+      scrollToRegistrationMessage();
+      return;
+    }
+
+    if (!isBillingSectionCompleteFromForm(form)) {
       setError(
         tr(
           locale,
-          "Complete profile and Quotation/EBM settings before requesting review.",
-          "프로필과 Quotation/EBM 설정을 완료한 뒤 심사를 요청해 주세요."
+          "Select Quotation or EBM availability, or enter your vendor TIN number.",
+          "견적서 또는 EBM 발행 가능을 선택하거나 업체 TIN 번호를 입력해 주세요."
         )
       );
+      form.querySelector('[name="vendorTinNumber"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+      scrollToRegistrationMessage();
       return;
     }
 
@@ -411,6 +465,7 @@ export function ProviderDashboard({
 
     if (!response.ok) {
       setError(data.error?.message ?? tr(locale, "Failed to submit review request", "심사 요청에 실패했습니다."));
+      scrollToRegistrationMessage();
       return;
     }
 
@@ -503,7 +558,7 @@ export function ProviderDashboard({
   }
 
   return (
-    <section className="grid">
+    <section className="grid" id="vendor-registration-top">
       <h1 style={{ marginBottom: 0 }}>{tr(locale, "Vendor registration", "벤더 등록")}</h1>
       <p className="muted">
         {tr(
@@ -886,6 +941,48 @@ export function ProviderDashboard({
           </div>
         </div>
       </article>
+
+      {isDraftReview && (
+        <article className="panel">
+          <h2 style={{ marginTop: 0 }}>{tr(locale, "Submit registration", "등록 제출")}</h2>
+          <p className="tiny muted">
+            {tr(
+              locale,
+              "When profile and Quotation/EBM settings are complete, you can save a draft or request review.",
+              "프로필과 Quotation/EBM 설정이 완료되면 임시 저장 또는 심사 요청을 할 수 있습니다."
+            )}
+          </p>
+          <div className="row" style={{ flexWrap: "wrap", gap: "10px" }}>
+            <button
+              className="btn secondary"
+              disabled={loading}
+              onClick={() => void saveRegistration(true)}
+              type="button"
+            >
+              {loading ? tr(locale, "Saving...", "저장 중...") : tr(locale, "Save draft", "임시 저장")}
+            </button>
+            <button
+              className="btn"
+              disabled={loading}
+              onClick={() => void submitForReview()}
+              type="button"
+            >
+              {loading
+                ? tr(locale, "Submitting review request...", "심사 요청 중...")
+                : tr(locale, "Request review", "심사 요청")}
+            </button>
+          </div>
+          {!allSectionsComplete && (
+            <p className="tiny muted" style={{ marginTop: "12px", marginBottom: 0 }}>
+              {tr(
+                locale,
+                "Tip: fill in all required fields, then tap Request review. You do not need to save draft first.",
+                "필수 항목을 모두 입력한 뒤 심사 요청을 누르세요. 임시 저장 없이도 제출할 수 있습니다."
+              )}
+            </p>
+          )}
+        </article>
+      )}
       </form>
 
       {SHOW_VERIFICATION_DOCUMENTS && (
@@ -1028,47 +1125,6 @@ export function ProviderDashboard({
       </article>
       )}
 
-      {isDraftReview && (
-        <article className="panel">
-          <h2 style={{ marginTop: 0 }}>{tr(locale, "Submit registration", "등록 제출")}</h2>
-          <p className="tiny muted">
-            {tr(
-              locale,
-              "When profile and Quotation/EBM settings are complete, you can save a draft or request review.",
-              "프로필과 Quotation/EBM 설정이 완료되면 임시 저장 또는 심사 요청을 할 수 있습니다."
-            )}
-          </p>
-          <div className="row">
-            <button
-              className="btn secondary"
-              disabled={loading}
-              onClick={() => void saveRegistration(true)}
-              type="button"
-            >
-              {loading ? tr(locale, "Saving...", "저장 중...") : tr(locale, "Save draft", "임시 저장")}
-            </button>
-            <button
-              className="btn"
-              disabled={loading || !allSectionsComplete}
-              onClick={() => void submitForReview()}
-              type="button"
-            >
-              {loading
-                ? tr(locale, "Submitting review request...", "심사 요청 중...")
-                : tr(locale, "Request review", "심사 요청")}
-            </button>
-          </div>
-          {!allSectionsComplete && (
-            <p className="tiny muted" style={{ marginTop: "12px", marginBottom: 0 }}>
-              {tr(
-                locale,
-                "Complete profile and Quotation/EBM settings.",
-                "프로필과 Quotation/EBM 설정을 완료해 주세요."
-              )}
-            </p>
-          )}
-        </article>
-      )}
     </section>
   );
 }
