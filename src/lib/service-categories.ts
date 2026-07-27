@@ -14,3 +14,14 @@ export const DEFAULT_SERVICE_CATEGORIES = [
 export function isMarketplaceCategorySlug(slug: string): boolean {
   return slug !== "other";
 }
+
+export function formatCategoryDisplayName(
+  name: string,
+  slug: string,
+  categoryOtherDetail?: string | null
+): string {
+  if (slug === "other" && categoryOtherDetail?.trim()) {
+    return categoryOtherDetail.trim();
+  }
+  return name;
+}

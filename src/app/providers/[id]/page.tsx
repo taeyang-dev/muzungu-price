@@ -10,6 +10,7 @@ import { FallbackImage } from "@/components/FallbackImage";
 import { getDefaultServiceImage } from "@/lib/default-images";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { Locale, localizeCopy, tr } from "@/lib/i18n";
+import { formatCategoryDisplayName } from "@/lib/service-categories";
 import { buildVendorRequestContext } from "@/lib/vendor-request-context";
 
 interface ProviderDetailPageProps {
@@ -298,7 +299,11 @@ export default async function ProviderDetailPage({
         <div className="provider-chip-row">
           {provider.categories.map((entry: ProviderCategoryItem) => (
             <span className="badge" key={entry.id}>
-              {entry.category.name}
+              {formatCategoryDisplayName(
+                entry.category.name,
+                entry.category.slug,
+                provider.categoryOtherDetail
+              )}
             </span>
           ))}
         </div>
