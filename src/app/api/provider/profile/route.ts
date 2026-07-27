@@ -60,12 +60,12 @@ const profileSchemaBase = z.object({
   ),
   businessActivityDetail: z.string().min(2).max(140),
   businessActivityOther: z.string().max(200).optional(),
-  officialBusinessAddress: z.string().min(8),
+  officialBusinessAddress: z.string().min(3),
   representativeName: z.string().min(2),
   representativeNationality: z.string().min(2),
-  representativeIdType: representativeIdTypeSchema,
+  representativeIdType: representativeIdTypeSchema.optional(),
   representativeIdTypeOther: z.string().max(120).optional(),
-  representativeIdNumber: z.string().min(4).max(80),
+  representativeIdNumber: z.string().max(80).optional(),
   representativeLocalAddress: z.string().min(5),
   representativeEmail: z.string().email(),
   representativePhone: z.string().min(6).max(40),
@@ -105,14 +105,6 @@ function validateConditionalOtherFields(
       code: z.ZodIssueCode.custom,
       message: "Business activity detail is required when selecting Other",
       path: ["businessActivityOther"]
-    });
-  }
-
-  if (payload.representativeIdType === "other" && !payload.representativeIdTypeOther?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Representative ID type detail is required when selecting Other",
-      path: ["representativeIdTypeOther"]
     });
   }
 }

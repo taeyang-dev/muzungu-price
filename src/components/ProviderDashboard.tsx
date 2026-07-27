@@ -4,7 +4,15 @@ import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Locale, tr } from "@/lib/i18n";
 import { normalizeCityInput, normalizeCountryInput } from "@/lib/location";
+import { composeBusinessAddress, parseBusinessAddress } from "@/lib/business-address";
+import {
+  combinePhoneNumber,
+  PHONE_COUNTRY_CODES,
+  splitPhoneNumber
+} from "@/lib/phone-country-codes";
 import { isMarketplaceCategorySlug } from "@/lib/service-categories";
+
+const SHOW_VERIFICATION_DOCUMENTS = false;
 
 interface Category {
   id: string;
@@ -131,16 +139,22 @@ export function ProviderDashboard({
   const [selectedBusinessDetail, setSelectedBusinessDetail] = useState<string>(
     profile?.businessActivityDetail ?? "general_services"
   );
-  const [selectedRepresentativeIdType, setSelectedRepresentativeIdType] = useState<string>(
-    profile?.representativeIdType ?? "national_id"
-  );
+  const parsedAddress = parseBusinessAddress(profile?.officialBusinessAddress);
+  const parsedPhone = splitPhoneNumber(profile?.representativePhone ?? profile?.contactPhone);
+  const [addressLine1, setAddressLine1] = useState(parsedAddress.line1);
+  const [addressLine2, setAddressLine2] = useState(parsedAddress.line2);
+  const [addressDistrict, setAddressDistrict] = useState(parsedAddress.district);
+  const [phoneDialCode, setPhoneDialCode] = useState(parsedPhone.dialCode);
+  const [phoneLocalNumber, setPhoneLocalNumber] = useState(parsedPhone.localNumber);
   const [cityInput, setCityInput] = useState(profile?.city ?? "");
   const [countryInput, setCountryInput] = useState(profile?.country ?? "Rwanda");
   const [completedActions, setCompletedActions] = useState<Partial<Record<SaveAction, boolean>>>({});
   const [documentRows, setDocumentRows] = useState<DocumentUploadRow[]>([createDocumentRow()]);
   const [uploadedDocumentRowIds, setUploadedDocumentRowIds] = useState<Set<string>>(new Set());
   const [uploadingDocumentRowId, setUploadingDocumentRowId] = useState<string | null>(null);
-  const documentsSectionComplete = verificationDocumentCount > 0 || uploadedDocumentRowIds.size > 0;
+  const documentsSectionComplete = SHOW_VERIFICATION_DOCUMENTS
+    ? verificationDocumentCount > 0 || uploadedDocumentRowIds.size > 0
+    : true;
   const allSectionsComplete = profileSectionComplete && billingSectionComplete && documentsSectionComplete;
 
   const providerTypeOptions = [
@@ -234,15 +248,30 @@ export function ProviderDashboard({
     ) {
       profilePayload.businessActivityOther = "";
     }
-    if (typeof profilePayload.representativeIdType === "string" && profilePayload.representativeIdType !== "other") {
-      profilePayload.representativeIdTypeOther = "";
-    }
     if (typeof profilePayload.city === "string") {
       profilePayload.city = normalizeCityInput(profilePayload.city) ?? "";
     }
     if (typeof profilePayload.country === "string") {
       profilePayload.country = normalizeCountryInput(profilePayload.country) ?? "";
     }
+
+    const addressLine1Value = String(formData.get("addressLine1") ?? "").trim();
+    const addressLine2Value = String(formData.get("addressLine2") ?? "").trim();
+    const addressDistrictValue = String(formData.get("addressDistrict") ?? "").trim();
+    profilePayload.officialBusinessAddress = composeBusinessAddress({
+      line1: addressLine1Value,
+      line2: addressLine2Value,
+      district: addressDistrictValue
+    });
+    delete profilePayload.addressLine1;
+    delete profilePayload.addressLine2;
+    delete profilePayload.addressDistrict;
+
+    const dialCode = String(formData.get("representativePhoneDialCode") ?? phoneDialCode).trim();
+    const localNumber = String(formData.get("representativePhoneLocal") ?? phoneLocalNumber).trim();
+    profilePayload.representativePhone = combinePhoneNumber(dialCode, localNumber);
+    delete profilePayload.representativePhoneDialCode;
+    delete profilePayload.representativePhoneLocal;
 
     profilePayload.quotationAvailable = profilePayload.quotationAvailable === "on";
     profilePayload.ebmAvailable = profilePayload.ebmAvailable === "on";
@@ -350,8 +379,8 @@ export function ProviderDashboard({
       setError(
         tr(
           locale,
-          "Complete all three sections (profile, billing, documents) before requesting review.",
-          "프로필, Quotation/EBM 설정, 업체 확인 서류를 모두 완료한 뒤 심사를 요청해 주세요."
+          "Complete profile and Quotation/EBM settings before requesting review.",
+          "프로필과 Quotation/EBM 설정을 완료한 뒤 심사를 요청해 주세요."
         )
       );
       return;
@@ -482,8 +511,8 @@ export function ProviderDashboard({
       <p className="muted">
         {tr(
           locale,
-          "Complete all three sections below, then save a draft or request review.",
-          "아래 세 가지 섹션을 완료한 뒤 임시 저장 또는 심사 요청을 해 주세요."
+          "Complete the profile and Quotation/EBM sections below, then save a draft or request review.",
+          "아래 프로필과 Quotation/EBM 섹션을 완료한 뒤 임시 저장 또는 심사 요청을 해 주세요."
         )}
       </p>
       {error && <div className="flash error">{error}</div>}
@@ -578,13 +607,34 @@ export function ProviderDashboard({
               <input className="input" defaultValue={profile?.businessActivityOther ?? ""} name="businessActivityOther" required />
             </div>
           )}
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">{tr(locale, "Official business address", "공식 사업 주소지")}</label>
-            <textarea
-              className="textarea"
-              defaultValue={profile?.officialBusinessAddress ?? ""}
-              name="officialBusinessAddress"
+          <div>
+            <label className="tiny">{tr(locale, "Address line 1", "주소 1")}</label>
+            <input
+              className="input"
+              name="addressLine1"
+              onChange={(event) => setAddressLine1(event.target.value)}
               required
+              value={addressLine1}
+            />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "Address line 2 (optional)", "주소 2 (선택)")}</label>
+            <input
+              className="input"
+              name="addressLine2"
+              onChange={(event) => setAddressLine2(event.target.value)}
+              value={addressLine2}
+            />
+          </div>
+          <div>
+            <label className="tiny">{tr(locale, "District / ward", "구")}</label>
+            <input
+              className="input"
+              name="addressDistrict"
+              onChange={(event) => setAddressDistrict(event.target.value)}
+              placeholder={tr(locale, "e.g. Gasabo", "예: Gasabo")}
+              required
+              value={addressDistrict}
             />
           </div>
           <div>
@@ -627,34 +677,6 @@ export function ProviderDashboard({
             <input className="input" defaultValue={profile?.representativeNationality ?? ""} name="representativeNationality" required />
           </div>
           <div>
-            <label className="tiny">{tr(locale, "ID type", "신분증 유형")}</label>
-            <select
-              className="select"
-              defaultValue={profile?.representativeIdType ?? "national_id"}
-              name="representativeIdType"
-              onChange={(event) => setSelectedRepresentativeIdType(event.target.value)}
-            >
-              <option value="passport">{tr(locale, "Passport (for foreign representative)", "여권 (외국인)")}</option>
-              <option value="national_id">{tr(locale, "National ID", "국가 신분증")}</option>
-              <option value="other">{tr(locale, "Other", "기타")}</option>
-            </select>
-          </div>
-          {selectedRepresentativeIdType === "other" && (
-            <div>
-              <label className="tiny">{tr(locale, "ID type detail (Other)", "신분증 유형 상세 (기타)")}</label>
-              <input
-                className="input"
-                defaultValue={profile?.representativeIdTypeOther ?? ""}
-                name="representativeIdTypeOther"
-                required
-              />
-            </div>
-          )}
-          <div>
-            <label className="tiny">{tr(locale, "Passport / National ID number", "여권번호 / National ID")}</label>
-            <input className="input" defaultValue={profile?.representativeIdNumber ?? ""} name="representativeIdNumber" required />
-          </div>
-          <div>
             <label className="tiny">{tr(locale, "Representative local address", "대표자 현지 주소")}</label>
             <input className="input" defaultValue={profile?.representativeLocalAddress ?? ""} name="representativeLocalAddress" required />
           </div>
@@ -668,16 +690,44 @@ export function ProviderDashboard({
               type="email"
             />
           </div>
-          <div>
+          <div style={{ gridColumn: "1 / -1" }}>
             <label className="tiny">{tr(locale, "Representative phone", "대표자 전화번호")}</label>
-            <input
-              className="input"
-              defaultValue={profile?.representativePhone ?? profile?.contactPhone ?? ""}
-              name="representativePhone"
-              required
-            />
+            <div className="row" style={{ alignItems: "stretch", gap: "8px" }}>
+              <select
+                className="select"
+                name="representativePhoneDialCode"
+                onChange={(event) => setPhoneDialCode(event.target.value)}
+                style={{ maxWidth: "220px" }}
+                value={phoneDialCode}
+              >
+                {PHONE_COUNTRY_CODES.map((entry) => (
+                  <option key={entry.code} value={entry.dialCode}>
+                    {tr(locale, entry.labelEn, entry.labelKo)} ({entry.dialCode})
+                  </option>
+                ))}
+              </select>
+              <input
+                className="input"
+                name="representativePhoneLocal"
+                onChange={(event) => setPhoneLocalNumber(event.target.value)}
+                placeholder={tr(locale, "Phone number without country code", "국가번호 제외 전화번호")}
+                required
+                style={{ flex: 1 }}
+                value={phoneLocalNumber}
+              />
+            </div>
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
+            <label className="tiny">
+              {tr(locale, "Service categories", "제공 서비스 카테고리")}
+            </label>
+            <p className="tiny muted" style={{ margin: "4px 0 8px" }}>
+              {tr(
+                locale,
+                "Select the categories that best describe your business.",
+                "업체가 제공하는 서비스 카테고리를 선택해 주세요."
+              )}
+            </p>
             <div className="category-checkbox-grid">
               <input name="categoryIds" type="hidden" value="" />
               {marketplaceCategories.map((category) => (
@@ -860,13 +910,14 @@ export function ProviderDashboard({
             </>
           )}
           <div style={{ gridColumn: "1 / -1" }}>
-            <label className="tiny">{tr(locale, "EBM notes", "EBM 메모")}</label>
+            <label className="tiny">{tr(locale, "EBM notes (optional)", "EBM 메모 (선택)")}</label>
             <textarea className="textarea" defaultValue={billing?.ebmNotes ?? ""} name="ebmNotes" />
           </div>
         </div>
       </article>
       </form>
 
+      {SHOW_VERIFICATION_DOCUMENTS && (
       <article className="panel">
         <div className="row">
           <h2 style={{ margin: 0 }}>{tr(locale, "Business verification documents", "업체 확인 서류")}</h2>
@@ -1004,6 +1055,7 @@ export function ProviderDashboard({
           </p>
         )}
       </article>
+      )}
 
       {isDraftReview && (
         <article className="panel">
@@ -1011,8 +1063,8 @@ export function ProviderDashboard({
           <p className="tiny muted">
             {tr(
               locale,
-              "When all three sections are complete, you can save a draft or request review.",
-              "세 가지 섹션이 모두 완료되면 임시 저장 또는 심사 요청을 할 수 있습니다."
+              "When profile and Quotation/EBM settings are complete, you can save a draft or request review.",
+              "프로필과 Quotation/EBM 설정이 완료되면 임시 저장 또는 심사 요청을 할 수 있습니다."
             )}
           </p>
           <div className="row">
@@ -1039,8 +1091,8 @@ export function ProviderDashboard({
             <p className="tiny muted" style={{ marginTop: "12px", marginBottom: 0 }}>
               {tr(
                 locale,
-                "Complete profile, Quotation/EBM settings, and upload at least one document.",
-                "프로필, Quotation/EBM 설정, 서류 업로드를 모두 완료해 주세요."
+                "Complete profile and Quotation/EBM settings.",
+                "프로필과 Quotation/EBM 설정을 완료해 주세요."
               )}
             </p>
           )}

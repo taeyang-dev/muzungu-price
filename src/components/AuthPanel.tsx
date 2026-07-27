@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Locale, tr } from "@/lib/i18n";
 import { isPasswordValid, passwordRequirementMessage } from "@/lib/password";
 
@@ -30,7 +29,6 @@ export function AuthPanel({ locale }: AuthPanelProps) {
   const [verificationChannel, setVerificationChannel] = useState<VerificationChannel>("email");
   const [verificationHint, setVerificationHint] = useState("");
   const [debugCode, setDebugCode] = useState<string | null>(null);
-  const router = useRouter();
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -67,8 +65,8 @@ export function AuthPanel({ locale }: AuthPanelProps) {
       return;
     }
 
-    window.location.href = "/";
-    router.refresh();
+    window.location.replace("/");
+    return;
   }
 
   async function requestVerificationCode(): Promise<void> {
