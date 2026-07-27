@@ -8,8 +8,7 @@ import {
   readRequestedDocuments,
   renameRequestedDocument,
   RequestDocumentType,
-  RequestedDocument,
-  saveRequestedDocument
+  RequestedDocument
 } from "@/lib/request-documents-storage";
 import Link from "next/link";
 import { QuotationTemplateEditor } from "@/components/QuotationTemplateEditor";
@@ -172,6 +171,42 @@ function persistRequestActionState(state: Record<string, boolean>): void {
     return;
   }
   window.localStorage.setItem(REQUEST_ACTION_STATE_KEY, JSON.stringify(state));
+}
+
+function mergeRequestedDocuments(
+  serverDocs: RequestedDocument[],
+  localDocs: RequestedDocument[]
+): RequestedDocument[] {
+  const merged = new Map<string, RequestedDocument>();
+  for (const document of serverDocs) {
+    merged.set(document.id, document);
+  }
+  for (const document of localDocs) {
+    if (!merged.has(document.id)) {
+      merged.set(document.id, document);
+    }
+  }
+  return [...merged.values()].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+}
+
+async function fetchServerDocuments(requestIds: string[]): Promise<RequestedDocument[]> {
+  const localDocs = readRequestedDocuments();
+  if (requestIds.length === 0) {
+    return localDocs;
+  }
+
+  try {
+    const response = await fetch(`/api/requests/documents?ids=${encodeURIComponent(requestIds.join(","))}`);
+    const payload = (await response.json()) as { data?: RequestedDocument[] };
+    if (!response.ok || !Array.isArray(payload.data)) {
+      return localDocs;
+    }
+    return mergeRequestedDocuments(payload.data, localDocs);
+  } catch {
+    return localDocs;
+  }
 }
 
 function getActionButtonLabel(
@@ -347,6 +382,7 @@ export function RequestsPanel({
   useEffect(() => {
     const alertsKey = "muzungu_request_alerts";
     const seenKey = "muzungu_seen_request_docs";
+    let cancelled = false;
 
     function readAlerts(): Array<{ id: string; message: string; createdAt: string; docId: string }> {
       const raw = window.localStorage.getItem(alertsKey);
@@ -372,10 +408,7 @@ export function RequestsPanel({
       }
     }
 
-    function refreshRequestedDocs(): void {
-      const docs = readRequestedDocuments();
-      setRequestedDocs(docs);
-
+    function applyCustomerAlerts(docs: RequestedDocument[]): void {
       if (role === "provider") {
         setRequestAlerts(readAlerts());
         return;
@@ -405,15 +438,30 @@ export function RequestsPanel({
       }
     }
 
-    refreshRequestedDocs();
+    async function refreshRequestedDocs(): Promise<void> {
+      const docs = await fetchServerDocuments(requests.map((item) => item.id));
+      if (cancelled) {
+        return;
+      }
+      setRequestedDocs(docs);
+      applyCustomerAlerts(docs);
+    }
+
+    void refreshRequestedDocs();
     const eventName = getVendorStorageEventName();
-    window.addEventListener(eventName, refreshRequestedDocs);
-    window.addEventListener("storage", refreshRequestedDocs);
-    return () => {
-      window.removeEventListener(eventName, refreshRequestedDocs);
-      window.removeEventListener("storage", refreshRequestedDocs);
+    const handleRefresh = () => {
+      void refreshRequestedDocs();
     };
-  }, [locale, role]);
+    window.addEventListener(eventName, handleRefresh);
+    window.addEventListener("storage", handleRefresh);
+    window.addEventListener("focus", handleRefresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(eventName, handleRefresh);
+      window.removeEventListener("storage", handleRefresh);
+      window.removeEventListener("focus", handleRefresh);
+    };
+  }, [locale, requests, role]);
 
   const selectedService = useMemo(() => {
     if (!vendorContext || effectiveServiceId === "__other__") {
@@ -698,6 +746,36 @@ export function RequestsPanel({
     router.refresh();
   }
 
+  async function uploadDocumentToServer(
+    requestItem: RequestItem,
+    input: { type: RequestDocumentType; fileName: string; dataUrl: string }
+  ): Promise<RequestedDocument> {
+    const response = await fetch(`/api/requests/${requestItem.id}/documents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input)
+    });
+    const payload = (await response.json()) as {
+      data?: RequestedDocument;
+      error?: { message: string };
+    };
+    if (!response.ok || !payload.data) {
+      throw new Error(payload.error?.message ?? tr(locale, "Failed to upload document.", "문서 업로드에 실패했습니다."));
+    }
+    return payload.data;
+  }
+
+  function upsertRequestedDocument(document: RequestedDocument): void {
+    setRequestedDocs((current) => {
+      const withoutSameType = current.filter(
+        (item) => !(item.requestId === document.requestId && item.type === document.type)
+      );
+      return [document, ...withoutSameType].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    });
+  }
+
   async function providerUploadDocumentOnly(
     requestItem: RequestItem,
     type: RequestDocumentType,
@@ -721,48 +799,49 @@ export function RequestsPanel({
       });
 
       const vendorName = requestItem.providerName ?? providerSelf?.businessName ?? tr(locale, "Vendor", "업체");
-      saveRequestedDocument({
-        requestId: requestItem.id,
-        vendorId: requestItem.providerProfileId ?? "provider",
-        vendorName,
+      const saved = await uploadDocumentToServer(requestItem, {
         type,
         dataUrl,
         fileName: buildDefaultRequestedDocumentName(vendorName, type)
       });
-      setRequestedDocs(readRequestedDocuments());
+      upsertRequestedDocument(saved);
       markRequestActionComplete(uploadActionKey(requestItem.id, type));
       setFeedback(tr(locale, "Upload complete.", "업로드 완료"));
       notifyRequestsUpdated();
       form.reset();
-    } catch {
-      setError(tr(locale, "Failed to upload document.", "문서 업로드에 실패했습니다."));
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : tr(locale, "Failed to upload document.", "문서 업로드에 실패했습니다.")
+      );
     } finally {
       setUploadingByRequestId((current) => ({ ...current, [requestItem.id]: false }));
     }
   }
 
-  function providerUploadTemplateDocument(
+  async function providerUploadTemplateDocument(
     requestItem: RequestItem,
     input: { fileName: string; dataUrl: string }
-  ): void {
+  ): Promise<void> {
     setUploadingByRequestId((current) => ({ ...current, [requestItem.id]: true }));
     setError("");
     try {
-      const vendorName = requestItem.providerName ?? providerSelf?.businessName ?? tr(locale, "Vendor", "업체");
-      saveRequestedDocument({
-        requestId: requestItem.id,
-        vendorId: requestItem.providerProfileId ?? "provider",
-        vendorName,
+      const saved = await uploadDocumentToServer(requestItem, {
         type: "quotation",
         dataUrl: input.dataUrl,
         fileName: input.fileName
       });
-      setRequestedDocs(readRequestedDocuments());
+      upsertRequestedDocument(saved);
       markRequestActionComplete(uploadActionKey(requestItem.id, "quotation"));
       setFeedback(tr(locale, "Upload complete.", "업로드 완료"));
       notifyRequestsUpdated();
-    } catch {
-      setError(tr(locale, "Failed to upload document.", "문서 업로드에 실패했습니다."));
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : tr(locale, "Failed to upload document.", "문서 업로드에 실패했습니다.")
+      );
     } finally {
       setUploadingByRequestId((current) => ({ ...current, [requestItem.id]: false }));
     }
