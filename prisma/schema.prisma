@@ -319,6 +319,22 @@ model ServiceRequest {
   service         Service?        @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   offers          RequestOffer[]
   booking         Booking?
+  documents       RequestDocument[]
+}
+
+model RequestDocument {
+  id               String         @id @default(cuid())
+  requestId        String
+  type             String
+  fileName         String
+  dataUrl          String         @db.Text
+  vendorProfileId  String?
+  vendorName       String
+  uploadedByUserId String
+  createdAt        DateTime       @default(now())
+  request          ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId, createdAt])
 }
 
 model RequestOffer {
