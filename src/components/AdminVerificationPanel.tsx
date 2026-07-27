@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
 import { Locale, tr } from "@/lib/i18n";
 
 interface VerificationCaseItem {
@@ -47,6 +48,8 @@ export function AdminVerificationPanel({ cases, locale }: AdminVerificationPanel
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
   const router = useRouter();
+
+  useSyncAppLoading(loadingId !== null);
 
   async function reviewCase(event: FormEvent<HTMLFormElement>, caseId: string): Promise<void> {
     event.preventDefault();

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getSessionForApp } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
+import { AppProviders } from "@/components/AppProviders";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { getThemeFromCookies } from "@/lib/theme-server";
 import "./globals.css";
@@ -21,12 +22,14 @@ export default async function RootLayout({
   return (
     <html data-theme={theme} lang={locale} suppressHydrationWarning>
       <body>
-        <AppHeader
-          locale={locale}
-          session={session ? { name: session.name, role: session.role } : null}
-          theme={theme}
-        />
-        <main className="container section">{children}</main>
+        <AppProviders locale={locale}>
+          <AppHeader
+            locale={locale}
+            session={session ? { name: session.name, role: session.role } : null}
+            theme={theme}
+          />
+          <main className="container section">{children}</main>
+        </AppProviders>
       </body>
     </html>
   );

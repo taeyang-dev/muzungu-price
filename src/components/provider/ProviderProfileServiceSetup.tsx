@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Locale, tr } from "@/lib/i18n";
+import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
 import { ProviderPageCategory, ProviderPageProfile } from "@/lib/provider-data";
 import { formatCategoryDisplayName } from "@/lib/service-categories";
 
@@ -42,6 +43,8 @@ export function ProviderProfileServiceSetup({
     [categories, selectedCategoryIds]
   );
   const usesVendorScope = selectedCategoryIds.length > 0;
+
+  useSyncAppLoading(loading);
 
   function toggleCategory(categoryId: string, checked: boolean): void {
     setSelectedCategoryIds((current) => {

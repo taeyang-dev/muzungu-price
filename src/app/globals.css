@@ -1414,3 +1414,133 @@ a {
 [data-theme="light"] .chat-widget-panel {
   box-shadow: 0 18px 45px var(--chat-shadow);
 }
+
+.gorilla-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--backdrop);
+  backdrop-filter: blur(4px);
+}
+
+.gorilla-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 28px 32px;
+  border-radius: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  max-width: 320px;
+  text-align: center;
+}
+
+.gorilla-loader-scene {
+  width: 160px;
+  height: 180px;
+}
+
+.gorilla-loader-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.gorilla-loader-caption {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.gorilla-shadow {
+  fill: rgba(15, 23, 42, 0.16);
+  transform-origin: center;
+  animation: gorilla-shadow-pulse 0.7s ease-in-out infinite alternate;
+}
+
+.gorilla-body-group {
+  transform-origin: 80px 118px;
+  animation: gorilla-shimmy 0.55s ease-in-out infinite alternate;
+}
+
+.gorilla-head-group {
+  transform-origin: 80px 62px;
+  animation: gorilla-head-bob 0.55s ease-in-out infinite alternate;
+}
+
+.gorilla-wave-arm {
+  transform-origin: 118px 98px;
+  animation: gorilla-wave 0.7s ease-in-out infinite;
+}
+
+.gorilla-eye {
+  animation: gorilla-blink 3.2s infinite;
+}
+
+@keyframes gorilla-shimmy {
+  0% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  100% {
+    transform: translateY(-5px) rotate(2deg);
+  }
+}
+
+@keyframes gorilla-head-bob {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    transform: translateY(-3px) rotate(-2deg);
+  }
+}
+
+@keyframes gorilla-wave {
+  0%,
+  100% {
+    transform: rotate(8deg);
+  }
+  50% {
+    transform: rotate(-28deg);
+  }
+}
+
+@keyframes gorilla-shadow-pulse {
+  0% {
+    transform: scaleX(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scaleX(0.82);
+    opacity: 0.55;
+  }
+}
+
+@keyframes gorilla-blink {
+  0%,
+  46%,
+  48%,
+  100% {
+    transform: scaleY(1);
+  }
+  47% {
+    transform: scaleY(0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gorilla-body-group,
+  .gorilla-head-group,
+  .gorilla-wave-arm,
+  .gorilla-shadow,
+  .gorilla-eye {
+    animation: none;
+  }
+}

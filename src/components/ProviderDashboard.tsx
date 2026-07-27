@@ -3,6 +3,7 @@
 import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Locale, tr } from "@/lib/i18n";
+import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
 import { normalizeCityInput, normalizeCountryInput } from "@/lib/location";
 import { composeBusinessAddress, parseBusinessAddress } from "@/lib/business-address";
 import {
@@ -188,6 +189,10 @@ export function ProviderDashboard({
     ? verificationDocumentCount > 0 || uploadedDocumentRowIds.size > 0
     : true;
   const allSectionsComplete = profileSectionComplete && billingSectionComplete && documentsSectionComplete;
+
+  useSyncAppLoading(
+    submittingDraft || submittingReview || uploadingDocumentRowId !== null
+  );
 
   const providerTypeOptions = [
     { value: "company", labelEn: "Company", labelKo: "법인 업체" },

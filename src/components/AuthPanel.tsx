@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { Locale, tr } from "@/lib/i18n";
+import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
 import { isPasswordValid, passwordRequirementMessage } from "@/lib/password";
 
 interface AuthResult {
@@ -29,6 +30,8 @@ export function AuthPanel({ locale }: AuthPanelProps) {
   const [verificationChannel, setVerificationChannel] = useState<VerificationChannel>("email");
   const [verificationHint, setVerificationHint] = useState("");
   const [debugCode, setDebugCode] = useState<string | null>(null);
+
+  useSyncAppLoading(loading);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
