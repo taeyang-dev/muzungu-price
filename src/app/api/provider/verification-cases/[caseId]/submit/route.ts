@@ -35,10 +35,6 @@ export async function POST(_request: NextRequest, { params }: RouteParams): Prom
     return fail("Only draft cases can be submitted for review", 400, "VER_003");
   }
 
-  if (verificationCase.documents.length === 0) {
-    return fail("Upload at least one document before requesting review.", 400, "VER_004");
-  }
-
   const updated = await prisma.verificationCase.update({
     where: { id: caseId },
     data: { status: "pending" }
