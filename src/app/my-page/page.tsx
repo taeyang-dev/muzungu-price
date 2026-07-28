@@ -53,6 +53,7 @@ export default async function MyPage() {
           categories={data.categories}
           locale={locale}
           profile={data.profile}
+          service={data.service}
           showIntro={false}
           verificationApproved={data.verificationStatus === "approved"}
         />

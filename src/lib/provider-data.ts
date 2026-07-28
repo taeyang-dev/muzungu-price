@@ -46,6 +46,24 @@ export interface ProviderPageProfile {
   categoryOtherDetail: string | null;
 }
 
+export interface ProviderPageServicePriceCard {
+  id: string;
+  currency: string;
+  basePrice: number;
+  unit: string;
+  inclusions: string | null;
+  exclusions: string | null;
+  isPublic: boolean;
+}
+
+export interface ProviderPageService {
+  id: string;
+  title: string;
+  description: string | null;
+  imageUrl: string | null;
+  priceCard: ProviderPageServicePriceCard | null;
+}
+
 export interface ProviderPageBilling {
   quotationAvailable: boolean;
   ebmAvailable: boolean;
@@ -69,6 +87,7 @@ export interface ProviderPageData {
   categories: ProviderPageCategory[];
   profile: ProviderPageProfile | null;
   billing: ProviderPageBilling | null;
+  service: ProviderPageService | null;
   verificationCaseId: string | null;
   verificationDocumentCount: number;
   verificationStatus: ProviderVerificationStatus | null;
@@ -94,6 +113,19 @@ export async function loadProviderPageData(userId: string): Promise<ProviderPage
   ]);
 
   const verificationCase = profile?.verificationCases[0] ?? null;
+  const primaryService = profile
+    ? await prisma.service.findFirst({
+        where: { providerProfileId: profile.id },
+        orderBy: { createdAt: "asc" },
+        include: {
+          priceCards: {
+            where: { tier: "standard" },
+            orderBy: { updatedAt: "desc" },
+            take: 1
+          }
+        }
+      })
+    : null;
 
   return {
     categories,
@@ -156,6 +188,25 @@ export async function loadProviderPageData(userId: string): Promise<ProviderPage
           bankAccountName: profile.billingCapability.bankAccountName,
           bankAccountNumber: profile.billingCapability.bankAccountNumber,
           bankSwiftCode: profile.billingCapability.bankSwiftCode
+        }
+      : null,
+    service: primaryService
+      ? {
+          id: primaryService.id,
+          title: primaryService.title,
+          description: primaryService.description,
+          imageUrl: primaryService.imageUrl,
+          priceCard: primaryService.priceCards[0]
+            ? {
+                id: primaryService.priceCards[0].id,
+                currency: primaryService.priceCards[0].currency,
+                basePrice: Number(primaryService.priceCards[0].basePrice),
+                unit: primaryService.priceCards[0].unit,
+                inclusions: primaryService.priceCards[0].inclusions,
+                exclusions: primaryService.priceCards[0].exclusions,
+                isPublic: primaryService.priceCards[0].isPublic
+              }
+            : null
         }
       : null,
     verificationCaseId: verificationCase?.id ?? null,

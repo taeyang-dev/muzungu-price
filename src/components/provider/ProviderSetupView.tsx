@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { Locale, tr } from "@/lib/i18n";
-import { ProviderPageCategory, ProviderPageProfile, ProviderVerificationStatus } from "@/lib/provider-data";
+import { ProviderPageCategory, ProviderPageProfile, ProviderPageService, ProviderVerificationStatus } from "@/lib/provider-data";
 import { ProviderProfileServiceSetup } from "@/components/provider/ProviderProfileServiceSetup";
 
 interface ProviderSetupViewProps {
   locale: Locale;
   categories: ProviderPageCategory[];
   profile: ProviderPageProfile;
+  service: ProviderPageService | null;
   verificationStatus: ProviderVerificationStatus;
 }
 
@@ -16,6 +17,7 @@ export function ProviderSetupView({
   locale,
   categories,
   profile,
+  service,
   verificationStatus
 }: ProviderSetupViewProps) {
   const verificationApproved = verificationStatus === "approved";
@@ -75,6 +77,7 @@ export function ProviderSetupView({
           categories={categories}
           locale={locale}
           profile={profile}
+          service={service}
           showIntro
           verificationApproved={verificationApproved}
         />

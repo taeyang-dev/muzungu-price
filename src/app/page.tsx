@@ -117,10 +117,6 @@ function extractMinimumOrder(locale: Locale, value: string | null): string | nul
   return match[1]?.trim() || null;
 }
 
-function isCustomOrderService(locale: Locale, title: string): boolean {
-  const normalized = localizeCopy(locale, title).toLowerCase();
-  return normalized.includes("custom") || normalized.includes("맞춤");
-}
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
@@ -330,9 +326,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             .flatMap((service: ProviderServiceItem) => service.priceCards)
             .sort((a: ProviderPriceItem, b: ProviderPriceItem) => a.basePrice.comparedTo(b.basePrice))[0];
           const representativeMinOrder = extractMinimumOrder(locale, representative?.inclusions ?? null);
-          const hasCustomService = provider.services.some((service: ProviderServiceItem) =>
-            isCustomOrderService(locale, service.title)
-          );
           const serviceWithImage = provider.services.find((service: ProviderServiceItem) => service.imageUrl);
           const serviceImage = serviceWithImage?.imageUrl
             ? serviceWithImage.imageUrl
@@ -449,9 +442,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   {tr(locale, "Minimum order", "최소 주문")}: {representativeMinOrder}
                 </p>
               )}
-              {hasCustomService && representative && (
+              {representative && (
                 <p className="tiny vendor-starting-line">
-                  {tr(locale, "Custom order starts from", "주문 제작 시작가")}:{" "}
+                  {tr(locale, "Price starts from", "시작 가격")}:{" "}
                   {formatPrice(decimalToNumber(representative.basePrice), representative.currency)}
                 </p>
               )}

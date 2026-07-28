@@ -1,36 +1,51 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Locale, tr } from "@/lib/i18n";
 import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
-import { ProviderPageCategory, ProviderPageProfile } from "@/lib/provider-data";
+import {
+  ProviderPageCategory,
+  ProviderPageProfile,
+  ProviderPageService
+} from "@/lib/provider-data";
 
 interface ApiResult {
   error?: { message: string };
 }
 
-type SaveAction = "publicProfile" | "servicePrice";
-
 interface ProviderProfileServiceSetupProps {
   locale: Locale;
   categories: ProviderPageCategory[];
   profile: ProviderPageProfile;
+  service?: ProviderPageService | null;
   verificationApproved?: boolean;
   showIntro?: boolean;
+}
+
+function hasSavedPublicProfile(profile: ProviderPageProfile): boolean {
+  return Boolean(
+    profile.tagline?.trim() ||
+      profile.bio?.trim() ||
+      profile.websiteUrl?.trim() ||
+      profile.yearsInBusiness != null ||
+      profile.categoryIds.length > 0 ||
+      profile.logoUrl ||
+      profile.coverImageUrl
+  );
 }
 
 export function ProviderProfileServiceSetup({
   locale,
   categories,
   profile,
+  service = null,
   verificationApproved = false,
   showIntro = true
 }: ProviderProfileServiceSetupProps) {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [completedActions, setCompletedActions] = useState<Partial<Record<SaveAction, boolean>>>({});
   const router = useRouter();
   const otherCategory = categories.find((category) => category.slug === "other") ?? null;
   const selectableCategories = useMemo(() => {
@@ -46,6 +61,19 @@ export function ProviderProfileServiceSetup({
     const preferred = savedCategories.find((category) => category.slug !== "other");
     return preferred?.id ?? savedCategories[0]?.id ?? "";
   }, [categories, profile.categoryIds]);
+
+  const [isEditingPublicProfile, setIsEditingPublicProfile] = useState(() => !hasSavedPublicProfile(profile));
+  const [isEditingService, setIsEditingService] = useState(() => !service);
+  const [serviceTitle, setServiceTitle] = useState(service?.title ?? "");
+  const [serviceDescription, setServiceDescription] = useState(service?.description ?? "");
+  const [serviceCurrency, setServiceCurrency] = useState(service?.priceCard?.currency ?? "RWF");
+  const [serviceBasePrice, setServiceBasePrice] = useState(
+    service?.priceCard?.basePrice != null ? String(service.priceCard.basePrice) : ""
+  );
+  const [serviceUnit, setServiceUnit] = useState(service?.priceCard?.unit ?? "per_project");
+  const [serviceInclusions, setServiceInclusions] = useState(service?.priceCard?.inclusions ?? "");
+  const [serviceExclusions, setServiceExclusions] = useState(service?.priceCard?.exclusions ?? "");
+  const [serviceIsPublic, setServiceIsPublic] = useState(service?.priceCard?.isPublic ?? true);
 
   useSyncAppLoading(loading);
 
@@ -66,6 +94,18 @@ export function ProviderProfileServiceSetup({
     setCategoryOtherDetail(profile.categoryOtherDetail ?? "");
   }, [profile.categoryIds, profile.categoryOtherDetail]);
 
+  useEffect(() => {
+    setServiceTitle(service?.title ?? "");
+    setServiceDescription(service?.description ?? "");
+    setServiceCurrency(service?.priceCard?.currency ?? "RWF");
+    setServiceBasePrice(service?.priceCard?.basePrice != null ? String(service.priceCard.basePrice) : "");
+    setServiceUnit(service?.priceCard?.unit ?? "per_project");
+    setServiceInclusions(service?.priceCard?.inclusions ?? "");
+    setServiceExclusions(service?.priceCard?.exclusions ?? "");
+    setServiceIsPublic(service?.priceCard?.isPublic ?? true);
+    setIsEditingService(!service);
+  }, [service]);
+
   async function fileToDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -73,21 +113,6 @@ export function ProviderProfileServiceSetup({
       reader.onerror = () => reject(new Error("Failed to read file"));
       reader.readAsDataURL(file);
     });
-  }
-
-  function getSaveButtonLabel(
-    action: SaveAction,
-    isLoading: boolean,
-    pendingEn: string,
-    pendingKo: string
-  ): string {
-    if (isLoading) {
-      return tr(locale, "Saving...", "저장 중...");
-    }
-    if (completedActions[action]) {
-      return tr(locale, "Save complete", "저장 완료");
-    }
-    return tr(locale, pendingEn, pendingKo);
   }
 
   async function submitPublicProfile(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -139,7 +164,7 @@ export function ProviderProfileServiceSetup({
         return;
       }
 
-      setCompletedActions((current) => ({ ...current, publicProfile: true }));
+      setIsEditingPublicProfile(false);
       setFeedback(tr(locale, "Saved successfully", "저장되었습니다."));
       router.refresh();
     } catch {
@@ -157,7 +182,6 @@ export function ProviderProfileServiceSetup({
 
   async function submitServiceWithPriceCard(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
     if (!savedServiceCategoryId) {
       setError(
         tr(
@@ -169,20 +193,20 @@ export function ProviderProfileServiceSetup({
       return;
     }
 
+    const formData = new FormData(event.currentTarget);
     const servicePayload: Record<string, unknown> = {
-      categoryId: savedServiceCategoryId,
-      title: formData.get("title"),
-      description: formData.get("description") || undefined
+      title: serviceTitle.trim(),
+      description: serviceDescription.trim() || undefined
     };
 
     const pricePayload = {
       tier: "standard" as const,
-      currency: String(formData.get("currency") ?? "RWF"),
-      basePrice: formData.get("basePrice"),
-      unit: formData.get("unit"),
-      inclusions: formData.get("inclusions") || undefined,
-      exclusions: formData.get("exclusions") || undefined,
-      isPublic: formData.get("isPublic") === "on"
+      currency: serviceCurrency.trim().toUpperCase(),
+      basePrice: Number(serviceBasePrice),
+      unit: serviceUnit,
+      inclusions: serviceInclusions.trim() || undefined,
+      exclusions: serviceExclusions.trim() || undefined,
+      isPublic: serviceIsPublic
     };
 
     setLoading(true);
@@ -195,43 +219,76 @@ export function ProviderProfileServiceSetup({
         servicePayload.imageUrl = await fileToDataUrl(serviceImageFile);
       }
 
-      const serviceResponse = await fetch("/api/provider/services", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(servicePayload)
-      });
-      const serviceData = (await serviceResponse.json()) as ApiResult & { data?: { id: string } };
-      if (!serviceResponse.ok) {
-        setError(serviceData.error?.message ?? tr(locale, "Failed to create service", "서비스 등록에 실패했습니다."));
-        return;
+      if (service?.id && service.priceCard?.id) {
+        const serviceResponse = await fetch(`/api/provider/services/${service.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(servicePayload)
+        });
+        const serviceData = (await serviceResponse.json()) as ApiResult;
+        if (!serviceResponse.ok) {
+          setError(serviceData.error?.message ?? tr(locale, "Failed to update service", "서비스 수정에 실패했습니다."));
+          return;
+        }
+
+        const priceResponse = await fetch(`/api/provider/price-cards/${service.priceCard.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(pricePayload)
+        });
+        const priceData = (await priceResponse.json()) as ApiResult;
+        if (!priceResponse.ok) {
+          setError(
+            priceData.error?.message ??
+              tr(locale, "Service saved but price card failed", "서비스는 저장됐지만 가격 카드 수정에 실패했습니다.")
+          );
+          return;
+        }
+      } else {
+        const createServicePayload = {
+          ...servicePayload,
+          categoryId: savedServiceCategoryId
+        };
+        const serviceResponse = await fetch("/api/provider/services", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(createServicePayload)
+        });
+        const serviceData = (await serviceResponse.json()) as ApiResult & { data?: { id: string } };
+        if (!serviceResponse.ok) {
+          setError(serviceData.error?.message ?? tr(locale, "Failed to create service", "서비스 등록에 실패했습니다."));
+          return;
+        }
+
+        const serviceId = serviceData.data?.id;
+        if (!serviceId) {
+          setError(tr(locale, "Failed to create service", "서비스 등록에 실패했습니다."));
+          return;
+        }
+
+        const priceResponse = await fetch(`/api/provider/services/${serviceId}/price-cards`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(pricePayload)
+        });
+        const priceData = (await priceResponse.json()) as ApiResult;
+        if (!priceResponse.ok) {
+          setError(
+            priceData.error?.message ??
+              tr(locale, "Service saved but price card failed", "서비스는 등록됐지만 가격 카드 추가에 실패했습니다.")
+          );
+          router.refresh();
+          return;
+        }
       }
 
-      const serviceId = serviceData.data?.id;
-      if (!serviceId) {
-        setError(tr(locale, "Failed to create service", "서비스 등록에 실패했습니다."));
-        return;
-      }
-
-      const priceResponse = await fetch(`/api/provider/services/${serviceId}/price-cards`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pricePayload)
-      });
-      const priceData = (await priceResponse.json()) as ApiResult;
-
-      if (!priceResponse.ok) {
-        setError(
-          priceData.error?.message ??
-            tr(locale, "Service saved but price card failed", "서비스는 등록됐지만 가격 카드 추가에 실패했습니다.")
-        );
-        router.refresh();
-        return;
-      }
-
-      setFeedback(tr(locale, "Service and price card saved", "서비스와 가격 카드가 저장되었습니다."));
-      setCompletedActions((current) => ({ ...current, servicePrice: true }));
+      setIsEditingService(false);
+      setFeedback(
+        service?.id
+          ? tr(locale, "Service and price card updated", "서비스와 가격 카드가 수정되었습니다.")
+          : tr(locale, "Service and price card saved", "서비스와 가격 카드가 저장되었습니다.")
+      );
       router.refresh();
-      event.currentTarget.reset();
     } catch {
       setError(
         tr(
@@ -244,6 +301,38 @@ export function ProviderProfileServiceSetup({
       setLoading(false);
     }
   }
+
+  function renderSavedEditActions(
+    isSaved: boolean,
+    isEditing: boolean,
+    onEdit: () => void,
+    saveLabelEn: string,
+    saveLabelKo: string
+  ): ReactNode {
+    if (!isSaved || isEditing) {
+      return (
+        <button className="btn" disabled={loading} type="submit">
+          {loading ? tr(locale, "Saving...", "저장 중...") : tr(locale, saveLabelEn, saveLabelKo)}
+        </button>
+      );
+    }
+
+    return (
+      <div className="row" style={{ flexWrap: "wrap", gap: "10px" }}>
+        <button className="btn" disabled type="button">
+          {tr(locale, "Saved", "저장됨")}
+        </button>
+        <button className="btn secondary" onClick={onEdit} type="button">
+          {tr(locale, "Edit", "수정")}
+        </button>
+      </div>
+    );
+  }
+
+  const publicProfileLocked = hasSavedPublicProfile(profile) && !isEditingPublicProfile;
+  const serviceLocked = Boolean(service) && !isEditingService;
+  const fieldsDisabled = loading || publicProfileLocked;
+  const serviceFieldsDisabled = loading || serviceLocked;
 
   return (
     <article className="panel">
@@ -275,6 +364,8 @@ export function ProviderProfileServiceSetup({
               <input
                 className="input"
                 defaultValue={profile.tagline ?? ""}
+                disabled={fieldsDisabled}
+                key={`tagline-${profile.id}-${isEditingPublicProfile}`}
                 name="tagline"
                 placeholder={tr(
                   locale,
@@ -285,13 +376,22 @@ export function ProviderProfileServiceSetup({
             </div>
             <div>
               <label className="tiny">{tr(locale, "Website", "웹사이트 주소")}</label>
-              <input className="input" defaultValue={profile.websiteUrl ?? ""} name="websiteUrl" placeholder="https://" />
+              <input
+                className="input"
+                defaultValue={profile.websiteUrl ?? ""}
+                disabled={fieldsDisabled}
+                key={`website-${profile.id}-${isEditingPublicProfile}`}
+                name="websiteUrl"
+                placeholder="https://"
+              />
             </div>
             <div>
               <label className="tiny">{tr(locale, "Years in business", "업력(년)")}</label>
               <input
                 className="input"
                 defaultValue={profile.yearsInBusiness ?? ""}
+                disabled={fieldsDisabled}
+                key={`years-${profile.id}-${isEditingPublicProfile}`}
                 min={0}
                 name="yearsInBusiness"
                 type="number"
@@ -302,6 +402,8 @@ export function ProviderProfileServiceSetup({
               <textarea
                 className="textarea"
                 defaultValue={profile.bio ?? ""}
+                disabled={fieldsDisabled}
+                key={`bio-${profile.id}-${isEditingPublicProfile}`}
                 name="bio"
                 placeholder={tr(
                   locale,
@@ -324,6 +426,7 @@ export function ProviderProfileServiceSetup({
                   <label className="category-check" key={category.id}>
                     <input
                       checked={selectedCategoryIds.includes(category.id)}
+                      disabled={fieldsDisabled}
                       onChange={(event) => toggleCategory(category.id, event.target.checked)}
                       type="checkbox"
                     />{" "}
@@ -338,9 +441,10 @@ export function ProviderProfileServiceSetup({
                   <label className="tiny">{tr(locale, "Other category (custom)", "기타 카테고리 (직접 입력)")}</label>
                   <input
                     className="input"
+                    disabled={fieldsDisabled}
                     onChange={(event) => setCategoryOtherDetail(event.target.value)}
                     placeholder={tr(locale, "Describe your service category", "서비스 카테고리를 입력하세요")}
-                    required
+                    required={isEditingPublicProfile}
                     value={categoryOtherDetail}
                   />
                 </div>
@@ -348,15 +452,29 @@ export function ProviderProfileServiceSetup({
             </div>
             <div>
               <label className="tiny">{tr(locale, "Logo image attachment", "로고 이미지 첨부")}</label>
-              <input className="input" accept="image/*" name="logoFile" type="file" />
+              <input className="input" accept="image/*" disabled={fieldsDisabled} name="logoFile" type="file" />
+              {profile.logoUrl && (
+                <p className="tiny muted" style={{ margin: "6px 0 0" }}>
+                  {tr(locale, "Current logo is saved.", "저장된 로고가 있습니다.")}
+                </p>
+              )}
             </div>
             <div>
               <label className="tiny">{tr(locale, "Cover image attachment", "커버 이미지 첨부")}</label>
-              <input className="input" accept="image/*" name="coverFile" type="file" />
+              <input className="input" accept="image/*" disabled={fieldsDisabled} name="coverFile" type="file" />
+              {profile.coverImageUrl && (
+                <p className="tiny muted" style={{ margin: "6px 0 0" }}>
+                  {tr(locale, "Current cover image is saved.", "저장된 커버 이미지가 있습니다.")}
+                </p>
+              )}
             </div>
-            <button className="btn" disabled={loading} type="submit">
-              {getSaveButtonLabel("publicProfile", loading, "Save public profile", "노출 프로필 저장")}
-            </button>
+            {renderSavedEditActions(
+              hasSavedPublicProfile(profile),
+              isEditingPublicProfile,
+              () => setIsEditingPublicProfile(true),
+              "Save public profile",
+              "노출 프로필 저장"
+            )}
           </form>
         </section>
 
@@ -374,35 +492,79 @@ export function ProviderProfileServiceSetup({
           <form className="grid grid-3" onSubmit={(event) => void submitServiceWithPriceCard(event)}>
             <div>
               <label className="tiny">{tr(locale, "Title", "서비스명")}</label>
-              <input className="input" name="title" required />
+              <input
+                className="input"
+                disabled={serviceFieldsDisabled}
+                name="title"
+                onChange={(event) => setServiceTitle(event.target.value)}
+                required={isEditingService}
+                value={serviceTitle}
+              />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
               <label className="tiny">{tr(locale, "Description (optional)", "상세 설명 (선택)")}</label>
               <textarea
                 className="textarea"
+                disabled={serviceFieldsDisabled}
                 name="description"
+                onChange={(event) => setServiceDescription(event.target.value)}
                 placeholder={tr(
                   locale,
                   "Example: Includes on-site setup, safety checklist, and post-service support.",
                   "예시: 현장 설치, 안전 점검표, 서비스 이후 지원이 포함됩니다."
                 )}
+                value={serviceDescription}
               />
             </div>
             <div>
               <label className="tiny">{tr(locale, "Service image attachment", "서비스 이미지 첨부")}</label>
-              <input className="input" accept="image/*" name="serviceImageFile" type="file" />
+              <input
+                className="input"
+                accept="image/*"
+                disabled={serviceFieldsDisabled}
+                name="serviceImageFile"
+                type="file"
+              />
+              {service?.imageUrl && (
+                <p className="tiny muted" style={{ margin: "6px 0 0" }}>
+                  {tr(locale, "Current service image is saved.", "저장된 서비스 이미지가 있습니다.")}
+                </p>
+              )}
             </div>
             <div>
               <label className="tiny">{tr(locale, "Currency", "통화")}</label>
-              <input className="input" defaultValue="RWF" maxLength={3} name="currency" required />
+              <input
+                className="input"
+                disabled={serviceFieldsDisabled}
+                maxLength={3}
+                name="currency"
+                onChange={(event) => setServiceCurrency(event.target.value)}
+                required={isEditingService}
+                value={serviceCurrency}
+              />
             </div>
             <div>
               <label className="tiny">{tr(locale, "Price", "가격")}</label>
-              <input className="input" min={1} name="basePrice" required type="number" />
+              <input
+                className="input"
+                disabled={serviceFieldsDisabled}
+                min={1}
+                name="basePrice"
+                onChange={(event) => setServiceBasePrice(event.target.value)}
+                required={isEditingService}
+                type="number"
+                value={serviceBasePrice}
+              />
             </div>
             <div>
               <label className="tiny">{tr(locale, "Unit", "단위")}</label>
-              <select className="select" defaultValue="per_project" name="unit">
+              <select
+                className="select"
+                disabled={serviceFieldsDisabled}
+                name="unit"
+                onChange={(event) => setServiceUnit(event.target.value)}
+                value={serviceUnit}
+              >
                 <option value="per_hour">{tr(locale, "Per hour", "시간당")}</option>
                 <option value="per_day">{tr(locale, "Per day", "일당")}</option>
                 <option value="per_project">{tr(locale, "Per project", "프로젝트당")}</option>
@@ -410,19 +572,52 @@ export function ProviderProfileServiceSetup({
               </select>
             </div>
             <label className="tiny">
-              <input defaultChecked name="isPublic" type="checkbox" /> {tr(locale, "Publicly visible", "공개 노출")}
+              <input
+                checked={serviceIsPublic}
+                disabled={serviceFieldsDisabled}
+                name="isPublic"
+                onChange={(event) => setServiceIsPublic(event.target.checked)}
+                type="checkbox"
+              />{" "}
+              {tr(locale, "Publicly visible", "공개 노출")}
             </label>
             <div style={{ gridColumn: "1 / -1" }}>
               <label className="tiny">{tr(locale, "Inclusions", "포함 항목")}</label>
-              <textarea className="textarea" name="inclusions" />
+              <textarea
+                className="textarea"
+                disabled={serviceFieldsDisabled}
+                name="inclusions"
+                onChange={(event) => setServiceInclusions(event.target.value)}
+                placeholder={tr(
+                  locale,
+                  "Example: On-site visit, labor, standard materials, and 30-day warranty.",
+                  "예시: 현장 방문, 인건비, 기본 자재, 30일 A/S 포함."
+                )}
+                value={serviceInclusions}
+              />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
               <label className="tiny">{tr(locale, "Exclusions", "미포함 항목")}</label>
-              <textarea className="textarea" name="exclusions" />
+              <textarea
+                className="textarea"
+                disabled={serviceFieldsDisabled}
+                name="exclusions"
+                onChange={(event) => setServiceExclusions(event.target.value)}
+                placeholder={tr(
+                  locale,
+                  "Example: Permits, structural changes, and after-hours surcharge.",
+                  "예시: 인허가 비용, 구조 변경, 야간/주말 추가 요금 제외."
+                )}
+                value={serviceExclusions}
+              />
             </div>
-            <button className="btn" disabled={loading} type="submit">
-              {getSaveButtonLabel("servicePrice", loading, "Add service and price", "서비스·가격 등록")}
-            </button>
+            {renderSavedEditActions(
+              Boolean(service),
+              isEditingService,
+              () => setIsEditingService(true),
+              service ? "Save service and price" : "Add service and price",
+              service ? "서비스·가격 저장" : "서비스·가격 등록"
+            )}
           </form>
         </section>
       </div>
