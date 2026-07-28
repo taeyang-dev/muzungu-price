@@ -537,6 +537,11 @@ a {
   margin: 0;
 }
 
+#vendor-request,
+#vendor-chat {
+  scroll-margin-top: 88px;
+}
+
 .vendor-min-order-line,
 .vendor-starting-line {
   margin: 0;

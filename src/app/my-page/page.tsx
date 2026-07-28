@@ -49,7 +49,21 @@ export default async function MyPage() {
       </article>
 
       {session.role === "provider" && data?.profile && (
-        <ProviderProfileServiceSetup
+        <>
+          <article className="panel">
+            <h2 style={{ marginTop: 0 }}>{tr(locale, "Customer chats", "손님 채팅")}</h2>
+            <p className="tiny muted" style={{ marginTop: 0 }}>
+              {tr(
+                locale,
+                "Open your public storefront and scroll to the chat widget to read customer messages. Formal quotation/EBM requests are in Requests → Received.",
+                "공개 업체 페이지 하단 채팅에서 손님 메시지를 확인할 수 있습니다. 견적서/EBM 요청은 요청서 → 수신에서 확인하세요."
+              )}
+            </p>
+            <Link className="btn secondary" href={`/providers/${data.profile.id}#vendor-chat`}>
+              {tr(locale, "Open my storefront chat", "내 업체 채팅 열기")}
+            </Link>
+          </article>
+          <ProviderProfileServiceSetup
           categories={data.categories}
           locale={locale}
           profile={data.profile}
@@ -57,6 +71,7 @@ export default async function MyPage() {
           showIntro={false}
           verificationApproved={data.verificationStatus === "approved"}
         />
+        </>
       )}
 
       {session.role === "provider" && !data?.profile && (

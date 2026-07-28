@@ -85,6 +85,53 @@ export async function createVendorChatMessage(input: {
   return mapVendorChatMessage(message);
 }
 
+export async function listProviderChatThreads(providerProfileId: string): Promise<
+  Array<{
+    customerUserId: string;
+    customerName: string;
+    lastMessagePreview: string;
+    lastMessageAt: string;
+  }>
+> {
+  const messages = await prisma.vendorChatMessage.findMany({
+    where: { providerProfileId },
+    orderBy: { createdAt: "desc" },
+    take: 200
+  });
+
+  const threadMap = new Map<string, { preview: string; at: Date }>();
+  for (const message of messages) {
+    if (!threadMap.has(message.customerUserId)) {
+      threadMap.set(message.customerUserId, {
+        preview: message.text.slice(0, 120),
+        at: message.createdAt
+      });
+    }
+  }
+
+  const customerUserIds = Array.from(threadMap.keys());
+  if (customerUserIds.length === 0) {
+    return [];
+  }
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: customerUserIds } },
+    select: { id: true, name: true, email: true }
+  });
+  const userById = new Map(users.map((user) => [user.id, user]));
+
+  return customerUserIds.map((customerUserId) => {
+    const thread = threadMap.get(customerUserId)!;
+    const user = userById.get(customerUserId);
+    return {
+      customerUserId,
+      customerName: user?.name?.trim() || user?.email || customerUserId,
+      lastMessagePreview: thread.preview,
+      lastMessageAt: thread.at.toISOString()
+    };
+  });
+}
+
 export async function canAccessVendorChat(
   session: { userId: string; email?: string | null },
   providerProfileId: string,

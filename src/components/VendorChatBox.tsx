@@ -35,8 +35,16 @@ interface VendorChatBoxProps {
   vendorName: string;
   locale: Locale;
   chatUserId?: string | null;
+  isProviderOwner?: boolean;
   canSendPaymentInfo?: boolean;
   paymentInfo?: VendorPaymentInfo | null;
+}
+
+interface ProviderChatThread {
+  customerUserId: string;
+  customerName: string;
+  lastMessagePreview: string;
+  lastMessageAt: string;
 }
 
 interface ChatAttachment extends UploadAttachment {
@@ -112,9 +120,10 @@ function writeChat(vendorId: string, messages: ChatMessage[]): void {
   window.localStorage.setItem(getStorageKey(vendorId), JSON.stringify(messages.slice(-30)));
 }
 
-async function fetchServerChat(vendorId: string): Promise<ChatMessage[] | null> {
+async function fetchServerChat(vendorId: string, customerUserId?: string): Promise<ChatMessage[] | null> {
   try {
-    const response = await fetch(`/api/providers/${vendorId}/chat`);
+    const query = customerUserId ? `?customerUserId=${encodeURIComponent(customerUserId)}` : "";
+    const response = await fetch(`/api/providers/${vendorId}/chat${query}`);
     if (response.status === 401) {
       return null;
     }
@@ -252,6 +261,7 @@ export function VendorChatBox({
   vendorName,
   locale,
   chatUserId = null,
+  isProviderOwner = false,
   canSendPaymentInfo = false,
   paymentInfo = null
 }: VendorChatBoxProps) {
@@ -288,16 +298,52 @@ export function VendorChatBox({
   const [attachmentNotice, setAttachmentNotice] = useState("");
   const [saveNotice, setSaveNotice] = useState("");
   const [paymentInfoSent, setPaymentInfoSent] = useState(false);
-  const usesServerChat = Boolean(chatUserId);
+  const [chatThreads, setChatThreads] = useState<ProviderChatThread[]>([]);
+  const [activeCustomerUserId, setActiveCustomerUserId] = useState<string | null>(null);
+  const serverCustomerUserId = isProviderOwner ? activeCustomerUserId : chatUserId;
+  const usesServerChat = Boolean(serverCustomerUserId);
 
   useSyncAppLoading(isSending || isBulkTranslating || translatingMessageId !== null);
+
+  useEffect(() => {
+    if (!isProviderOwner) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    async function loadThreads(): Promise<void> {
+      try {
+        const response = await fetch("/api/provider/chat-threads");
+        const payload = (await response.json()) as { data?: ProviderChatThread[] };
+        if (cancelled || !response.ok || !Array.isArray(payload.data)) {
+          return;
+        }
+        setChatThreads(payload.data);
+        setActiveCustomerUserId((current) => current ?? payload.data?.[0]?.customerUserId ?? null);
+      } catch {
+        // Keep local fallback when thread lookup fails.
+      }
+    }
+
+    void loadThreads();
+    return () => {
+      cancelled = true;
+    };
+  }, [isProviderOwner, vendorId]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadChat(): Promise<void> {
+      if (isProviderOwner && !activeCustomerUserId) {
+        setMessages(initialMessage);
+        setLoadedVendorId(vendorId);
+        return;
+      }
+
       if (usesServerChat) {
-        const serverMessages = await fetchServerChat(vendorId);
+        const serverMessages = await fetchServerChat(vendorId, serverCustomerUserId ?? undefined);
         if (cancelled) {
           return;
         }
@@ -326,7 +372,7 @@ export function VendorChatBox({
     return () => {
       cancelled = true;
     };
-  }, [vendorId, initialMessage, usesServerChat]);
+  }, [vendorId, initialMessage, usesServerChat, serverCustomerUserId, isProviderOwner, activeCustomerUserId]);
 
   useEffect(() => {
     window.localStorage.setItem(getChatOpenStorageKey(vendorId), isOpen ? "1" : "0");
@@ -521,7 +567,7 @@ export function VendorChatBox({
     const savedMessages = [...messages];
 
     for (const message of freshMessages) {
-      const saved = await saveServerChatMessage(vendorId, message, chatUserId ?? undefined);
+      const saved = await saveServerChatMessage(vendorId, message, serverCustomerUserId ?? undefined);
       savedMessages.push(saved ?? message);
     }
 
@@ -685,6 +731,32 @@ export function VendorChatBox({
             </div>
           </div>
           <div className="chat-widget-body">
+            {isProviderOwner && (
+              <div style={{ marginBottom: "12px" }}>
+                <label className="tiny">{tr(locale, "Customer conversation", "손님 대화")}</label>
+                {chatThreads.length === 0 ? (
+                  <p className="tiny muted" style={{ margin: "6px 0 0" }}>
+                    {tr(
+                      locale,
+                      "Customer chats appear here after someone messages your storefront.",
+                      "손님이 업체 페이지에서 채팅을 내면 여기에 표시됩니다."
+                    )}
+                  </p>
+                ) : (
+                  <select
+                    className="select"
+                    onChange={(event) => setActiveCustomerUserId(event.target.value)}
+                    value={activeCustomerUserId ?? ""}
+                  >
+                    {chatThreads.map((thread) => (
+                      <option key={thread.customerUserId} value={thread.customerUserId}>
+                        {thread.customerName}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
             {canSendPaymentInfo && paymentInfo && (
               <div className="chat-payment-actions">
                 <button
