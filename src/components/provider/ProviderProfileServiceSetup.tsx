@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Locale, tr } from "@/lib/i18n";
 import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
 import { ProviderPageCategory, ProviderPageProfile } from "@/lib/provider-data";
-import { formatCategoryDisplayName } from "@/lib/service-categories";
 
 interface ApiResult {
   error?: { message: string };
@@ -34,15 +33,19 @@ export function ProviderProfileServiceSetup({
   const [completedActions, setCompletedActions] = useState<Partial<Record<SaveAction, boolean>>>({});
   const router = useRouter();
   const otherCategory = categories.find((category) => category.slug === "other") ?? null;
-  const selectableCategories = categories;
+  const selectableCategories = useMemo(() => {
+    const regular = categories.filter((category) => category.slug !== "other");
+    const other = categories.filter((category) => category.slug === "other");
+    return [...regular, ...other];
+  }, [categories]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(profile.categoryIds);
   const [categoryOtherDetail, setCategoryOtherDetail] = useState(profile.categoryOtherDetail ?? "");
   const includesOtherCategory = otherCategory ? selectedCategoryIds.includes(otherCategory.id) : false;
-  const vendorCategories = useMemo(
-    () => categories.filter((category) => selectedCategoryIds.includes(category.id)),
-    [categories, selectedCategoryIds]
-  );
-  const usesVendorScope = selectedCategoryIds.length > 0;
+  const savedServiceCategoryId = useMemo(() => {
+    const savedCategories = categories.filter((category) => profile.categoryIds.includes(category.id));
+    const preferred = savedCategories.find((category) => category.slug !== "other");
+    return preferred?.id ?? savedCategories[0]?.id ?? "";
+  }, [categories, profile.categoryIds]);
 
   useSyncAppLoading(loading);
 
@@ -144,8 +147,19 @@ export function ProviderProfileServiceSetup({
   async function submitServiceWithPriceCard(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    if (!savedServiceCategoryId) {
+      setError(
+        tr(
+          locale,
+          "Save your public profile with at least one service category first.",
+          "노출 프로필에서 서비스 카테고리를 저장한 뒤 다시 시도해 주세요."
+        )
+      );
+      return;
+    }
+
     const servicePayload: Record<string, unknown> = {
-      categoryId: formData.get("categoryId"),
+      categoryId: savedServiceCategoryId,
       title: formData.get("title"),
       description: formData.get("description") || undefined
     };
@@ -234,45 +248,6 @@ export function ProviderProfileServiceSetup({
 
       <div className="grid" style={{ gap: "24px" }}>
         <section>
-          <h3 style={{ marginTop: 0 }}>{tr(locale, "Service categories", "서비스 카테고리")}</h3>
-          <p className="tiny muted">
-            {tr(
-              locale,
-              "Choose the marketplace categories that best describe your business. You can select more than one.",
-              "업체가 제공하는 서비스 카테고리를 선택해 주세요. 여러 개 선택할 수 있습니다."
-            )}
-          </p>
-          <div className="category-checkbox-grid">
-            {selectableCategories.map((category) => (
-              <label className="category-check" key={category.id}>
-                <input
-                  checked={selectedCategoryIds.includes(category.id)}
-                  onChange={(event) => toggleCategory(category.id, event.target.checked)}
-                  type="checkbox"
-                />{" "}
-                {category.slug === "other"
-                  ? tr(locale, "Other", "기타")
-                  : category.name}
-              </label>
-            ))}
-          </div>
-          {includesOtherCategory && (
-            <div style={{ marginTop: "12px" }}>
-              <label className="tiny">{tr(locale, "Other category (custom)", "기타 카테고리 (직접 입력)")}</label>
-              <input
-                className="input"
-                onChange={(event) => setCategoryOtherDetail(event.target.value)}
-                placeholder={tr(locale, "Describe your service category", "서비스 카테고리를 입력하세요")}
-                required
-                value={categoryOtherDetail}
-              />
-            </div>
-          )}
-        </section>
-
-        <div className="hr" />
-
-        <section>
           <h3 style={{ marginTop: 0 }}>{tr(locale, "Public profile", "사용자 노출 프로필")}</h3>
           <form className="grid grid-3" onSubmit={(event) => void submitPublicProfile(event)}>
             <div>
@@ -315,6 +290,42 @@ export function ProviderProfileServiceSetup({
                 )}
               />
             </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label className="tiny">{tr(locale, "Service categories", "서비스 카테고리")}</label>
+              <p className="tiny muted" style={{ margin: "6px 0 10px" }}>
+                {tr(
+                  locale,
+                  "Choose the marketplace categories that best describe your business. You can select more than one.",
+                  "업체가 제공하는 서비스 카테고리를 선택해 주세요. 여러 개 선택할 수 있습니다."
+                )}
+              </p>
+              <div className="category-checkbox-grid">
+                {selectableCategories.map((category) => (
+                  <label className="category-check" key={category.id}>
+                    <input
+                      checked={selectedCategoryIds.includes(category.id)}
+                      onChange={(event) => toggleCategory(category.id, event.target.checked)}
+                      type="checkbox"
+                    />{" "}
+                    {category.slug === "other"
+                      ? tr(locale, "Other", "기타")
+                      : category.name}
+                  </label>
+                ))}
+              </div>
+              {includesOtherCategory && (
+                <div style={{ marginTop: "12px" }}>
+                  <label className="tiny">{tr(locale, "Other category (custom)", "기타 카테고리 (직접 입력)")}</label>
+                  <input
+                    className="input"
+                    onChange={(event) => setCategoryOtherDetail(event.target.value)}
+                    placeholder={tr(locale, "Describe your service category", "서비스 카테고리를 입력하세요")}
+                    required
+                    value={categoryOtherDetail}
+                  />
+                </div>
+              )}
+            </div>
             <div>
               <label className="tiny">{tr(locale, "Logo image attachment", "로고 이미지 첨부")}</label>
               <input className="input" accept="image/*" name="logoFile" type="file" />
@@ -334,43 +345,13 @@ export function ProviderProfileServiceSetup({
         <section>
           <h3 style={{ marginTop: 0 }}>{tr(locale, "Service and price card", "서비스 및 가격 카드")}</h3>
           <p className="tiny muted">
-            {usesVendorScope
-              ? tr(
-                  locale,
-                  "Choose one of your selected service categories for this offering.",
-                  "선택한 서비스 카테고리 중 이 서비스에 맞는 항목을 고르세요."
-                )
-              : tr(
-                  locale,
-                  "Save your service categories in the section above before adding services.",
-                  "서비스를 등록하기 전에 위에서 서비스 카테고리를 먼저 저장해 주세요."
-                )}
+            {tr(
+              locale,
+              "Register your service offering and standard price card.",
+              "서비스와 기본 가격 카드를 등록하세요."
+            )}
           </p>
-          {vendorCategories.length === 0 ? (
-            <div className="flash error">
-              {tr(
-                locale,
-                "No categories selected yet. Choose at least one service category above and save your public profile.",
-                "선택된 카테고리가 없습니다. 위에서 서비스 카테고리를 선택하고 노출 프로필을 저장해 주세요."
-              )}
-            </div>
-          ) : (
           <form className="grid grid-3" onSubmit={(event) => void submitServiceWithPriceCard(event)}>
-            <div>
-              <label className="tiny">{tr(locale, "Category", "카테고리")}</label>
-              <select className="select" name="categoryId" required>
-                <option value="">{tr(locale, "Choose category", "카테고리 선택")}</option>
-                {vendorCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {formatCategoryDisplayName(
-                      category.name,
-                      category.slug,
-                      category.slug === "other" ? categoryOtherDetail : null
-                    )}
-                  </option>
-                ))}
-              </select>
-            </div>
             <div>
               <label className="tiny">{tr(locale, "Title", "서비스명")}</label>
               <input className="input" name="title" required />
@@ -423,7 +404,6 @@ export function ProviderProfileServiceSetup({
               {getSaveButtonLabel("servicePrice", loading, "Add service and price", "서비스·가격 등록")}
             </button>
           </form>
-          )}
         </section>
       </div>
     </article>
