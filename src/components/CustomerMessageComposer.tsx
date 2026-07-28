@@ -26,6 +26,7 @@ export function CustomerMessageComposer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [sendCompleted, setSendCompleted] = useState(false);
 
   useSyncAppLoading(loading);
 
@@ -53,6 +54,7 @@ export function CustomerMessageComposer({
       return;
     }
 
+    setSendCompleted(true);
     setFeedback(
       tr(
         locale,
@@ -64,18 +66,31 @@ export function CustomerMessageComposer({
     router.refresh();
   }
 
+  function startAnotherMessage(): void {
+    setSendCompleted(false);
+    setFeedback("");
+    setError("");
+    setBody("");
+  }
+
   return (
     <form className="grid" onSubmit={(event) => void handleSubmit(event)}>
       {error && <div className="flash error">{error}</div>}
       {feedback && <div className="flash success">{feedback}</div>}
       <div>
         <label className="tiny">{tr(locale, "Subject", "제목")}</label>
-        <input className="input" onChange={(event) => setSubject(event.target.value)} value={subject} />
+        <input
+          className="input"
+          disabled={sendCompleted}
+          onChange={(event) => setSubject(event.target.value)}
+          value={subject}
+        />
       </div>
       <div>
         <label className="tiny">{tr(locale, "Message", "메시지")}</label>
         <textarea
           className="textarea"
+          disabled={sendCompleted}
           onChange={(event) => setBody(event.target.value)}
           placeholder={tr(locale, "Write your message to this customer...", "이 손님에게 보낼 메시지를 입력하세요...")}
           required
@@ -83,11 +98,18 @@ export function CustomerMessageComposer({
           value={body}
         />
       </div>
-      <button className="btn" disabled={loading} type="submit">
-        {loading
-          ? tr(locale, "Sending...", "전송 중...")
-          : tr(locale, "Send to this customer", "이 손님에게 보내기")}
+      <button className="btn" disabled={loading || sendCompleted} type="submit">
+        {sendCompleted
+          ? tr(locale, "Message sent", "전송 완료")
+          : loading
+            ? tr(locale, "Sending...", "전송 중...")
+            : tr(locale, "Send to this customer", "이 손님에게 보내기")}
       </button>
+      {sendCompleted ? (
+        <button className="btn secondary" onClick={startAnotherMessage} type="button">
+          {tr(locale, "Send another message", "다시 메시지 보내기")}
+        </button>
+      ) : null}
     </form>
   );
 }
