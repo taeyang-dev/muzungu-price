@@ -41,15 +41,11 @@ export function ProviderProfileServiceSetup({
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(profile.categoryIds);
   const [categoryOtherDetail, setCategoryOtherDetail] = useState(profile.categoryOtherDetail ?? "");
   const includesOtherCategory = otherCategory ? selectedCategoryIds.includes(otherCategory.id) : false;
-  const vendorCategories = useMemo(
-    () => categories.filter((category) => selectedCategoryIds.includes(category.id)),
-    [categories, selectedCategoryIds]
-  );
-  const usesVendorScope = selectedCategoryIds.length > 0;
-  const defaultServiceCategoryId = useMemo(() => {
-    const preferred = vendorCategories.find((category) => category.slug !== "other");
-    return preferred?.id ?? vendorCategories[0]?.id ?? "";
-  }, [vendorCategories]);
+  const savedServiceCategoryId = useMemo(() => {
+    const savedCategories = categories.filter((category) => profile.categoryIds.includes(category.id));
+    const preferred = savedCategories.find((category) => category.slug !== "other");
+    return preferred?.id ?? savedCategories[0]?.id ?? "";
+  }, [categories, profile.categoryIds]);
 
   useSyncAppLoading(loading);
 
@@ -151,19 +147,19 @@ export function ProviderProfileServiceSetup({
   async function submitServiceWithPriceCard(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    if (!defaultServiceCategoryId) {
+    if (!savedServiceCategoryId) {
       setError(
         tr(
           locale,
-          "Save at least one service category in your public profile before adding services.",
-          "서비스를 등록하기 전에 노출 프로필에서 서비스 카테고리를 저장해 주세요."
+          "Save your public profile with at least one service category first.",
+          "노출 프로필에서 서비스 카테고리를 저장한 뒤 다시 시도해 주세요."
         )
       );
       return;
     }
 
     const servicePayload: Record<string, unknown> = {
-      categoryId: defaultServiceCategoryId,
+      categoryId: savedServiceCategoryId,
       title: formData.get("title"),
       description: formData.get("description") || undefined
     };
@@ -349,27 +345,12 @@ export function ProviderProfileServiceSetup({
         <section>
           <h3 style={{ marginTop: 0 }}>{tr(locale, "Service and price card", "서비스 및 가격 카드")}</h3>
           <p className="tiny muted">
-            {usesVendorScope
-              ? tr(
-                  locale,
-                  "Add a service offering and price card. Categories are taken from your public profile.",
-                  "서비스와 가격 카드를 등록하세요. 카테고리는 노출 프로필에 저장된 항목을 사용합니다."
-                )
-              : tr(
-                  locale,
-                  "Save your service categories in the public profile section before adding services.",
-                  "서비스를 등록하기 전에 노출 프로필에서 서비스 카테고리를 먼저 저장해 주세요."
-                )}
+            {tr(
+              locale,
+              "Register your service offering and standard price card.",
+              "서비스와 기본 가격 카드를 등록하세요."
+            )}
           </p>
-          {vendorCategories.length === 0 ? (
-            <div className="flash error">
-              {tr(
-                locale,
-                "No categories selected yet. Choose at least one service category in public profile and save.",
-                "선택된 카테고리가 없습니다. 노출 프로필에서 서비스 카테고리를 선택하고 저장해 주세요."
-              )}
-            </div>
-          ) : (
           <form className="grid grid-3" onSubmit={(event) => void submitServiceWithPriceCard(event)}>
             <div>
               <label className="tiny">{tr(locale, "Title", "서비스명")}</label>
@@ -423,7 +404,6 @@ export function ProviderProfileServiceSetup({
               {getSaveButtonLabel("servicePrice", loading, "Add service and price", "서비스·가격 등록")}
             </button>
           </form>
-          )}
         </section>
       </div>
     </article>
