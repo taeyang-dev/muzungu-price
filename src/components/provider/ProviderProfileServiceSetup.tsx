@@ -319,10 +319,10 @@ export function ProviderProfileServiceSetup({
 
     return (
       <div className="row" style={{ flexWrap: "wrap", gap: "10px" }}>
-        <button className="btn" disabled type="button">
+        <button className="btn secondary" disabled type="button">
           {tr(locale, "Saved", "저장됨")}
         </button>
-        <button className="btn secondary" onClick={onEdit} type="button">
+        <button className="btn" onClick={onEdit} type="button">
           {tr(locale, "Edit", "수정")}
         </button>
       </div>

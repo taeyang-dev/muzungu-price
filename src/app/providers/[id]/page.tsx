@@ -11,6 +11,7 @@ import { getDefaultServiceImage } from "@/lib/default-images";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { Locale, localizeCopy, tr } from "@/lib/i18n";
 import { formatCategoryDisplayName } from "@/lib/service-categories";
+import { ScrollToSectionButton } from "@/components/ScrollToSectionButton";
 import { buildVendorRequestContext } from "@/lib/vendor-request-context";
 
 interface ProviderDetailPageProps {
@@ -370,9 +371,9 @@ export default async function ProviderDetailPage({
               )}
             </li>
           </ul>
-          <a className="btn provider-action-btn" href="#vendor-request">
+          <ScrollToSectionButton locale={locale} signedIn={Boolean(session)} targetId="vendor-request">
             {tr(locale, "Request this vendor", "이 업체에 요청 보내기")}
-          </a>
+          </ScrollToSectionButton>
         </article>
       </section>
 
@@ -459,6 +460,7 @@ export default async function ProviderDetailPage({
         <VendorChatBox
           canSendPaymentInfo={isProviderOwner}
           chatUserId={session && session.role !== "provider" ? session.userId : null}
+          isProviderOwner={isProviderOwner}
           locale={locale}
           paymentInfo={isProviderOwner ? paymentInfo : null}
           vendorId={provider.id}

@@ -327,9 +327,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             .sort((a: ProviderPriceItem, b: ProviderPriceItem) => a.basePrice.comparedTo(b.basePrice))[0];
           const representativeMinOrder = extractMinimumOrder(locale, representative?.inclusions ?? null);
           const serviceWithImage = provider.services.find((service: ProviderServiceItem) => service.imageUrl);
-          const serviceImage = serviceWithImage?.imageUrl
-            ? serviceWithImage.imageUrl
-            : getDefaultServiceImage(provider.services[0]?.category.slug);
+          const cardImage =
+            provider.coverImageUrl ??
+            serviceWithImage?.imageUrl ??
+            getDefaultServiceImage(provider.services[0]?.category.slug);
           const averageRating =
             provider.reviews.length > 0
               ? provider.reviews.reduce(
@@ -380,7 +381,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 alt={`${provider.businessName} service`}
                 className="vendor-service-thumb"
                 fallbackSrc="/image-fallback.svg"
-                src={serviceImage}
+                src={cardImage}
               />
               <div className="vendor-head">
                 <div>
