@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Locale, tr } from "@/lib/i18n";
+import { displayInboxBody, displayInboxSubject } from "@/lib/inbox-messages";
 
 interface InboxMessageItem {
   id: string;
@@ -76,14 +77,14 @@ export function InboxPanel({ locale }: InboxPanelProps) {
       {messages.map((message) => (
         <article className={`panel ${message.isRead ? "" : "panel-highlight"}`} key={message.id}>
           <div className="row">
-            <h2 style={{ margin: 0 }}>{message.subject}</h2>
+            <h2 style={{ margin: 0 }}>{displayInboxSubject(locale, message.subject)}</h2>
             {!message.isRead && <span className="badge">{tr(locale, "New", "새 쪽지")}</span>}
           </div>
           <p className="tiny muted">
             {new Date(message.createdAt).toLocaleString(locale === "ko" ? "ko-KR" : "en-US")}
             {message.sender ? ` · ${message.sender.name}` : ` · ${tr(locale, "System", "시스템")}`}
           </p>
-          <p style={{ whiteSpace: "pre-wrap" }}>{message.body}</p>
+          <p style={{ whiteSpace: "pre-wrap" }}>{displayInboxBody(locale, message.subject, message.body)}</p>
           {!message.isRead && (
             <button className="btn secondary" onClick={() => void markAsRead(message.id)} type="button">
               {tr(locale, "Mark as read", "읽음 처리")}

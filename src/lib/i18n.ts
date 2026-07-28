@@ -303,3 +303,7 @@ export function localizeCopy(locale: Locale, value: string | null | undefined): 
   }
   return english || korean;
 }
+
+export function formatBilingualCopy(english: string, korean: string): string {
+  return `${english}${BILINGUAL_DELIMITER}${korean}`;
+}

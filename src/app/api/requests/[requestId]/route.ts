@@ -136,15 +136,17 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
 
     if (purchaseCode && serviceRequest.providerProfile?.userId) {
       const { sendInboxMessage } = await import("@/lib/inbox");
+      const { purchaseCodeUpdatedInboxMessage } = await import("@/lib/inbox-messages");
+      const inboxMessage = purchaseCodeUpdatedInboxMessage({
+        requestTitle: serviceRequest.title,
+        customerName: serviceRequest.requester?.name ?? "Customer",
+        purchaseCode
+      });
       await sendInboxMessage({
         recipientUserId: serviceRequest.providerProfile.userId,
         senderUserId: auth.session.userId,
-        subject: `Purchase code updated: ${serviceRequest.title}`,
-        body: [
-          `${serviceRequest.requester?.name ?? "Customer"} updated the purchase code.`,
-          `Purchase code: ${purchaseCode}`,
-          "Open Received requests to view the latest code."
-        ].join("\n")
+        subject: inboxMessage.subject,
+        body: inboxMessage.body
       });
     }
 
