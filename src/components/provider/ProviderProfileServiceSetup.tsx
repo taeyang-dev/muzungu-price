@@ -113,35 +113,46 @@ export function ProviderProfileServiceSetup({
       return;
     }
 
-    const logoFile = formData.get("logoFile");
-    const coverFile = formData.get("coverFile");
-    if (logoFile instanceof File && logoFile.size > 0) {
-      payload.logoUrl = await fileToDataUrl(logoFile);
-    }
-    if (coverFile instanceof File && coverFile.size > 0) {
-      payload.coverImageUrl = await fileToDataUrl(coverFile);
-    }
-
     setLoading(true);
     setError("");
     setFeedback("");
 
-    const response = await fetch("/api/provider/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const data = (await response.json()) as ApiResult;
-    setLoading(false);
+    try {
+      const logoFile = formData.get("logoFile");
+      const coverFile = formData.get("coverFile");
+      if (logoFile instanceof File && logoFile.size > 0) {
+        payload.logoUrl = await fileToDataUrl(logoFile);
+      }
+      if (coverFile instanceof File && coverFile.size > 0) {
+        payload.coverImageUrl = await fileToDataUrl(coverFile);
+      }
 
-    if (!response.ok) {
-      setError(data.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
-      return;
+      const response = await fetch("/api/provider/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = (await response.json()) as ApiResult;
+
+      if (!response.ok) {
+        setError(data.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
+        return;
+      }
+
+      setCompletedActions((current) => ({ ...current, publicProfile: true }));
+      setFeedback(tr(locale, "Saved successfully", "저장되었습니다."));
+      router.refresh();
+    } catch {
+      setError(
+        tr(
+          locale,
+          "Could not save your profile. Check your connection and try again.",
+          "프로필을 저장하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요."
+        )
+      );
+    } finally {
+      setLoading(false);
     }
-
-    setCompletedActions((current) => ({ ...current, publicProfile: true }));
-    setFeedback(tr(locale, "Saved successfully", "저장되었습니다."));
-    router.refresh();
   }
 
   async function submitServiceWithPriceCard(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -164,11 +175,6 @@ export function ProviderProfileServiceSetup({
       description: formData.get("description") || undefined
     };
 
-    const serviceImageFile = formData.get("serviceImageFile");
-    if (serviceImageFile instanceof File && serviceImageFile.size > 0) {
-      servicePayload.imageUrl = await fileToDataUrl(serviceImageFile);
-    }
-
     const pricePayload = {
       tier: "standard" as const,
       currency: String(formData.get("currency") ?? "RWF"),
@@ -183,46 +189,60 @@ export function ProviderProfileServiceSetup({
     setError("");
     setFeedback("");
 
-    const serviceResponse = await fetch("/api/provider/services", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(servicePayload)
-    });
-    const serviceData = (await serviceResponse.json()) as ApiResult & { data?: { id: string } };
-    if (!serviceResponse.ok) {
-      setLoading(false);
-      setError(serviceData.error?.message ?? tr(locale, "Failed to create service", "서비스 등록에 실패했습니다."));
-      return;
-    }
+    try {
+      const serviceImageFile = formData.get("serviceImageFile");
+      if (serviceImageFile instanceof File && serviceImageFile.size > 0) {
+        servicePayload.imageUrl = await fileToDataUrl(serviceImageFile);
+      }
 
-    const serviceId = serviceData.data?.id;
-    if (!serviceId) {
-      setLoading(false);
-      setError(tr(locale, "Failed to create service", "서비스 등록에 실패했습니다."));
-      return;
-    }
+      const serviceResponse = await fetch("/api/provider/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(servicePayload)
+      });
+      const serviceData = (await serviceResponse.json()) as ApiResult & { data?: { id: string } };
+      if (!serviceResponse.ok) {
+        setError(serviceData.error?.message ?? tr(locale, "Failed to create service", "서비스 등록에 실패했습니다."));
+        return;
+      }
 
-    const priceResponse = await fetch(`/api/provider/services/${serviceId}/price-cards`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(pricePayload)
-    });
-    const priceData = (await priceResponse.json()) as ApiResult;
-    setLoading(false);
+      const serviceId = serviceData.data?.id;
+      if (!serviceId) {
+        setError(tr(locale, "Failed to create service", "서비스 등록에 실패했습니다."));
+        return;
+      }
 
-    if (!priceResponse.ok) {
-      setError(
-        priceData.error?.message ??
-          tr(locale, "Service saved but price card failed", "서비스는 등록됐지만 가격 카드 추가에 실패했습니다.")
-      );
+      const priceResponse = await fetch(`/api/provider/services/${serviceId}/price-cards`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pricePayload)
+      });
+      const priceData = (await priceResponse.json()) as ApiResult;
+
+      if (!priceResponse.ok) {
+        setError(
+          priceData.error?.message ??
+            tr(locale, "Service saved but price card failed", "서비스는 등록됐지만 가격 카드 추가에 실패했습니다.")
+        );
+        router.refresh();
+        return;
+      }
+
+      setFeedback(tr(locale, "Service and price card saved", "서비스와 가격 카드가 저장되었습니다."));
+      setCompletedActions((current) => ({ ...current, servicePrice: true }));
       router.refresh();
-      return;
+      event.currentTarget.reset();
+    } catch {
+      setError(
+        tr(
+          locale,
+          "Could not save the service. Check your connection and try again.",
+          "서비스를 저장하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요."
+        )
+      );
+    } finally {
+      setLoading(false);
     }
-
-    setFeedback(tr(locale, "Service and price card saved", "서비스와 가격 카드가 저장되었습니다."));
-    setCompletedActions((current) => ({ ...current, servicePrice: true }));
-    router.refresh();
-    event.currentTarget.reset();
   }
 
   return (
