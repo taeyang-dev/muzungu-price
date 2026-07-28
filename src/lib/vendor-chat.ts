@@ -276,7 +276,7 @@ async function buildUserChatThreads(
       });
 
       const chatHref = isProviderOwner
-        ? `/providers/${thread.providerProfileId}#vendor-chat?customer=${encodeURIComponent(thread.customerUserId)}`
+        ? `/providers/${thread.providerProfileId}?customer=${encodeURIComponent(thread.customerUserId)}#vendor-chat`
         : `/providers/${thread.providerProfileId}#vendor-chat`;
 
       return {
