@@ -118,18 +118,13 @@ a {
 }
 
 .brand-mark {
+  width: 240px;
+  height: 56px;
   object-fit: contain;
-}
-
-.brand-mark--dark {
-  width: 52px;
-  height: 52px;
 }
 
 .brand-mark--light {
   display: none;
-  width: 240px;
-  height: 56px;
 }
 
 [data-theme="light"] .brand-mark--dark {
@@ -1329,12 +1324,7 @@ a {
 }
 
 @media (max-width: 900px) {
-  .brand-mark--dark {
-    width: 44px;
-    height: 44px;
-  }
-
-  .brand-mark--light {
+  .brand-mark {
     width: 190px;
     height: 44px;
   }
@@ -1359,12 +1349,7 @@ a {
     line-height: 1;
   }
 
-  .brand-mark--dark {
-    width: 36px;
-    height: 36px;
-  }
-
-  .brand-mark--light {
+  .brand-mark {
     width: 150px;
     height: 36px;
   }

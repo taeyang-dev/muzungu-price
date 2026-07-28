@@ -1,26 +1,26 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" fill="#000000"/>
+<svg width="520" height="120" viewBox="0 0 520 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="520" height="120" rx="8" fill="#12151C"/>
   <text
-    x="256"
-    y="214"
+    x="260"
+    y="50"
     text-anchor="middle"
     fill="#FACC15"
-    font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', 'Franklin Gothic Medium', Arial, sans-serif"
-    font-size="72"
-    font-weight="900"
-    letter-spacing="2"
+    font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', 'Avenir Next', Arial, sans-serif"
+    font-size="56"
+    font-weight="800"
+    letter-spacing="1.5"
   >
     THIS NOT
   </text>
   <text
-    x="256"
-    y="314"
+    x="260"
+    y="102"
     text-anchor="middle"
     fill="#FACC15"
-    font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', 'Franklin Gothic Medium', Arial, sans-serif"
-    font-size="72"
-    font-weight="900"
-    letter-spacing="2"
+    font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', 'Avenir Next', Arial, sans-serif"
+    font-size="56"
+    font-weight="800"
+    letter-spacing="1.5"
   >
     MUZUNGU PRICE
   </text>
