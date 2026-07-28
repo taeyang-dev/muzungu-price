@@ -11,6 +11,7 @@ const schema = z.object({
   requestType: z.enum(["general", "quotation", "purchase", "ebm"]).default("general"),
   providerProfileId: z.string().optional(),
   serviceId: z.string().optional(),
+  customServiceName: z.string().optional(),
   organizationName: z.string().optional(),
   organizationTinNumber: z.string().optional(),
   purchaseCode: z.string().optional(),
@@ -53,11 +54,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const providerProfileId = payload.providerProfileId ?? selectedService?.providerProfileId ?? null;
 
     if (payload.requestType === "quotation") {
-      if (!payload.serviceId || !selectedService) {
+      const customServiceName = payload.customServiceName?.trim() ?? "";
+      if (!payload.serviceId && customServiceName.length < 2) {
+        return fail("Select a service or enter a custom service name", 400, "VAL_001");
+      }
+      if (payload.serviceId && !selectedService) {
         return fail("Select a valid service for quotation request", 400, "VAL_001");
       }
       if (!payload.organizationName || payload.organizationName.trim().length < 2) {
-        return fail("Organization name is required for quotation request", 400, "VAL_001");
+        return fail("My organization name is required for quotation request", 400, "VAL_001");
       }
     }
 

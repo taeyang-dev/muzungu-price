@@ -558,7 +558,8 @@ export function RequestsPanel({
     const payload = {
       requestType: type,
       providerProfileId: vendorContext.id,
-      serviceId: service?.id,
+      serviceId: useOtherService ? undefined : service?.id,
+      customServiceName: useOtherService ? customServiceName : undefined,
       categoryId: resolvedCategoryId,
       title: titleByType[type],
       requirementText,
@@ -895,14 +896,14 @@ export function RequestsPanel({
                   <option value="__other__">{tr(locale, "Other (manual input)", "기타 (직접 입력)")}</option>
                 </select>
               </div>
-              {selectedServiceId === "__other__" && (
+              {effectiveServiceId === "__other__" && (
                 <div>
                   <label className="tiny">{tr(locale, "Other service name", "기타 서비스명")}</label>
                   <input className="input" name="customServiceName" required />
                 </div>
               )}
               <div>
-                <label className="tiny">{tr(locale, "Organization name", "소속 기관명")}</label>
+                <label className="tiny">{tr(locale, "My organization name", "내 기관명")}</label>
                 <input className="input" name="organizationName" required />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
@@ -934,7 +935,7 @@ export function RequestsPanel({
                   <option value="__other__">{tr(locale, "Other (manual input)", "기타 (직접 입력)")}</option>
                 </select>
               </div>
-              {selectedServiceId === "__other__" && (
+              {effectiveServiceId === "__other__" && (
                 <div>
                   <label className="tiny">{tr(locale, "Other service name", "기타 서비스명")}</label>
                   <input className="input" name="customServiceName" required />

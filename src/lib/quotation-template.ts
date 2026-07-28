@@ -116,22 +116,44 @@ function buildQuotationFileName(businessName: string): string {
   return `Quotation_${safeName}.pdf`;
 }
 
+let notoSansBase64: string | null = null;
+
+async function ensureNotoSansFont(doc: import("jspdf").jsPDF): Promise<void> {
+  if (!notoSansBase64) {
+    const response = await fetch("/fonts/NotoSans-Regular.ttf");
+    if (!response.ok) {
+      throw new Error("Failed to load PDF font");
+    }
+    const buffer = await response.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    notoSansBase64 = btoa(binary);
+  }
+
+  doc.addFileToVFS("NotoSans-Regular.ttf", notoSansBase64);
+  doc.addFont("NotoSans-Regular.ttf", "NotoSans", "normal");
+  doc.setFont("NotoSans", "normal");
+}
+
 export async function buildQuotationPdfDocument(
   data: QuotationTemplateData
 ): Promise<{ dataUrl: string; fileName: string }> {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF();
+  await ensureNotoSansFont(doc);
   const left = 14;
   const pageWidth = doc.internal.pageSize.getWidth();
   const right = pageWidth - 14;
   let y = 18;
 
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.text(data.businessName, left, y);
   y += 8;
 
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   const headerLines = [
     data.email ? `Email: ${data.email}` : "",
@@ -145,12 +167,10 @@ export async function buildQuotationPdfDocument(
   }
 
   y += 4;
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
   doc.text("QUOTATION", left, y);
   y += 10;
 
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.text(`Date: ${data.quotationDate}`, left, y);
   y += 6;
@@ -161,7 +181,6 @@ export async function buildQuotationPdfDocument(
   const colDescription = left + 12;
   const colUnit = right - 58;
   const colTotal = right - 28;
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.text("No", colNo, y);
   doc.text("Description", colDescription, y);
@@ -171,7 +190,6 @@ export async function buildQuotationPdfDocument(
   doc.line(left, y, right, y);
   y += 6;
 
-  doc.setFont("helvetica", "normal");
   for (const [index, item] of data.lineItems.entries()) {
     const lineTotal = item.quantity * item.unitPrice;
     const descriptionLines = doc.splitTextToSize(item.description || "-", 95);
@@ -195,25 +213,21 @@ export async function buildQuotationPdfDocument(
 
   const inclusiveText = getInclusiveNoteText(data);
   if (inclusiveText) {
-    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
     doc.text("Remarks", left, y);
     y += 6;
-    doc.setFont("helvetica", "normal");
     const remarkLines = doc.splitTextToSize(inclusiveText, right - left);
     doc.text(remarkLines, left, y);
     y += remarkLines.length * 5 + 4;
   }
 
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
   doc.text(`TOTAL RWF ${formatMoney(calculateQuotationTotal(data.lineItems))}`, left, y);
   y += 12;
 
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.text(data.paymentMethod === "momo" ? "MoMo Details" : "Bank Details", left, y);
   y += 7;
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
 
   const paymentLines =
@@ -243,8 +257,7 @@ export async function buildQuotationPdfDocument(
       doc.addPage();
       y = 20;
     }
-    doc.setFont("helvetica", "normal");
-    doc.text("Authorized signature", left, y);
+    doc.text("Signature", left, y);
     y += 4;
     doc.addImage(data.signatureDataUrl, "PNG", left, y, 55, 22);
   }
