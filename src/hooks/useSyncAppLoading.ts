@@ -1,19 +1,30 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useLoadingContext } from "@/components/LoadingProvider";
 
 export function useSyncAppLoading(active: boolean): void {
   const loadingContext = useLoadingContext();
+  const isTrackingRef = useRef(false);
 
   useEffect(() => {
-    if (!loadingContext || !active) {
+    if (!loadingContext) {
       return undefined;
     }
 
-    loadingContext.beginLoading();
-    return () => {
+    if (active && !isTrackingRef.current) {
+      loadingContext.beginLoading();
+      isTrackingRef.current = true;
+    } else if (!active && isTrackingRef.current) {
       loadingContext.endLoading();
+      isTrackingRef.current = false;
+    }
+
+    return () => {
+      if (isTrackingRef.current) {
+        loadingContext.endLoading();
+        isTrackingRef.current = false;
+      }
     };
   }, [active, loadingContext]);
 }

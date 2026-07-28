@@ -393,57 +393,69 @@ export function ProviderDashboard({
       return false;
     }
 
-    const { profilePayload, billingPayload } = await buildRegistrationPayload(form, draft);
-
     if (draft) {
       setSubmittingDraft(true);
     }
     setError("");
     setFeedback("");
 
-    const profileResponse = await fetch("/api/provider/profile", {
-      method: profile ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(profilePayload)
-    });
-    const profileData = (await profileResponse.json()) as ApiResult;
-    if (!profileResponse.ok) {
+    try {
+      const { profilePayload, billingPayload } = await buildRegistrationPayload(form, draft);
+
+      const profileResponse = await fetch("/api/provider/profile", {
+        method: profile ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(profilePayload)
+      });
+      const profileData = (await profileResponse.json()) as ApiResult;
+      if (!profileResponse.ok) {
+        setError(profileData.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
+        scrollToRegistrationMessage();
+        return false;
+      }
+
+      const billingResponse = await fetch("/api/provider/billing-capabilities", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(billingPayload)
+      });
+      const billingData = (await billingResponse.json()) as ApiResult;
+
+      if (!billingResponse.ok) {
+        setError(
+          billingData.error?.message ?? tr(locale, "Failed to save billing settings", "발행 설정 저장에 실패했습니다.")
+        );
+        scrollToRegistrationMessage();
+        router.refresh();
+        return false;
+      }
+
+      setCompletedActions((current) => ({ ...current, profile: true, billing: true }));
+      if (draft) {
+        setDraftSaved(true);
+      }
+      setFeedback(
+        draft
+          ? tr(locale, "Draft saved.", "임시 저장되었습니다.")
+          : tr(locale, "Saved successfully", "저장되었습니다.")
+      );
+      router.refresh();
+      return true;
+    } catch {
+      setError(
+        tr(
+          locale,
+          "Could not save your registration. Check your connection and try again.",
+          "등록 정보를 저장하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요."
+        )
+      );
+      scrollToRegistrationMessage();
+      return false;
+    } finally {
       if (draft) {
         setSubmittingDraft(false);
       }
-      setError(profileData.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
-      scrollToRegistrationMessage();
-      return false;
     }
-
-    const billingResponse = await fetch("/api/provider/billing-capabilities", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(billingPayload)
-    });
-    const billingData = (await billingResponse.json()) as ApiResult;
-    if (draft) {
-      setSubmittingDraft(false);
-    }
-
-    if (!billingResponse.ok) {
-      setError(billingData.error?.message ?? tr(locale, "Failed to save billing settings", "발행 설정 저장에 실패했습니다."));
-      scrollToRegistrationMessage();
-      router.refresh();
-      return false;
-    }
-
-    setCompletedActions((current) => ({ ...current, profile: true, billing: true }));
-    if (draft) {
-      setDraftSaved(true);
-    }
-    setFeedback(
-      draft
-        ? tr(locale, "Draft saved.", "임시 저장되었습니다.")
-        : tr(locale, "Saved successfully", "저장되었습니다.")
-    );
-    router.refresh();
-    return true;
   }
 
   async function submitForReview(): Promise<void> {
@@ -479,44 +491,58 @@ export function ProviderDashboard({
     }
 
     setSubmittingReview(true);
-    const saved = await saveRegistration(false);
-    if (!saved) {
-      setSubmittingReview(false);
-      return;
-    }
 
-    let caseId = verificationCaseId;
-    if (!caseId) {
-      const ensureResponse = await fetch("/api/provider/verification-cases", { method: "POST" });
-      const ensureData = (await ensureResponse.json()) as ApiResult & { data?: { id: string } };
-      if (!ensureResponse.ok || !ensureData.data?.id) {
-        setError(ensureData.error?.message ?? tr(locale, "Failed to prepare review case", "심사 케이스 준비에 실패했습니다."));
+    try {
+      const saved = await saveRegistration(false);
+      if (!saved) {
+        return;
+      }
+
+      let caseId = verificationCaseId;
+      if (!caseId) {
+        const ensureResponse = await fetch("/api/provider/verification-cases", { method: "POST" });
+        const ensureData = (await ensureResponse.json()) as ApiResult & { data?: { id: string } };
+        if (!ensureResponse.ok || !ensureData.data?.id) {
+          setError(
+            ensureData.error?.message ?? tr(locale, "Failed to prepare review case", "심사 케이스 준비에 실패했습니다.")
+          );
+          scrollToRegistrationMessage();
+          return;
+        }
+        caseId = ensureData.data.id;
+      }
+
+      setError("");
+      setFeedback("");
+
+      const response = await fetch(`/api/provider/verification-cases/${caseId}/submit`, {
+        method: "POST"
+      });
+      const data = (await response.json()) as ApiResult;
+
+      if (!response.ok) {
+        setError(data.error?.message ?? tr(locale, "Failed to submit review request", "심사 요청에 실패했습니다."));
         scrollToRegistrationMessage();
         return;
       }
-      caseId = ensureData.data.id;
-    }
 
-    setError("");
-    setFeedback("");
+      setReviewRequested(true);
+      setFeedback(tr(locale, "Review request submitted.", "심사 요청이 접수되었습니다."));
 
-    const response = await fetch(`/api/provider/verification-cases/${caseId}/submit`, {
-      method: "POST"
-    });
-    const data = (await response.json()) as ApiResult;
-    setSubmittingReview(false);
-
-    if (!response.ok) {
-      setError(data.error?.message ?? tr(locale, "Failed to submit review request", "심사 요청에 실패했습니다."));
+      router.push("/provider/setup");
+      router.refresh();
+    } catch {
+      setError(
+        tr(
+          locale,
+          "Could not submit your review request. Check your connection and try again.",
+          "심사 요청을 제출하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요."
+        )
+      );
       scrollToRegistrationMessage();
-      return;
+    } finally {
+      setSubmittingReview(false);
     }
-
-    setReviewRequested(true);
-    setFeedback(tr(locale, "Review request submitted.", "심사 요청이 접수되었습니다."));
-
-    router.push("/provider/setup");
-    router.refresh();
   }
 
   function renderSectionBadge(complete: boolean): string {
@@ -584,23 +610,34 @@ export function ProviderDashboard({
     setError("");
     setFeedback("");
 
-    const response = await fetch(`/api/provider/verification-cases/${caseId}/documents`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const data = (await response.json()) as ApiResult;
-    setUploadingDocumentRowId(null);
+    try {
+      const response = await fetch(`/api/provider/verification-cases/${caseId}/documents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = (await response.json()) as ApiResult;
 
-    if (!response.ok) {
-      setError(data.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
-      return;
+      if (!response.ok) {
+        setError(data.error?.message ?? tr(locale, "Request failed", "요청에 실패했습니다."));
+        return;
+      }
+
+      setUploadedDocumentRowIds((current) => new Set(current).add(rowId));
+      setFeedback(tr(locale, "Document uploaded successfully.", "서류 업로드가 완료되었습니다."));
+      router.refresh();
+      form.reset();
+    } catch {
+      setError(
+        tr(
+          locale,
+          "Could not upload the document. Check your connection and try again.",
+          "서류를 업로드하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요."
+        )
+      );
+    } finally {
+      setUploadingDocumentRowId(null);
     }
-
-    setUploadedDocumentRowIds((current) => new Set(current).add(rowId));
-    setFeedback(tr(locale, "Document uploaded successfully.", "서류 업로드가 완료되었습니다."));
-    router.refresh();
-    form.reset();
   }
 
   return (
