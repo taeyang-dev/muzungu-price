@@ -225,6 +225,11 @@ export function AppHeader({ session, locale, theme }: AppHeaderProps) {
                 {tr(locale, "Inbox", "쪽지함")} ({unreadInboxCount})
               </Link>
             )}
+            {session?.role === "admin" && (
+              <Link href="/admin" onClick={() => setMenuOpen(false)}>
+                {tr(locale, "Admin", "관리자")}
+              </Link>
+            )}
             <Link href="/" onClick={() => setMenuOpen(false)}>
               {tr(locale, "Browse vendors", "업체 둘러보기")}
             </Link>
