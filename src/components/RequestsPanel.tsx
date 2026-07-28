@@ -988,10 +988,13 @@ export function RequestsPanel({
         {canCreateRequest ? (
           vendorRequestForm
         ) : (
-          <article className="panel">
+          <article className="panel" id="vendor-request">
             <p className="muted" style={{ margin: 0 }}>
               {tr(locale, "Providers manage incoming requests from the Requests page.", "업체는 요청서 페이지에서 들어온 요청을 관리합니다.")}
             </p>
+            <Link className="btn secondary" href="/requests?box=received" style={{ marginTop: "12px" }}>
+              {tr(locale, "Open received requests", "받은 요청 열기")}
+            </Link>
           </article>
         )}
       </section>

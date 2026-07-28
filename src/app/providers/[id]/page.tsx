@@ -371,9 +371,15 @@ export default async function ProviderDetailPage({
               )}
             </li>
           </ul>
-          <ScrollToSectionButton locale={locale} signedIn={Boolean(session)} targetId="vendor-request">
-            {tr(locale, "Request this vendor", "이 업체에 요청 보내기")}
-          </ScrollToSectionButton>
+          {session?.role !== "provider" ? (
+            <ScrollToSectionButton locale={locale} signedIn targetId="vendor-request">
+              {tr(locale, "Request this vendor", "이 업체에 요청 보내기")}
+            </ScrollToSectionButton>
+          ) : isProviderOwner ? (
+            <Link className="btn provider-action-btn" href="/requests?box=received">
+              {tr(locale, "Manage received requests", "받은 요청 관리")}
+            </Link>
+          ) : null}
         </article>
       </section>
 
@@ -435,7 +441,7 @@ export default async function ProviderDetailPage({
             vendorContext={buildVendorRequestContext(provider)}
           />
         ) : (
-          <article className="panel">
+          <article className="panel" id="vendor-request">
             <p className="muted" style={{ margin: 0 }}>
               {tr(
                 locale,
@@ -443,6 +449,9 @@ export default async function ProviderDetailPage({
                 "업체는 요청서 페이지에서 들어온 요청을 관리합니다."
               )}
             </p>
+            <Link className="btn secondary" href="/requests?box=received" style={{ marginTop: "12px" }}>
+              {tr(locale, "Open received requests", "받은 요청 열기")}
+            </Link>
           </article>
         )
       ) : (
