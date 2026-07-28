@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { fail, ok } from "@/lib/api";
 import { requireRole } from "@/lib/guards";
 import { sendInboxMessage } from "@/lib/inbox";
+import { verificationSubmittedInboxMessage } from "@/lib/inbox-messages";
 import { prisma } from "@/lib/prisma";
 
 interface RouteParams {
@@ -40,10 +41,11 @@ export async function POST(_request: NextRequest, { params }: RouteParams): Prom
     data: { status: "pending" }
   });
 
+  const inboxMessage = verificationSubmittedInboxMessage();
   await sendInboxMessage({
     recipientUserId: auth.session.userId,
-    subject: "심사 요청이 접수되었습니다",
-    body: "심사 중입니다. 12시간 이내 심사가 완료되며, 추가 요청이 있을 경우 쪽지함에서 확인하세요."
+    subject: inboxMessage.subject,
+    body: inboxMessage.body
   });
 
   return ok(updated);

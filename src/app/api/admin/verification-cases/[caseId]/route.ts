@@ -3,6 +3,7 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api";
 import { requireRole } from "@/lib/guards";
 import { sendInboxMessage } from "@/lib/inbox";
+import { verificationReviewInboxMessage } from "@/lib/inbox-messages";
 import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
@@ -49,37 +50,20 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
       }
     });
 
-    const statusLabels: Record<string, { subject: string; body: string }> = {
-      approved: {
-        subject: "업체 심사가 승인되었습니다",
-        body: `${verificationCase.providerProfile.businessName} 업체 심사가 승인되었습니다. 이제 마켓플레이스에 노출됩니다.`
-      },
-      rejected: {
-        subject: "업체 심사가 반려되었습니다",
-        body: `${verificationCase.providerProfile.businessName} 업체 심사가 반려되었습니다. 벤더 등록 페이지에서 서류를 보완한 뒤 다시 심사를 요청해 주세요.${
-          payload.notes ? `\n\n관리자 메모: ${payload.notes}` : ""
-        }`
-      },
-      on_hold: {
-        subject: "업체 심사가 보류되었습니다",
-        body: `${verificationCase.providerProfile.businessName} 업체 심사가 보류되었습니다. 추가 자료가 필요할 수 있습니다. 쪽지함과 벤더 등록 페이지를 확인해 주세요.${
-          payload.notes ? `\n\n관리자 메모: ${payload.notes}` : ""
-        }`
-      }
-    };
-
-    const message = statusLabels[payload.status];
-    if (message) {
-      try {
-        await sendInboxMessage({
-          recipientUserId: verificationCase.providerProfile.userId,
-          senderUserId: auth.session.userId,
-          subject: message.subject,
-          body: message.body
-        });
-      } catch (inboxError) {
-        console.error("Failed to send inbox message after review:", inboxError);
-      }
+    const message = verificationReviewInboxMessage(
+      payload.status,
+      verificationCase.providerProfile.businessName,
+      payload.notes
+    );
+    try {
+      await sendInboxMessage({
+        recipientUserId: verificationCase.providerProfile.userId,
+        senderUserId: auth.session.userId,
+        subject: message.subject,
+        body: message.body
+      });
+    } catch (inboxError) {
+      console.error("Failed to send inbox message after review:", inboxError);
     }
 
     return ok(updated);

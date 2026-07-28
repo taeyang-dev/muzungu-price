@@ -3,6 +3,7 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api";
 import { requireSession } from "@/lib/guards";
 import { sendInboxMessage } from "@/lib/inbox";
+import { documentUploadedInboxMessage } from "@/lib/inbox-messages";
 import { prisma } from "@/lib/prisma";
 import { loadVendorAccessForUser } from "@/lib/service-request-scope";
 
@@ -50,24 +51,22 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
       return fail("Request not found", 404, "NOT_FOUND");
     }
 
-    const docLabel =
-      payload.type === "quotation"
-        ? "quotation"
-        : "EBM";
+    const docLabelEn = payload.type === "quotation" ? "quotation" : "EBM";
+    const docLabelKo = payload.type === "quotation" ? "견적서" : "EBM";
     const fileName = payload.fileName?.trim();
     const vendorName = serviceRequest.providerProfile?.businessName ?? "Vendor";
+    const inboxMessage = documentUploadedInboxMessage({
+      vendorName,
+      docLabelEn,
+      docLabelKo,
+      fileName
+    });
 
     await sendInboxMessage({
       recipientUserId: serviceRequest.requesterUserId,
       senderUserId: auth.session.userId,
-      subject: `${vendorName} sent your ${docLabel}`,
-      body: [
-        `${vendorName} uploaded a ${docLabel} for your request.`,
-        fileName ? `File: ${fileName}` : "",
-        "Open Requests to download the document."
-      ]
-        .filter(Boolean)
-        .join("\n")
+      subject: inboxMessage.subject,
+      body: inboxMessage.body
     });
 
     if (serviceRequest.status === "open") {
