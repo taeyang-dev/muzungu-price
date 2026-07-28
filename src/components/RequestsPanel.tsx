@@ -47,6 +47,7 @@ interface RequestsPanelProps {
   typeFilter?: "all" | "quotation" | "ebm";
   vendorContext?: VendorRequestContext | null;
   providerSelf?: QuotationTemplateDefaults | null;
+  canCreateRequest?: boolean;
 }
 
 interface ApiResult {
@@ -277,7 +278,8 @@ export function RequestsPanel({
   boxFilter = "sent",
   typeFilter = "all",
   vendorContext = null,
-  providerSelf = null
+  providerSelf = null,
+  canCreateRequest: canCreateRequestOverride
 }: RequestsPanelProps) {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
@@ -291,7 +293,7 @@ export function RequestsPanel({
   const [ebmPurchaseCodeTiming, setEbmPurchaseCodeTiming] = useState<"now" | "later">("later");
   const [purchaseCodeDrafts, setPurchaseCodeDrafts] = useState<Record<string, string>>({});
   const router = useRouter();
-  const canCreateRequest = role !== "provider";
+  const canCreateRequest = canCreateRequestOverride ?? role !== "provider";
   const isReceivedView = boxFilter === "received";
   const isSentView = boxFilter === "sent";
 

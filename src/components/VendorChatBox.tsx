@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
 import { Locale, tr } from "@/lib/i18n";
 import { recordChatVendor } from "@/lib/vendor-storage";
+import { getChatThreadsUpdatedEventName } from "@/components/ChatThreadsStrip";
 import { RequestDocumentType, saveRequestedDocument } from "@/lib/request-documents-storage";
 
 type DisplayLang = "original" | "en" | "ko" | "rw";
@@ -35,6 +36,7 @@ interface VendorChatBoxProps {
   vendorName: string;
   locale: Locale;
   chatUserId?: string | null;
+  initialCustomerUserId?: string | null;
   isProviderOwner?: boolean;
   canSendPaymentInfo?: boolean;
   paymentInfo?: VendorPaymentInfo | null;
@@ -118,6 +120,22 @@ function writeChat(vendorId: string, messages: ChatMessage[]): void {
     return;
   }
   window.localStorage.setItem(getStorageKey(vendorId), JSON.stringify(messages.slice(-30)));
+}
+
+async function markChatThreadRead(vendorId: string, customerUserId: string): Promise<void> {
+  try {
+    await fetch("/api/chat-threads/read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        providerProfileId: vendorId,
+        customerUserId
+      })
+    });
+    window.dispatchEvent(new Event(getChatThreadsUpdatedEventName()));
+  } catch {
+    // Ignore read-state sync failures.
+  }
 }
 
 async function fetchServerChat(vendorId: string, customerUserId?: string): Promise<ChatMessage[] | null> {
@@ -261,6 +279,7 @@ export function VendorChatBox({
   vendorName,
   locale,
   chatUserId = null,
+  initialCustomerUserId = null,
   isProviderOwner = false,
   canSendPaymentInfo = false,
   paymentInfo = null
@@ -320,7 +339,12 @@ export function VendorChatBox({
           return;
         }
         setChatThreads(payload.data);
-        setActiveCustomerUserId((current) => current ?? payload.data?.[0]?.customerUserId ?? null);
+        setActiveCustomerUserId((current) => {
+          if (initialCustomerUserId && payload.data?.some((thread) => thread.customerUserId === initialCustomerUserId)) {
+            return initialCustomerUserId;
+          }
+          return current ?? payload.data?.[0]?.customerUserId ?? null;
+        });
       } catch {
         // Keep local fallback when thread lookup fails.
       }
@@ -330,7 +354,16 @@ export function VendorChatBox({
     return () => {
       cancelled = true;
     };
-  }, [isProviderOwner, vendorId]);
+  }, [isProviderOwner, vendorId, initialCustomerUserId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || window.location.hash !== "#vendor-chat") {
+      return;
+    }
+    setIsOpen(true);
+    const target = document.getElementById("vendor-chat");
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [vendorId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -352,7 +385,10 @@ export function VendorChatBox({
           setPaymentInfoSent(hasPaymentInfoMessage(serverMessages));
           setLoadedVendorId(vendorId);
           const storedOpen = window.localStorage.getItem(getChatOpenStorageKey(vendorId));
-          setIsOpen(storedOpen !== "0");
+          setIsOpen(storedOpen !== "0" || window.location.hash === "#vendor-chat");
+          if (serverCustomerUserId) {
+            void markChatThreadRead(vendorId, serverCustomerUserId);
+          }
           return;
         }
       }
@@ -569,6 +605,10 @@ export function VendorChatBox({
     for (const message of freshMessages) {
       const saved = await saveServerChatMessage(vendorId, message, serverCustomerUserId ?? undefined);
       savedMessages.push(saved ?? message);
+    }
+
+    if (freshMessages.length > 0) {
+      window.dispatchEvent(new Event(getChatThreadsUpdatedEventName()));
     }
 
     return savedMessages;

@@ -7,11 +7,11 @@ import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import {
   getVendorStorageEventName,
-  readChatVendors,
   readFavoriteVendors,
   readRecentVendors,
   VendorReference
 } from "@/lib/vendor-storage";
+import { ChatThreadsStrip } from "@/components/ChatThreadsStrip";
 import { Locale, tr } from "@/lib/i18n";
 import { AppTheme } from "@/lib/theme";
 
@@ -52,7 +52,6 @@ export function AppHeader({ session, locale, theme }: AppHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [favorites, setFavorites] = useState<VendorReference[]>([]);
   const [recent, setRecent] = useState<VendorReference[]>([]);
-  const [chatVendors, setChatVendors] = useState<VendorReference[]>([]);
   const [requestCounts, setRequestCounts] = useState({
     sent: { total: 0, quotation: 0, ebm: 0 },
     received: { total: 0, quotation: 0, ebm: 0 }
@@ -63,7 +62,6 @@ export function AppHeader({ session, locale, theme }: AppHeaderProps) {
     function refresh(): void {
       setFavorites(readFavoriteVendors());
       setRecent(readRecentVendors());
-      setChatVendors(readChatVendors());
     }
 
     async function refreshRequestCounts(): Promise<void> {
@@ -251,11 +249,11 @@ export function AppHeader({ session, locale, theme }: AppHeaderProps) {
         </section>
 
         <section className="drawer-section">
-          <h3>{tr(locale, "Messages with vendors", "업체와 대화")}</h3>
-          <VendorList
-            items={chatVendors}
-            emptyText={tr(locale, "No active chats yet.", "대화중인 업체가 없습니다.")}
-            hrefSuffix="#vendor-chat"
+          <h3>{tr(locale, "Chats", "채팅")}</h3>
+          <ChatThreadsStrip
+            locale={locale}
+            onNavigate={() => setMenuOpen(false)}
+            signedIn={Boolean(session)}
           />
         </section>
 

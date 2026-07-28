@@ -16,6 +16,7 @@ import { buildVendorRequestContext } from "@/lib/vendor-request-context";
 
 interface ProviderDetailPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ customer?: string }>;
 }
 
 interface BreakdownLine {
@@ -147,11 +148,14 @@ function unitLabel(locale: Locale, unit: string): string {
 }
 
 export default async function ProviderDetailPage({
-  params
+  params,
+  searchParams
 }: ProviderDetailPageProps) {
   const locale = await getLocaleFromCookies();
   const session = await getSession();
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
+  const initialChatCustomerUserId = resolvedSearchParams.customer?.trim() || null;
   const provider = await prisma.providerProfile.findUnique({
     where: { id },
     include: {
@@ -371,21 +375,22 @@ export default async function ProviderDetailPage({
               )}
             </li>
           </ul>
-          {session?.role !== "provider" ? (
+          {!isProviderOwner ? (
             <ScrollToSectionButton locale={locale} signedIn targetId="vendor-request">
               {tr(locale, "Request this vendor", "이 업체에 요청 보내기")}
             </ScrollToSectionButton>
-          ) : isProviderOwner ? (
+          ) : (
             <Link className="btn provider-action-btn" href="/requests?box=received">
               {tr(locale, "Manage received requests", "받은 요청 관리")}
             </Link>
-          ) : null}
+          )}
         </article>
       </section>
 
       {session ? (
-        session.role !== "provider" ? (
+        !isProviderOwner ? (
           <RequestsPanel
+            canCreateRequest
             locale={locale}
             mode="create"
             requests={userRequests.map((item: UserRequestItem) => ({
@@ -468,7 +473,8 @@ export default async function ProviderDetailPage({
       <div id="vendor-chat">
         <VendorChatBox
           canSendPaymentInfo={isProviderOwner}
-          chatUserId={session && session.role !== "provider" ? session.userId : null}
+          chatUserId={isProviderOwner ? null : session?.userId ?? null}
+          initialCustomerUserId={initialChatCustomerUserId}
           isProviderOwner={isProviderOwner}
           locale={locale}
           paymentInfo={isProviderOwner ? paymentInfo : null}

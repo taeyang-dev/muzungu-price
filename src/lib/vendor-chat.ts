@@ -93,42 +93,241 @@ export async function listProviderChatThreads(providerProfileId: string): Promis
     lastMessageAt: string;
   }>
 > {
+  const threads = await listUserChatThreadsForProviderStorefront(providerProfileId);
+  return threads.map((thread) => ({
+    customerUserId: thread.customerUserId,
+    customerName: thread.displayName,
+    lastMessagePreview: thread.lastMessagePreview,
+    lastMessageAt: thread.lastMessageAt
+  }));
+}
+
+export interface UserChatThread {
+  threadKey: string;
+  providerProfileId: string;
+  customerUserId: string;
+  displayName: string;
+  lastMessagePreview: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  chatHref: string;
+}
+
+type ThreadAccumulator = {
+  providerProfileId: string;
+  customerUserId: string;
+  preview: string;
+  at: Date;
+};
+
+function threadKey(providerProfileId: string, customerUserId: string): string {
+  return `${providerProfileId}:${customerUserId}`;
+}
+
+function ingestThreadMessage(
+  threadMap: Map<string, ThreadAccumulator>,
+  message: {
+    providerProfileId: string;
+    customerUserId: string;
+    text: string;
+    createdAt: Date;
+  }
+): void {
+  const key = threadKey(message.providerProfileId, message.customerUserId);
+  if (threadMap.has(key)) {
+    return;
+  }
+  threadMap.set(key, {
+    providerProfileId: message.providerProfileId,
+    customerUserId: message.customerUserId,
+    preview: message.text.slice(0, 120),
+    at: message.createdAt
+  });
+}
+
+async function listUserChatThreadsForProviderStorefront(providerProfileId: string): Promise<UserChatThread[]> {
   const messages = await prisma.vendorChatMessage.findMany({
     where: { providerProfileId },
     orderBy: { createdAt: "desc" },
-    take: 200
+    take: 200,
+    select: {
+      providerProfileId: true,
+      customerUserId: true,
+      text: true,
+      createdAt: true
+    }
   });
 
-  const threadMap = new Map<string, { preview: string; at: Date }>();
+  const threadMap = new Map<string, ThreadAccumulator>();
   for (const message of messages) {
-    if (!threadMap.has(message.customerUserId)) {
-      threadMap.set(message.customerUserId, {
-        preview: message.text.slice(0, 120),
-        at: message.createdAt
-      });
-    }
+    ingestThreadMessage(threadMap, message);
   }
 
-  const customerUserIds = Array.from(threadMap.keys());
-  if (customerUserIds.length === 0) {
+  const provider = await prisma.providerProfile.findUnique({
+    where: { id: providerProfileId },
+    select: { id: true, userId: true }
+  });
+  if (!provider) {
     return [];
   }
 
-  const users = await prisma.user.findMany({
-    where: { id: { in: customerUserIds } },
-    select: { id: true, name: true, email: true }
-  });
-  const userById = new Map(users.map((user) => [user.id, user]));
+  return buildUserChatThreads(provider.userId, threadMap);
+}
 
-  return customerUserIds.map((customerUserId) => {
-    const thread = threadMap.get(customerUserId)!;
-    const user = userById.get(customerUserId);
-    return {
-      customerUserId,
-      customerName: user?.name?.trim() || user?.email || customerUserId,
-      lastMessagePreview: thread.preview,
-      lastMessageAt: thread.at.toISOString()
-    };
+export async function listUserChatThreads(readerUserId: string): Promise<UserChatThread[]> {
+  const threadMap = new Map<string, ThreadAccumulator>();
+
+  const asCustomer = await prisma.vendorChatMessage.findMany({
+    where: { customerUserId: readerUserId },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    select: {
+      providerProfileId: true,
+      customerUserId: true,
+      text: true,
+      createdAt: true
+    }
+  });
+  for (const message of asCustomer) {
+    ingestThreadMessage(threadMap, message);
+  }
+
+  const ownProfile = await prisma.providerProfile.findUnique({
+    where: { userId: readerUserId },
+    select: { id: true }
+  });
+  if (ownProfile) {
+    const asProvider = await prisma.vendorChatMessage.findMany({
+      where: { providerProfileId: ownProfile.id },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      select: {
+        providerProfileId: true,
+        customerUserId: true,
+        text: true,
+        createdAt: true
+      }
+    });
+    for (const message of asProvider) {
+      ingestThreadMessage(threadMap, message);
+    }
+  }
+
+  return buildUserChatThreads(readerUserId, threadMap);
+}
+
+async function buildUserChatThreads(
+  readerUserId: string,
+  threadMap: Map<string, ThreadAccumulator>
+): Promise<UserChatThread[]> {
+  if (threadMap.size === 0) {
+    return [];
+  }
+
+  const providerProfileIds = Array.from(new Set(Array.from(threadMap.values()).map((item) => item.providerProfileId)));
+  const customerUserIds = Array.from(new Set(Array.from(threadMap.values()).map((item) => item.customerUserId)));
+
+  const [providers, customers, cursors] = await Promise.all([
+    prisma.providerProfile.findMany({
+      where: { id: { in: providerProfileIds } },
+      select: { id: true, businessName: true, userId: true }
+    }),
+    prisma.user.findMany({
+      where: { id: { in: customerUserIds } },
+      select: { id: true, name: true, email: true }
+    }),
+    prisma.vendorChatReadCursor.findMany({
+      where: { readerUserId },
+      select: { providerProfileId: true, customerUserId: true, lastReadAt: true }
+    })
+  ]);
+
+  const providerById = new Map(providers.map((provider) => [provider.id, provider]));
+  const customerById = new Map(customers.map((customer) => [customer.id, customer]));
+  const cursorByKey = new Map(
+    cursors.map((cursor) => [threadKey(cursor.providerProfileId, cursor.customerUserId), cursor.lastReadAt])
+  );
+
+  const threads = await Promise.all(
+    Array.from(threadMap.values()).map(async (thread) => {
+      const provider = providerById.get(thread.providerProfileId);
+      const isCustomerParticipant = readerUserId === thread.customerUserId;
+      const isProviderOwner = provider?.userId === readerUserId;
+
+      if (!isCustomerParticipant && !isProviderOwner) {
+        return null;
+      }
+
+      const displayName = isCustomerParticipant
+        ? provider?.businessName ?? thread.providerProfileId
+        : customerById.get(thread.customerUserId)?.name?.trim() ||
+          customerById.get(thread.customerUserId)?.email ||
+          thread.customerUserId;
+
+      const lastReadAt = cursorByKey.get(threadKey(thread.providerProfileId, thread.customerUserId)) ?? new Date(0);
+      const incomingSender = isCustomerParticipant ? "vendor" : "user";
+      const unreadCount = await prisma.vendorChatMessage.count({
+        where: {
+          providerProfileId: thread.providerProfileId,
+          customerUserId: thread.customerUserId,
+          sender: incomingSender,
+          createdAt: { gt: lastReadAt }
+        }
+      });
+
+      const chatHref = isProviderOwner
+        ? `/providers/${thread.providerProfileId}#vendor-chat?customer=${encodeURIComponent(thread.customerUserId)}`
+        : `/providers/${thread.providerProfileId}#vendor-chat`;
+
+      return {
+        threadKey: threadKey(thread.providerProfileId, thread.customerUserId),
+        providerProfileId: thread.providerProfileId,
+        customerUserId: thread.customerUserId,
+        displayName,
+        lastMessagePreview: thread.preview,
+        lastMessageAt: thread.at.toISOString(),
+        unreadCount,
+        chatHref
+      } satisfies UserChatThread;
+    })
+  );
+
+  return threads
+    .filter((thread): thread is UserChatThread => thread !== null)
+    .sort((left, right) => right.lastMessageAt.localeCompare(left.lastMessageAt));
+}
+
+export async function markVendorChatRead(input: {
+  readerUserId: string;
+  providerProfileId: string;
+  customerUserId: string;
+}): Promise<void> {
+  const allowed = await canAccessVendorChat(
+    { userId: input.readerUserId },
+    input.providerProfileId,
+    input.customerUserId
+  );
+  if (!allowed) {
+    return;
+  }
+
+  await prisma.vendorChatReadCursor.upsert({
+    where: {
+      providerProfileId_customerUserId_readerUserId: {
+        providerProfileId: input.providerProfileId,
+        customerUserId: input.customerUserId,
+        readerUserId: input.readerUserId
+      }
+    },
+    create: {
+      providerProfileId: input.providerProfileId,
+      customerUserId: input.customerUserId,
+      readerUserId: input.readerUserId,
+      lastReadAt: new Date()
+    },
+    update: {
+      lastReadAt: new Date()
+    }
   });
 }
 
