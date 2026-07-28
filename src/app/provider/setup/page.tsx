@@ -50,6 +50,7 @@ export default async function ProviderSetupPage() {
       categories={data.categories}
       locale={locale}
       profile={data.profile}
+      service={data.service}
       verificationStatus={data.verificationStatus}
     />
   );

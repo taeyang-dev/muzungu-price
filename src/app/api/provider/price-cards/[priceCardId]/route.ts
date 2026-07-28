@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
+  currency: z.string().length(3).optional(),
   basePrice: z.coerce.number().positive().optional(),
   unit: z.enum(["per_hour", "per_day", "per_project", "per_person"]).optional(),
   inclusions: z.string().optional(),
@@ -39,6 +40,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
     const updated = await prisma.servicePriceCard.update({
       where: { id: priceCardId },
       data: {
+        currency: payload.currency?.toUpperCase(),
         basePrice: payload.basePrice,
         unit: payload.unit,
         inclusions: payload.inclusions,

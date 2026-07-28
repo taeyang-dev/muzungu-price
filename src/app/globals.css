@@ -540,7 +540,8 @@ a {
 .vendor-min-order-line,
 .vendor-starting-line {
   margin: 0;
-  color: #fef3c7;
+  color: var(--price-hint-text);
+  font-weight: 600;
 }
 
 .vendor-emoji {
