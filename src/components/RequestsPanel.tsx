@@ -302,6 +302,10 @@ export function RequestsPanel({
   const [uploadingByRequestId, setUploadingByRequestId] = useState<Record<string, boolean>>({});
   const [notifyingByRequestId, setNotifyingByRequestId] = useState<Record<string, boolean>>({});
   const [quotationModeByRequestId, setQuotationModeByRequestId] = useState<Record<string, "template" | "file">>({});
+  const [completedVendorRequestByType, setCompletedVendorRequestByType] = useState<
+    Partial<Record<VendorRequestType, boolean>>
+  >({});
+  const [notifiedRequestIds, setNotifiedRequestIds] = useState<Set<string>>(new Set());
   const submittingVendorRequestRef = useRef(false);
   const effectiveServiceId = selectedServiceId || vendorContext?.services[0]?.id || "__other__";
   const isRequestActionLoading =
@@ -342,7 +346,7 @@ export function RequestsPanel({
   }
 
   function hasNotifiedRequester(requestItem: RequestItem): boolean {
-    return Boolean(requestItem.documentNotifiedAt);
+    return Boolean(requestItem.documentNotifiedAt) || notifiedRequestIds.has(requestItem.id);
   }
 
   useEffect(() => {
@@ -605,6 +609,7 @@ export function RequestsPanel({
       const successMessage = successMessageByType[type];
 
       setFeedback(tr(locale, successMessage.en, successMessage.ko));
+      setCompletedVendorRequestByType((current) => ({ ...current, [type]: true }));
       notifyRequestsUpdated();
       router.refresh();
       event.currentTarget.reset();
@@ -835,6 +840,7 @@ export function RequestsPanel({
         return;
       }
       setFeedback(tr(locale, "Notification sent.", "알림 전송 완료"));
+      setNotifiedRequestIds((current) => new Set(current).add(requestItem.id));
       router.refresh();
     } catch {
       setError(tr(locale, "Failed to notify requester.", "알림 전송에 실패했습니다."));
@@ -910,8 +916,16 @@ export function RequestsPanel({
                 <label className="tiny">{tr(locale, "Request details", "요청 상세")}</label>
                 <textarea className="textarea" name="requirementText" />
               </div>
-              <button className="btn" disabled={loading} type="submit">
-                {tr(locale, "Send quotation request", "견적서 요청 보내기")}
+              <button
+                className="btn"
+                disabled={loading || completedVendorRequestByType.quotation}
+                type="submit"
+              >
+                {completedVendorRequestByType.quotation
+                  ? tr(locale, "Quotation request complete.", "견적서 요청 완료")
+                  : loading
+                    ? tr(locale, "Sending...", "전송 중...")
+                    : tr(locale, "Send quotation request", "견적서 요청 보내기")}
               </button>
             </form>
           )}
@@ -975,8 +989,12 @@ export function RequestsPanel({
                 <label className="tiny">{tr(locale, "Request details", "요청 상세")}</label>
                 <textarea className="textarea" name="requirementText" />
               </div>
-              <button className="btn" disabled={loading} type="submit">
-                {tr(locale, "Send EBM request", "EBM 요청 보내기")}
+              <button className="btn" disabled={loading || completedVendorRequestByType.ebm} type="submit">
+                {completedVendorRequestByType.ebm
+                  ? tr(locale, "EBM request complete.", "EBM 요청 완료")
+                  : loading
+                    ? tr(locale, "Sending...", "전송 중...")
+                    : tr(locale, "Send EBM request", "EBM 요청 보내기")}
               </button>
             </form>
           )}
@@ -1236,7 +1254,12 @@ export function RequestsPanel({
                       <label className="tiny">
                         {tr(locale, "Upload quotation document", "견적서 문서 업로드")}
                       </label>
-                      <input className="input" name="vendorDocument" type="file" />
+                      <input
+                        className="input"
+                        disabled={hasUploadedDocument(item.id, "quotation")}
+                        name="vendorDocument"
+                        type="file"
+                      />
                       <div className="request-action-row">
                         <button
                           className="btn"
@@ -1308,7 +1331,12 @@ export function RequestsPanel({
                       "EBM은 거래 완료 후 발행되는 영수증입니다. 공식 EBM 파일만 업로드해 주세요."
                     )}
                   </p>
-                  <input className="input" name="vendorDocument" type="file" />
+                  <input
+                    className="input"
+                    disabled={hasUploadedDocument(item.id, "ebm")}
+                    name="vendorDocument"
+                    type="file"
+                  />
                   <div className="request-action-row">
                     <button
                       className="btn"
