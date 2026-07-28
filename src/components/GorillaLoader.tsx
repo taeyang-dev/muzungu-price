@@ -44,7 +44,7 @@ export function GorillaLoader({ locale = "en" }: GorillaLoaderProps) {
         </svg>
       </div>
       <p className="gorilla-loader-caption">
-        {tr(locale, "Muzungu is grooving while we work...", "무준구가 열심히 처리 중이에요...")}
+        {tr(locale, "Muzungu is grooving...", "무준구가 열심히 처리 중이에요...")}
       </p>
     </div>
   );
