@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminVerificationPanel } from "@/components/AdminVerificationPanel";
+import { AdminVendorManagerPanel } from "@/components/AdminVendorManagerPanel";
+import { listAdminProviders } from "@/lib/admin-providers";
 import { getLocaleFromCookies } from "@/lib/i18n-server";
 import { tr } from "@/lib/i18n";
 
@@ -31,25 +33,31 @@ export default async function AdminPage() {
     );
   }
 
-  const cases = await prisma.verificationCase.findMany({
-    where: {
-      status: { not: "draft" }
-    },
-    include: {
-      providerProfile: {
-        include: {
-          user: true
-        }
+  const [cases, providers] = await Promise.all([
+    prisma.verificationCase.findMany({
+      where: {
+        status: { not: "draft" }
       },
-      documents: true
-    },
-    orderBy: { createdAt: "desc" }
-  });
+      include: {
+        providerProfile: {
+          include: {
+            user: true
+          }
+        },
+        documents: true
+      },
+      orderBy: { createdAt: "desc" }
+    }),
+    listAdminProviders()
+  ]);
 
   return (
-    <AdminVerificationPanel
-      cases={cases.map((item: (typeof cases)[number]) => ({ ...item, createdAt: item.createdAt.toISOString() }))}
-      locale={locale}
-    />
+    <section className="grid">
+      <AdminVendorManagerPanel locale={locale} providers={providers} />
+      <AdminVerificationPanel
+        cases={cases.map((item: (typeof cases)[number]) => ({ ...item, createdAt: item.createdAt.toISOString() }))}
+        locale={locale}
+      />
+    </section>
   );
 }
