@@ -40,3 +40,22 @@ ON "RequestDocument"("requestId", "createdAt");
 -- PR #23: service category Other custom text
 ALTER TABLE "ProviderProfile"
 ADD COLUMN IF NOT EXISTS "categoryOtherDetail" TEXT;
+
+-- Unified chat read cursors + customer thread index
+CREATE INDEX IF NOT EXISTS "VendorChatMessage_customerUserId_createdAt_idx"
+ON "VendorChatMessage"("customerUserId", "createdAt");
+
+CREATE TABLE IF NOT EXISTS "VendorChatReadCursor" (
+  "id" TEXT NOT NULL,
+  "providerProfileId" TEXT NOT NULL,
+  "customerUserId" TEXT NOT NULL,
+  "readerUserId" TEXT NOT NULL,
+  "lastReadAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "VendorChatReadCursor_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "VendorChatReadCursor_providerProfileId_customerUserId_readerUserId_key"
+ON "VendorChatReadCursor"("providerProfileId", "customerUserId", "readerUserId");
+
+CREATE INDEX IF NOT EXISTS "VendorChatReadCursor_readerUserId_idx"
+ON "VendorChatReadCursor"("readerUserId");

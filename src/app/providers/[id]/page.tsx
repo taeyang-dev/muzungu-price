@@ -16,6 +16,7 @@ import { buildVendorRequestContext } from "@/lib/vendor-request-context";
 
 interface ProviderDetailPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ customer?: string }>;
 }
 
 interface BreakdownLine {
@@ -147,11 +148,14 @@ function unitLabel(locale: Locale, unit: string): string {
 }
 
 export default async function ProviderDetailPage({
-  params
+  params,
+  searchParams
 }: ProviderDetailPageProps) {
   const locale = await getLocaleFromCookies();
   const session = await getSession();
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
+  const initialChatCustomerUserId = resolvedSearchParams.customer?.trim() || null;
   const provider = await prisma.providerProfile.findUnique({
     where: { id },
     include: {
@@ -371,15 +375,22 @@ export default async function ProviderDetailPage({
               )}
             </li>
           </ul>
-          <ScrollToSectionButton locale={locale} signedIn={Boolean(session)} targetId="vendor-request">
-            {tr(locale, "Request this vendor", "이 업체에 요청 보내기")}
-          </ScrollToSectionButton>
+          {!isProviderOwner ? (
+            <ScrollToSectionButton locale={locale} signedIn targetId="vendor-request">
+              {tr(locale, "Request this vendor", "이 업체에 요청 보내기")}
+            </ScrollToSectionButton>
+          ) : (
+            <Link className="btn provider-action-btn" href="/requests?box=received">
+              {tr(locale, "Manage received requests", "받은 요청 관리")}
+            </Link>
+          )}
         </article>
       </section>
 
       {session ? (
-        session.role !== "provider" ? (
+        !isProviderOwner ? (
           <RequestsPanel
+            canCreateRequest
             locale={locale}
             mode="create"
             requests={userRequests.map((item: UserRequestItem) => ({
@@ -435,7 +446,7 @@ export default async function ProviderDetailPage({
             vendorContext={buildVendorRequestContext(provider)}
           />
         ) : (
-          <article className="panel">
+          <article className="panel" id="vendor-request">
             <p className="muted" style={{ margin: 0 }}>
               {tr(
                 locale,
@@ -443,6 +454,9 @@ export default async function ProviderDetailPage({
                 "업체는 요청서 페이지에서 들어온 요청을 관리합니다."
               )}
             </p>
+            <Link className="btn secondary" href="/requests?box=received" style={{ marginTop: "12px" }}>
+              {tr(locale, "Open received requests", "받은 요청 열기")}
+            </Link>
           </article>
         )
       ) : (
@@ -459,7 +473,8 @@ export default async function ProviderDetailPage({
       <div id="vendor-chat">
         <VendorChatBox
           canSendPaymentInfo={isProviderOwner}
-          chatUserId={session && session.role !== "provider" ? session.userId : null}
+          chatUserId={isProviderOwner ? null : session?.userId ?? null}
+          initialCustomerUserId={initialChatCustomerUserId}
           isProviderOwner={isProviderOwner}
           locale={locale}
           paymentInfo={isProviderOwner ? paymentInfo : null}

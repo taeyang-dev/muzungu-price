@@ -51,17 +51,14 @@ export default async function MyPage() {
       {session.role === "provider" && data?.profile && (
         <>
           <article className="panel">
-            <h2 style={{ marginTop: 0 }}>{tr(locale, "Customer chats", "손님 채팅")}</h2>
+            <h2 style={{ marginTop: 0 }}>{tr(locale, "Chats", "채팅")}</h2>
             <p className="tiny muted" style={{ marginTop: 0 }}>
               {tr(
                 locale,
-                "Open your public storefront and scroll to the chat widget to read customer messages. Formal quotation/EBM requests are in Requests → Received.",
-                "공개 업체 페이지 하단 채팅에서 손님 메시지를 확인할 수 있습니다. 견적서/EBM 요청은 요청서 → 수신에서 확인하세요."
+                "Open the Quick Menu (☰) → Chats to jump to any conversation. Vendor and customer chats are listed together. Formal quotation/EBM requests are in Requests → Received.",
+                "빠른 메뉴(☰) → 채팅에서 모든 대화를 확인할 수 있습니다. 업체·손님 채팅이 함께 표시됩니다. 견적서/EBM 요청은 요청서 → 수신에서 확인하세요."
               )}
             </p>
-            <Link className="btn secondary" href={`/providers/${data.profile.id}#vendor-chat`}>
-              {tr(locale, "Open my storefront chat", "내 업체 채팅 열기")}
-            </Link>
           </article>
           <ProviderProfileServiceSetup
           categories={data.categories}

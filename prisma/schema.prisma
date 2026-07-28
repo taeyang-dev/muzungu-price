@@ -396,6 +396,18 @@ model VendorChatMessage {
   createdAt         DateTime @default(now())
 
   @@index([providerProfileId, customerUserId, createdAt])
+  @@index([customerUserId, createdAt])
+}
+
+model VendorChatReadCursor {
+  id                String   @id @default(cuid())
+  providerProfileId String
+  customerUserId    String
+  readerUserId      String
+  lastReadAt        DateTime @default(now())
+
+  @@unique([providerProfileId, customerUserId, readerUserId])
+  @@index([readerUserId])
 }
 
 model AuthVerificationCode {
