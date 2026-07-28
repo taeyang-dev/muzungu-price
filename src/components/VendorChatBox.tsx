@@ -5,7 +5,6 @@ import { useSyncAppLoading } from "@/hooks/useSyncAppLoading";
 import { Locale, tr } from "@/lib/i18n";
 import { recordChatVendor } from "@/lib/vendor-storage";
 import { getChatThreadsUpdatedEventName } from "@/components/ChatThreadsStrip";
-import { RequestDocumentType, saveRequestedDocument } from "@/lib/request-documents-storage";
 
 type DisplayLang = "original" | "en" | "ko" | "rw";
 type StoredLang = "en" | "ko" | "rw";
@@ -190,10 +189,6 @@ function hasPaymentInfoMessage(messages: ChatMessage[]): boolean {
   );
 }
 
-function hasHangul(text: string): boolean {
-  return /[가-힣]/.test(text);
-}
-
 function defaultDisplayLanguage(locale: Locale): DisplayLang {
   if (locale === "ko") {
     return "ko";
@@ -205,10 +200,9 @@ function defaultDisplayLanguage(locale: Locale): DisplayLang {
 }
 
 function buildPaymentInfoMessage(info: VendorPaymentInfo, locale: Locale): string {
-  const lines = [
-    tr(locale, "Payment information", "결제 정보"),
-    `${tr(locale, "Company", "회사명")}: ${info.businessName}`
-  ];
+  const lines = [tr(locale, "Payment information", "결제 정보")];
+
+  lines.push(`${tr(locale, "Company name", "회사명")}: ${info.businessName}`);
 
   if (info.phone?.trim()) {
     lines.push(`${tr(locale, "Phone", "휴대폰")}: ${info.phone}`);
@@ -233,7 +227,9 @@ function buildPaymentInfoMessage(info: VendorPaymentInfo, locale: Locale): strin
     }
   }
 
-  return lines.join("\n");
+  return lines
+    .map((line, index) => (index === 0 ? line : `- ${line}`))
+    .join("\n");
 }
 
 async function translateText(text: string, targetLanguage: StoredLang): Promise<string> {
@@ -261,17 +257,6 @@ function readFileAsDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("Failed to read file"));
     reader.readAsDataURL(file);
   });
-}
-
-function createTextAttachment(id: string, name: string, content: string): ChatAttachment {
-  const dataUrl = `data:text/plain;charset=utf-8,${encodeURIComponent(content)}`;
-  return {
-    id,
-    name,
-    mimeType: "text/plain",
-    sizeBytes: content.length,
-    dataUrl
-  };
 }
 
 export function VendorChatBox({
@@ -309,7 +294,6 @@ export function VendorChatBox({
   const [displayLanguage, setDisplayLanguage] = useState<DisplayLang>(() =>
     defaultDisplayLanguage(locale)
   );
-  const [translatingMessageId, setTranslatingMessageId] = useState<string | null>(null);
   const [isBulkTranslating, setIsBulkTranslating] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
@@ -322,7 +306,7 @@ export function VendorChatBox({
   const serverCustomerUserId = isProviderOwner ? activeCustomerUserId : chatUserId;
   const usesServerChat = Boolean(serverCustomerUserId);
 
-  useSyncAppLoading(isSending || isBulkTranslating || translatingMessageId !== null);
+  useSyncAppLoading(isSending || isBulkTranslating);
 
   useEffect(() => {
     if (!isProviderOwner) {
@@ -440,44 +424,6 @@ export function VendorChatBox({
     return parsed.toLocaleTimeString();
   }
 
-  async function ensureTranslation(messageId: string, targetLanguage: DisplayLang): Promise<void> {
-    if (targetLanguage === "original") {
-      setDisplayLanguage("original");
-      return;
-    }
-
-    const message = messages.find((item) => item.id === messageId);
-    if (!message || !message.text.trim()) {
-      return;
-    }
-
-    if (message.translations?.[targetLanguage]) {
-      setDisplayLanguage(targetLanguage);
-      return;
-    }
-
-    setTranslatingMessageId(messageId);
-    try {
-      const translatedText = await translateText(message.text, targetLanguage);
-      setMessages((current) =>
-        current.map((item) =>
-          item.id === messageId
-            ? {
-                ...item,
-                translations: {
-                  ...item.translations,
-                  [targetLanguage]: translatedText
-                }
-              }
-            : item
-        )
-      );
-      setDisplayLanguage(targetLanguage);
-    } finally {
-      setTranslatingMessageId(null);
-    }
-  }
-
   async function changeDisplayLanguage(nextLanguage: DisplayLang): Promise<void> {
     if (nextLanguage === "original") {
       setDisplayLanguage("original");
@@ -573,24 +519,6 @@ export function VendorChatBox({
     setPendingAttachments((current) => current.filter((item) => item.id !== id));
   }
 
-  function saveAttachmentAs(attachment: ChatAttachment, type: RequestDocumentType): void {
-    const saved = saveRequestedDocument({
-      requestId: `chat-${vendorId}-${attachment.id}`,
-      vendorId,
-      vendorName,
-      type,
-      dataUrl: attachment.dataUrl
-    });
-
-    setSaveNotice(
-      tr(
-        locale,
-        `Saved to Requests: ${saved.fileName}`,
-        `요청서 문서로 저장됨: ${saved.fileName}`
-      )
-    );
-  }
-
   async function persistMessages(nextMessages: ChatMessage[]): Promise<ChatMessage[]> {
     if (!usesServerChat) {
       return nextMessages;
@@ -648,12 +576,7 @@ export function VendorChatBox({
     setIsSending(true);
     try {
       const text = buildPaymentInfoMessage(paymentInfo, locale);
-      const attachment = createTextAttachment(
-        `payment-info-${Date.now()}`,
-        "payment-information.txt",
-        text
-      );
-      await appendVendorMessage(text, [attachment]);
+      await appendVendorMessage(text);
       setPaymentInfoSent(true);
       setSaveNotice(tr(locale, "Payment information sent.", "결제 정보를 전송했습니다."));
     } finally {
@@ -670,76 +593,32 @@ export function VendorChatBox({
 
     setIsSending(true);
     try {
-    const now = new Date().toISOString();
-    const userMessage: ChatMessage = {
-      id: `user-${now}`,
-      sender: "user",
-      text: trimmed,
-      timestamp: now,
-      attachments: pendingAttachments
-    };
+      const now = new Date().toISOString();
+      const userMessage: ChatMessage = {
+        id: `user-${now}`,
+        sender: "user",
+        text: trimmed,
+        timestamp: now,
+        attachments: pendingAttachments
+      };
 
-    const vendorText = hasHangul(trimmed)
-      ? "Thanks for your request. We can share timeline and formal quotation in 24 hours."
-      : pendingAttachments.length > 0
-        ? "Murakoze ku butumwa n'inyandiko mwaduhaye. Turazisuzuma duhite tubasubiza."
-        : "Murakoze kubutumwa bwawe. Turagutegurira igihe, igiciro n'inyandiko zose vuba.";
-
-    const vendorMessage: ChatMessage = {
-      id: `vendor-${now}`,
-      sender: "vendor",
-      text: vendorText,
-      timestamp: new Date(Date.now() + 30000).toISOString()
-    };
-
-    const lower = trimmed.toLowerCase();
-    const vendorAttachments: ChatAttachment[] = [];
-    if (lower.includes("quote") || lower.includes("quotation") || lower.includes("견적")) {
-      vendorAttachments.push(
-        createTextAttachment(
-          `vendor-quotation-${now}`,
-          "vendor-quotation.txt",
-          `Quotation draft from ${vendorName}\nRequested at: ${new Date().toISOString()}\nPlease review and save as Quotation if needed.`
-        )
+      const targetLanguages: StoredLang[] = ["en", "ko", "rw"];
+      const userTranslations = await Promise.all(
+        targetLanguages.map((lang) => translateText(userMessage.text, lang))
       );
-    }
-    if (lower.includes("ebm")) {
-      vendorAttachments.push(
-        createTextAttachment(
-          `vendor-ebm-${now}`,
-          "vendor-ebm.txt",
-          `EBM sample from ${vendorName}\nIssued at: ${new Date().toISOString()}\nPlease review and save as EBM if needed.`
-        )
-      );
-    }
-    if (vendorAttachments.length > 0) {
-      vendorMessage.attachments = vendorAttachments;
-    }
+      userMessage.translations = {
+        en: userTranslations[0],
+        ko: userTranslations[1],
+        rw: userTranslations[2]
+      };
 
-    const targetLanguages: StoredLang[] = ["en", "ko", "rw"];
-    const [userTranslations, vendorTranslations] = await Promise.all([
-      Promise.all(targetLanguages.map((lang) => translateText(userMessage.text, lang))),
-      Promise.all(targetLanguages.map((lang) => translateText(vendorMessage.text, lang)))
-    ]);
-
-    userMessage.translations = {
-      en: userTranslations[0],
-      ko: userTranslations[1],
-      rw: userTranslations[2]
-    };
-    vendorMessage.translations = {
-      en: vendorTranslations[0],
-      ko: vendorTranslations[1],
-      rw: vendorTranslations[2]
-    };
-
-    const nextMessages = [...messages, userMessage, vendorMessage];
-    const persisted = await persistMessages(nextMessages);
-    setMessages(persisted);
-    recordChatVendor({ id: vendorId, name: vendorName });
-    setInput("");
-    setPendingAttachments([]);
-    setAttachmentNotice("");
+      const nextMessages = [...messages, userMessage];
+      const persisted = await persistMessages(nextMessages);
+      setMessages(persisted);
+      recordChatVendor({ id: vendorId, name: vendorName });
+      setInput("");
+      setPendingAttachments([]);
+      setAttachmentNotice("");
     } finally {
       setIsSending(false);
     }
@@ -756,7 +635,6 @@ export function VendorChatBox({
           <div className="chat-widget-header">
             <div>
               <strong>{vendorName}</strong>
-              <p>{tr(locale, "Messenger-style quick chat", "메신저형 빠른 채팅")}</p>
             </div>
             <div className="chat-widget-header-actions">
               <button
@@ -840,7 +718,7 @@ export function VendorChatBox({
             <div className="chat-box">
               {messages.map((message) => (
                 <div className={`chat-message ${message.sender}`} key={message.id}>
-                  {message.text ? <p>{visibleText(message)}</p> : <p>{tr(locale, "(Attachment)", "(첨부파일)")}</p>}
+                  {message.text ? <p className="chat-message-text">{visibleText(message)}</p> : <p>{tr(locale, "(Attachment)", "(첨부파일)")}</p>}
                   {message.attachments && message.attachments.length > 0 && (
                     <ul className="chat-attachment-list">
                       {message.attachments.map((attachment) => (
@@ -851,44 +729,11 @@ export function VendorChatBox({
                             </a>
                             <span>{formatFileSize(attachment.sizeBytes)}</span>
                           </div>
-                          {message.sender === "vendor" && (
-                            <div className="chat-doc-actions">
-                              <button onClick={() => saveAttachmentAs(attachment, "quotation")} type="button">
-                                {tr(locale, "Save as Quotation", "견적서로 저장")}
-                              </button>
-                              <button onClick={() => saveAttachmentAs(attachment, "ebm")} type="button">
-                                {tr(locale, "Save as EBM", "EBM으로 저장")}
-                              </button>
-                            </div>
-                          )}
                         </li>
                       ))}
                     </ul>
                   )}
-                  <div className="chat-inline-actions">
-                    {(Object.keys(languageLabels) as DisplayLang[]).map((lang) => (
-                      <button
-                        className="chat-inline-btn"
-                        key={`${message.id}-${lang}`}
-                        onClick={() => void ensureTranslation(message.id, lang)}
-                        type="button"
-                      >
-                        {locale === "ko"
-                          ? languageLabels[lang].ko
-                          : locale === "fr"
-                            ? languageLabels[lang].fr
-                            : locale === "rw"
-                              ? languageLabels[lang].rw
-                              : languageLabels[lang].en}
-                      </button>
-                    ))}
-                  </div>
-                  <span>
-                    {formatTimestamp(message.timestamp)}{" "}
-                    {translatingMessageId === message.id
-                      ? tr(locale, "· translating...", "· 번역 중...")
-                      : ""}
-                  </span>
+                  <span>{formatTimestamp(message.timestamp)}</span>
                 </div>
               ))}
             </div>

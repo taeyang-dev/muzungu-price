@@ -1080,6 +1080,10 @@ a {
   color: var(--text);
 }
 
+.chat-message-text {
+  white-space: pre-line;
+}
+
 .chat-message.vendor p {
   color: var(--text);
 }
